@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+npm-debug.log*
+.env
+.env.local
+
+# server data (SQLite files)
+server/data/*.db
+server/data/*.db-wal
+server/data/*.db-shm
+server/db/*.db
+server/db/*.db-wal
+server/db/*.db-shm
+
+# workspace nested lock files (root lock file is authoritative)
+client/package-lock.json
+
+# temp files
+tmp_pdf_review/
+
+# reference assets (not needed in production)
+ref_formats/

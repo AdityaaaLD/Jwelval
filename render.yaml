@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: jewelval
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      - key: PORT
+        value: "10000"
+      - key: DB_PATH
+        value: /opt/render/project/src/server/data/jewel_val.db
+    disk:
+      name: jewelval-data
+      mountPath: /opt/render/project/src/server/data
+      sizeGB: 1

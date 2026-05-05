@@ -1,0 +1,28 @@
+{
+  "name": "jewelval",
+  "version": "0.1.0",
+  "private": true,
+  "description": "JewelVal — full-stack jewellery valuation management app.",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "install:all": "npm install && npm --prefix client install && npm --prefix server install",
+    "dev": "concurrently -n SERVER,CLIENT -c yellow,cyan \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "build": "npm --prefix client run build",
+    "start": "node server/src/index.js",
+    "setup": "npm --prefix server run db:migrate",
+    "seed:demo": "npm --prefix server run db:seed",
+    "render:build": "npm install && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ]
+}

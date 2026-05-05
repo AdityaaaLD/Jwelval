@@ -1,0 +1,68 @@
+@import './styles/print.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+    font-family: Arial, Helvetica, system-ui, -apple-system, sans-serif;
+  }
+}
+
+@layer components {
+  .btn       { @apply inline-flex items-center justify-center gap-1.5 rounded-md px-3.5 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary   { @apply btn bg-gold-500 text-ink-900 hover:bg-gold-400 focus:ring-gold-500; }
+  .btn-secondary { @apply btn bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 focus:ring-slate-400; }
+  .btn-danger    { @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500; }
+  .btn-ghost     { @apply btn text-slate-600 hover:bg-slate-100; }
+
+  .card  { @apply bg-white rounded-lg shadow-sm border border-slate-200; }
+  .input { @apply block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500; }
+  .label { @apply block text-sm font-medium text-slate-700 mb-1; }
+
+  .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
+  .badge-draft   { @apply badge bg-yellow-100 text-yellow-800; }
+  .badge-printed { @apply badge bg-green-100 text-green-800; }
+  .badge-locked  { @apply badge bg-red-100 text-red-800; }
+}
+
+@layer utilities {
+  .animate-rise-in {
+    animation: rise-in 560ms ease both;
+  }
+  .animate-float-soft {
+    animation: float-soft 5s ease-in-out infinite;
+  }
+  .animate-scan-line {
+    animation: scan-line 3.2s ease-in-out infinite;
+  }
+  .animate-badge-pop {
+    animation: badge-pop 900ms ease both 420ms;
+  }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes scan-line {
+  0%, 100% { transform: translateY(0); opacity: .15; }
+  45%, 55% { opacity: .9; }
+  50% { transform: translateY(230px); }
+}
+
+@keyframes badge-pop {
+  from { opacity: 0; transform: translateY(10px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
