@@ -206,6 +206,10 @@ export default function ValuationForm() {
             <input className="input" value={form.branch} onChange={(e) => setField('branch', e.target.value)} disabled={disabled} />
           </div>
           <div>
+            <label className="label">Branch Code</label>
+            <input className="input" placeholder="e.g. 0859" value={form.branchCode} onChange={(e) => setField('branchCode', e.target.value)} disabled={disabled} />
+          </div>
+          <div>
             <label className="label">Bank/Branch Preset</label>
             <select className="input" onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
               <option value="">Apply preset</option>
@@ -215,6 +219,10 @@ export default function ValuationForm() {
           <div>
             <label className="label">A/C No</label>
             <input className="input" value={form.acNo} onChange={(e) => setField('acNo', e.target.value)} disabled={disabled} />
+          </div>
+          <div>
+            <label className="label">Application ID</label>
+            <input className="input" placeholder="e.g. BOMGL0000097726" value={form.applicationId} onChange={(e) => setField('applicationId', e.target.value)} disabled={disabled} />
           </div>
           <div>
             <label className="label">Gold Rate 22K Today</label>
@@ -268,6 +276,7 @@ export default function ValuationForm() {
               <tr>
                 <th className="px-3 py-3">Sr</th>
                 <th className="px-3 py-3">Description</th>
+                <th className="px-3 py-3">Digital ID</th>
                 <th className="px-3 py-3">Units</th>
                 <th className="px-3 py-3">Purity %</th>
                 <th className="px-3 py-3">Carat</th>
@@ -284,6 +293,7 @@ export default function ValuationForm() {
                 <tr key={index}>
                   <td className="px-3 py-2">{index + 1}</td>
                   <td className="px-3 py-2"><input className="input" value={item.description} onChange={(e) => setItem(index, 'description', e.target.value)} disabled={disabled} /></td>
+                  <td className="px-3 py-2"><input className="input" placeholder="BOM..." value={item.digitalId} onChange={(e) => setItem(index, 'digitalId', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2"><input type="number" className="input" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2"><input type="number" className="input" value={item.purityPercent} onChange={(e) => setItem(index, 'purityPercent', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2 font-medium">{num(item.purityCarat, 2)}</td>

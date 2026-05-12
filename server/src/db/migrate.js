@@ -137,6 +137,11 @@ for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN jewellery_photo TEXT',
   'ALTER TABLE valuations ADD COLUMN ornament_photos TEXT',
   'ALTER TABLE valuations ADD COLUMN valuation_fee REAL NOT NULL DEFAULT 0',
+  'ALTER TABLE valuations ADD COLUMN application_id TEXT',
+  'ALTER TABLE valuations ADD COLUMN branch_code TEXT',
+  'ALTER TABLE valuation_items ADD COLUMN digital_id TEXT',
+  'ALTER TABLE appraiser_profile ADD COLUMN empanelment_id TEXT',
+  'ALTER TABLE appraiser_profile ADD COLUMN gstn TEXT',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {
     if (!String(error.message).includes('duplicate column name')) throw error
@@ -182,6 +187,7 @@ const defaults = [
   { seriesName: 'RUSH-2025', prefix: 'RUSH-2025', formatType: 'RUSHIKESH' },
   { seriesName: 'DNYAN-2025', prefix: 'DNYAN-2025', formatType: 'DNYANESHWARI' },
   { seriesName: 'BOM-2025', prefix: 'BOM-2025', formatType: 'BANK_OF_MAHA' },
+  { seriesName: 'DIGITAL-2025', prefix: 'GLCN', formatType: 'DIGITAL_CERT' },
 ]
 
 for (const s of defaults) {

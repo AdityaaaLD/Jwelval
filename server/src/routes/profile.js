@@ -8,12 +8,12 @@ router.get('/', (_req, res) => {
 })
 
 router.put('/', (req, res) => {
-  const { appraiserName, businessName, mobile, email, upiId, logoPhoto, address } = req.body
+  const { appraiserName, businessName, mobile, email, upiId, logoPhoto, address, empanelmentId, gstn } = req.body
   sqlite.prepare(`
     UPDATE appraiser_profile
-    SET appraiser_name = ?, business_name = ?, mobile = ?, email = ?, upi_id = ?, logo_photo = ?, address = ?, updated_at = ?
+    SET appraiser_name = ?, business_name = ?, mobile = ?, email = ?, upi_id = ?, logo_photo = ?, address = ?, empanelment_id = ?, gstn = ?, updated_at = ?
     WHERE id = 1
-  `).run(appraiserName || '', businessName || '', mobile || '', email || '', upiId || '', logoPhoto || '', address || '', new Date().toISOString())
+  `).run(appraiserName || '', businessName || '', mobile || '', email || '', upiId || '', logoPhoto || '', address || '', empanelmentId || '', gstn || '', new Date().toISOString())
   res.json(sqlite.prepare('SELECT * FROM appraiser_profile WHERE id = 1').get())
 })
 

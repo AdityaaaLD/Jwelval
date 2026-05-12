@@ -11,6 +11,7 @@ const blankItem = () => ({
   net24kGoldGm: 0,
   net22kGoldGm: 0,
   approxValueInr: 0,
+  digitalId: '',
 })
 
 const initialForm = () => ({
@@ -18,7 +19,9 @@ const initialForm = () => ({
   seriesId: '',
   valuationDate: today(),
   branch: '',
+  branchCode: '',
   acNo: '',
+  applicationId: '',
   goldRate22k: '',
   goldRate24k: '',
   loanAmount: '',
@@ -75,7 +78,9 @@ export const useValuationStore = create((set, get) => ({
       seriesId: valuation.seriesId || '',
       valuationDate: valuation.valuationDate || today(),
       branch: valuation.branch || '',
+      branchCode: valuation.branchCode || '',
       acNo: valuation.acNo || '',
+      applicationId: valuation.applicationId || '',
       goldRate22k: valuation.goldRate22k || '',
       goldRate24k: valuation.goldRate24k || '',
       loanAmount: valuation.loanAmount || '',
@@ -94,6 +99,7 @@ export const useValuationStore = create((set, get) => ({
         net24kGoldGm: item.net24kGoldGm || 0,
         net22kGoldGm: item.net22kGoldGm || 0,
         approxValueInr: item.approxValueInr || 0,
+        digitalId: item.digitalId || '',
       })),
     }, true),
     dirty: false,
@@ -122,7 +128,9 @@ export const useValuationStore = create((set, get) => ({
       seriesId: Number(form.seriesId),
       valuationDate: form.valuationDate,
       branch: form.branch,
+      branchCode: form.branchCode,
       acNo: form.acNo,
+      applicationId: form.applicationId,
       goldRate22k: Number(form.goldRate22k),
       goldRate24k: Number(form.goldRate24k),
       loanAmount: Number(form.loanAmount),
@@ -137,6 +145,7 @@ export const useValuationStore = create((set, get) => ({
         purityPercent: Number(item.purityPercent) || 0,
         grossWeightGm: Number(item.grossWeightGm) || 0,
         netWeightGm: Number(item.netWeightGm) || 0,
+        digitalId: item.digitalId || '',
       })),
     }
   },

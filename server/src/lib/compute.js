@@ -30,6 +30,7 @@ export function deriveItem(item, goldRate22k) {
     net24kGoldGm,
     net22kGoldGm,
     approxValueInr,
+    digitalId: item.digitalId || '',
   }
 }
 

@@ -46,6 +46,8 @@ export const valuations = sqliteTable('valuations', {
   personPhoto: text('person_photo'),
   jewelleryPhoto: text('jewellery_photo'),
   ornamentPhotos: text('ornament_photos'),
+  applicationId: text('application_id'),
+  branchCode: text('branch_code'),
   status: text('status').notNull().default('DRAFT'), // DRAFT | PRINTED | LOCKED
   printedAt: text('printed_at'),
   createdAt: text('created_at').notNull(),
@@ -69,6 +71,8 @@ export const appraiserProfile = sqliteTable('appraiser_profile', {
   upiId: text('upi_id'),
   logoPhoto: text('logo_photo'),
   address: text('address'),
+  empanelmentId: text('empanelment_id'),
+  gstn: text('gstn'),
   updatedAt: text('updated_at'),
 })
 
@@ -98,6 +102,7 @@ export const valuationItems = sqliteTable('valuation_items', {
   net24kGoldGm: real('net_24k_gold_gm').notNull().default(0),
   net22kGoldGm: real('net_22k_gold_gm').notNull().default(0),
   approxValueInr: real('approx_value_inr').notNull().default(0),
+  digitalId: text('digital_id'),
 })
 
 export const payments = sqliteTable('payments', {

@@ -9,11 +9,13 @@ import { verificationUrl } from '../../lib/qr'
 import PrintRushikesh from './PrintRushikesh'
 import PrintDnyaneshwari from './PrintDnyaneshwari'
 import PrintBankOfMaha from './PrintBankOfMaha'
+import PrintDigitalCert from './PrintDigitalCert'
 import FeeReceipt from './FeeReceipt'
 
 function Template({ valuation }) {
   if (valuation.formatType === 'DNYANESHWARI') return <PrintDnyaneshwari valuation={valuation} />
   if (valuation.formatType === 'BANK_OF_MAHA') return <PrintBankOfMaha valuation={valuation} />
+  if (valuation.formatType === 'DIGITAL_CERT') return <PrintDigitalCert valuation={valuation} />
   return <PrintRushikesh valuation={valuation} />
 }
 

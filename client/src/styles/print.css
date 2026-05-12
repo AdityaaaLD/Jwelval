@@ -27,6 +27,26 @@
 .receipt-grid { display: grid; gap: 4px; font-size: 12px; }
 .receipt-upi { display: flex; align-items: center; gap: 10px; margin-top: 12px; border: 1px solid #111827; padding: 6px; }
 
+/* DIGITAL_CERT format */
+.digital-cert .digital-cert-header { display: grid; grid-template-columns: 34mm 1fr 44mm; gap: 10px; align-items: start; border: 1px solid #111827; padding: 8px; }
+.digital-cert .digital-cert-title { text-align: center; }
+.digital-cert .digital-cert-title h1 { margin: 0 0 4px; font-size: 15px; font-weight: 700; text-transform: uppercase; }
+.digital-cert .digital-cert-title .appraiser-name { font-size: 14px; font-weight: 700; }
+.digital-cert .digital-cert-title p { margin: 1px 0; font-size: 11px; }
+.digital-cert .digital-cert-meta { border: 1px solid #111827; border-top: 0; padding: 4px 8px; font-size: 11px; }
+.digital-cert .meta-row { display: flex; justify-content: space-between; }
+.digital-cert .meta-right { text-align: right; }
+.digital-cert .digital-cert-parties { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #111827; border-top: 0; padding: 6px 8px; font-size: 11px; }
+.digital-cert .party-from p, .digital-cert .party-to p { margin: 1px 0; }
+.digital-cert .digital-cert-borrower { border: 1px solid #111827; border-top: 0; padding: 6px 8px; font-size: 11px; }
+.digital-cert .digital-cert-borrower p { margin: 2px 0; font-weight: 600; }
+.digital-cert .digital-cert-currency { text-align: right; margin: 4px 0; font-weight: 700; font-size: 11px; }
+.digital-cert-table th { font-size: 10px; text-align: center; padding: 4px 5px; }
+.digital-cert-table td { text-align: center; font-size: 11px; }
+.digital-cert .digital-cert-signature { margin-top: auto; padding-top: 20mm; }
+.digital-cert .digital-cert-signature .yours { font-weight: 700; margin-bottom: 18mm; }
+.digital-cert .digital-cert-signature .sign-label { font-weight: 700; font-size: 12px; }
+
 @media print {
   .sidebar, .topbar, button, .no-print, .print-modal-toolbar { display: none !important; }
   body, #root { background: #fff !important; }

@@ -76,7 +76,9 @@ router.post(
       customerId,
       seriesId,
       branch,
+      branchCode,
       acNo,
+      applicationId,
       valuationDate,
       goldRate22k,
       goldRate24k,
@@ -106,6 +108,8 @@ router.post(
         valuationDate: valuationDate || now.slice(0, 10),
         acNo: acNo || '',
         branch: branch || '',
+        branchCode: branchCode || '',
+        applicationId: applicationId || '',
         goldRate22k: Number(goldRate22k),
         goldRate24k: finalGoldRate24k,
         marketValue: +totals.marketValue.toFixed(2),
@@ -123,7 +127,7 @@ router.post(
 
     if (derived.length) {
       await db.insert(valuationItems).values(
-        derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: created.id }))
+        derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: created.id, digitalId: it.digitalId || '' }))
       )
     }
     res.status(201).json(await hydrate(created))
@@ -142,7 +146,9 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
   }
   const {
     branch,
+    branchCode,
     acNo,
+    applicationId,
     valuationDate,
     goldRate22k,
     goldRate24k,
@@ -168,7 +174,9 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
     .update(valuations)
     .set({
       branch: branch ?? existing.branch,
+      branchCode: branchCode ?? existing.branchCode,
       acNo: acNo ?? existing.acNo,
+      applicationId: applicationId ?? existing.applicationId,
       valuationDate: valuationDate ?? existing.valuationDate,
       goldRate22k: rate22,
       goldRate24k: rate24,
@@ -187,7 +195,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
     await db.delete(valuationItems).where(eq(valuationItems.valuationId, id))
     if (derived.length) {
       await db.insert(valuationItems).values(
-        derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: id }))
+        derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: id, digitalId: it.digitalId || '' }))
       )
     }
   }
