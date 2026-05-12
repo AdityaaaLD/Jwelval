@@ -140,6 +140,8 @@ for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN application_id TEXT',
   'ALTER TABLE valuations ADD COLUMN branch_code TEXT',
   'ALTER TABLE valuation_items ADD COLUMN digital_id TEXT',
+  'ALTER TABLE valuations ADD COLUMN aadhar_photo_doc TEXT',
+  'ALTER TABLE valuations ADD COLUMN pan_photo TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN empanelment_id TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN gstn TEXT',
 ]) {

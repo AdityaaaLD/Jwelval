@@ -88,6 +88,8 @@ router.post(
       personPhoto,
       jewelleryPhoto,
       ornamentPhotos,
+      aadharPhotoDoc,
+      panPhoto,
       items,
     } = req.body
 
@@ -119,6 +121,8 @@ router.post(
         personPhoto: personPhoto || '',
         jewelleryPhoto: jewelleryPhoto || '',
         ornamentPhotos: JSON.stringify(ornamentPhotos || []),
+        aadharPhotoDoc: aadharPhotoDoc || '',
+        panPhoto: panPhoto || '',
         status: 'DRAFT',
         createdAt: now,
         updatedAt: now,
@@ -158,6 +162,8 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
     personPhoto,
     jewelleryPhoto,
     ornamentPhotos,
+    aadharPhotoDoc,
+    panPhoto,
     items,
   } = req.body
 
@@ -184,6 +190,8 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
       personPhoto: personPhoto ?? existing.personPhoto,
       jewelleryPhoto: jewelleryPhoto ?? existing.jewelleryPhoto,
       ornamentPhotos: ornamentPhotos != null ? JSON.stringify(ornamentPhotos || []) : existing.ornamentPhotos,
+      aadharPhotoDoc: aadharPhotoDoc ?? existing.aadharPhotoDoc,
+      panPhoto: panPhoto ?? existing.panPhoto,
       loanAmount: loanAmount != null ? Number(loanAmount) : +(totals.marketValue * LOAN_LTV).toFixed(2),
       valuationFee: valuationFee != null ? Number(valuationFee) : existing.valuationFee,
       marketValue: Array.isArray(items) ? +totals.marketValue.toFixed(2) : existing.marketValue,

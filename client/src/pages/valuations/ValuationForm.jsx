@@ -240,9 +240,11 @@ export default function ValuationForm() {
           <h2 className="font-semibold text-slate-950">Photos</h2>
           <p className="text-sm text-slate-500">Capture borrower and jewellery photos directly from the device camera.</p>
         </div>
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <PhotoCapture field="personPhoto" label="Borrower Photo" />
           <PhotoCapture field="jewelleryPhoto" label="Jewellery Photo" />
+          <PhotoCapture field="aadharPhotoDoc" label="Aadhar Card (for back page)" />
+          <PhotoCapture field="panPhoto" label="PAN Card (for back page)" />
         </div>
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">

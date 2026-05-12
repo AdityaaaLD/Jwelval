@@ -48,6 +48,8 @@ export const valuations = sqliteTable('valuations', {
   ornamentPhotos: text('ornament_photos'),
   applicationId: text('application_id'),
   branchCode: text('branch_code'),
+  aadharPhotoDoc: text('aadhar_photo_doc'),
+  panPhoto: text('pan_photo'),
   status: text('status').notNull().default('DRAFT'), // DRAFT | PRINTED | LOCKED
   printedAt: text('printed_at'),
   createdAt: text('created_at').notNull(),
