@@ -1,11 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake"]
+nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake", "pkg-config"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm install --workspaces --include-workspace-root"]
 
 [phases.build]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npm run start"
+cmd = "NODE_ENV=production npm run start"
