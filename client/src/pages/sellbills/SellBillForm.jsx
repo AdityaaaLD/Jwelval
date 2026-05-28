@@ -25,6 +25,7 @@ export default function SellBillForm() {
     billDate: new Date().toISOString().slice(0, 10),
     withGst: true,
     advance: 0,
+    paymentMode: 'Cash',
     items: [blankItem()],
   })
 
@@ -64,6 +65,7 @@ export default function SellBillForm() {
         billDate: b.billDate || '',
         withGst: (b.gstPercent || 0) > 0,
         advance: b.advance || 0,
+        paymentMode: b.paymentMode || 'Cash',
         items: b.items?.length ? b.items.map((it) => ({
           particular: it.particular || '',
           amount: it.amount || '',
@@ -100,6 +102,7 @@ export default function SellBillForm() {
         gstPercent,
         advance: Number(form.advance) || 0,
         items: form.items.filter((it) => it.particular).map((it) => ({ particular: it.particular, amount: Number(it.amount) || 0 })),
+        paymentMode: form.paymentMode,
       }
       const saved = await api.sellBills.create(payload)
       toast.success('Sell bill created.')
@@ -197,6 +200,17 @@ export default function SellBillForm() {
             <label className="label">Advance</label>
             <input type="number" className="input" value={form.advance} onChange={(e) => setField('advance', e.target.value)} disabled={isView} />
             <p className="mt-1 text-xs text-slate-500">Balance: {inr(balance)}</p>
+          </div>
+          <div>
+            <label className="label">Payment Mode</label>
+            <select className="input" value={form.paymentMode} onChange={(e) => setField('paymentMode', e.target.value)} disabled={isView}>
+              <option value="Cash">Cash</option>
+              <option value="UPI">UPI</option>
+              <option value="Card">Card</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
         </div>
       </section>

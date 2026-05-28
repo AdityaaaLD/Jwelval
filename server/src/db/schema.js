@@ -173,6 +173,7 @@ export const sellBills = sqliteTable('sell_bills', {
   total: real('total').notNull().default(0),
   advance: real('advance').notNull().default(0),
   balance: real('balance').notNull().default(0),
+  paymentMode: text('payment_mode'),
   userId: integer('user_id').notNull().default(1),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

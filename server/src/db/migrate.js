@@ -216,6 +216,7 @@ for (const stmt of [
   'ALTER TABLE bill_series ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1',
   'ALTER TABLE appraiser_profile ADD COLUMN user_id INTEGER',
   "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",
+  'ALTER TABLE sell_bills ADD COLUMN payment_mode TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN proprietor_name TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN qualification TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN organization TEXT',

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import StatusBadge from '../../components/StatusBadge'
 import { api } from '../../lib/api'
 import { inr } from '../../lib/format'
 
 export default function ValuationList() {
+  const location = useLocation()
   const [valuations, setValuations] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -13,7 +14,7 @@ export default function ValuationList() {
     api.valuations.list()
       .then(setValuations)
       .finally(() => setLoading(false))
-  }, [])
+  }, [location.key])
 
   return (
     <div className="space-y-5">

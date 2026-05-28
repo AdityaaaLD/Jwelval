@@ -56,6 +56,7 @@ export default function SellBillPrint({ bill, onClose }) {
                   <tbody>
                     <tr><td>Invoice No.</td><td>{bill.billNumber}</td></tr>
                     <tr><td>Date</td><td>{bill.billDate}</td></tr>
+                    {bill.paymentMode && <tr><td>Payment</td><td>{bill.paymentMode}</td></tr>}
                     {bill.valuationId && <tr><td>Valuation Ref</td><td>#{bill.valuationId}</td></tr>}
                   </tbody>
                 </table>

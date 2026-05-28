@@ -55,7 +55,7 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const userId = req.user.id
-  const { billSeriesId, valuationId, customerId, billDate, orderNo, chequeNo, chequeDate, bank, bankBranch, items, gstPercent = 3, advance = 0 } = req.body
+  const { billSeriesId, valuationId, customerId, billDate, orderNo, chequeNo, chequeDate, bank, bankBranch, items, gstPercent = 3, advance = 0, paymentMode } = req.body
   if (!customerId) return res.status(400).json({ error: 'Customer required' })
   if (!billSeriesId) return res.status(400).json({ error: 'Bill series required' })
 
@@ -93,6 +93,7 @@ router.post('/', async (req, res) => {
     total,
     advance: Number(advance) || 0,
     balance,
+    paymentMode: paymentMode || '',
     userId,
     createdAt: now,
     updatedAt: now,

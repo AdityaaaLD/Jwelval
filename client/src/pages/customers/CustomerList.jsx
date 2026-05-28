@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Plus, Search } from 'lucide-react'
 import { api } from '../../lib/api'
 import { maskAadhar } from '../../lib/format'
 
 export default function CustomerList() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [customers, setCustomers] = useState([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -14,7 +15,7 @@ export default function CustomerList() {
     api.customers.list()
       .then(setCustomers)
       .finally(() => setLoading(false))
-  }, [])
+  }, [location.key])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()

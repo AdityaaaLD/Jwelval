@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { api } from '../../lib/api'
 import { inr } from '../../lib/format'
 
 export default function SellBillList() {
+  const location = useLocation()
   const [rows, setRows] = useState([])
-  useEffect(() => { api.sellBills.list().then(setRows) }, [])
+  useEffect(() => { api.sellBills.list().then(setRows) }, [location.key])
 
   return (
     <div className="space-y-5">
