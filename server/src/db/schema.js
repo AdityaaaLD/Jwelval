@@ -2,7 +2,7 @@ import { sqliteTable, integer, text, real } from 'drizzle-orm/sqlite-core'
 
 export const customers = sqliteTable('customers', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  customerCode: text('customer_code').notNull().unique(),
+  customerCode: text('customer_code').notNull(),
   name: text('name').notNull(),
   address: text('address'),
   mobile: text('mobile'),
@@ -30,7 +30,7 @@ export const valuationSeries = sqliteTable('valuation_series', {
 
 export const valuations = sqliteTable('valuations', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  valuationNumber: text('valuation_number').notNull().unique(),
+  valuationNumber: text('valuation_number').notNull(),
   seriesId: integer('series_id')
     .notNull()
     .references(() => valuationSeries.id),
@@ -157,7 +157,7 @@ export const billSeries = sqliteTable('bill_series', {
 
 export const sellBills = sqliteTable('sell_bills', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  billNumber: text('bill_number').notNull().unique(),
+  billNumber: text('bill_number').notNull(),
   billSeriesId: integer('bill_series_id').references(() => billSeries.id),
   valuationId: integer('valuation_id').references(() => valuations.id),
   customerId: integer('customer_id').notNull().references(() => customers.id),
