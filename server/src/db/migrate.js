@@ -133,7 +133,7 @@ sqlite.exec(`
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS ornament_master (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
 
@@ -216,6 +216,10 @@ for (const stmt of [
   'ALTER TABLE bill_series ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1',
   'ALTER TABLE appraiser_profile ADD COLUMN user_id INTEGER',
   "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",
+  'ALTER TABLE appraiser_profile ADD COLUMN proprietor_name TEXT',
+  'ALTER TABLE appraiser_profile ADD COLUMN qualification TEXT',
+  'ALTER TABLE appraiser_profile ADD COLUMN organization TEXT',
+  'ALTER TABLE appraiser_profile ADD COLUMN cert_number TEXT',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {
     if (!String(error.message).includes('duplicate column name')) throw error
@@ -264,15 +268,39 @@ try {
         address TEXT,
         empanelment_id TEXT,
         gstn TEXT,
+        proprietor_name TEXT,
+        qualification TEXT,
+        organization TEXT,
+        cert_number TEXT,
         user_id INTEGER,
         updated_at TEXT
       );
-      INSERT INTO appraiser_profile_new SELECT id, appraiser_name, business_name, mobile, email, upi_id, logo_photo, address, empanelment_id, gstn, user_id, updated_at FROM appraiser_profile;
+      INSERT INTO appraiser_profile_new (id, appraiser_name, business_name, mobile, email, upi_id, logo_photo, address, empanelment_id, gstn, user_id, updated_at)
+        SELECT id, appraiser_name, business_name, mobile, email, upi_id, logo_photo, address, empanelment_id, gstn, user_id, updated_at FROM appraiser_profile;
       DROP TABLE appraiser_profile;
       ALTER TABLE appraiser_profile_new RENAME TO appraiser_profile;
     `)
   }
 } catch (e) { console.log('[migrate] appraiser_profile rebuild skipped:', e.message) }
+
+// Rebuild ornament_master to remove global UNIQUE on name (now per-user)
+try {
+  const ornSql = sqlite.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='ornament_master'").get()
+  if (ornSql?.sql?.includes('UNIQUE')) {
+    sqlite.exec(`
+      CREATE TABLE IF NOT EXISTS ornament_master_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        user_id INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+      );
+      INSERT INTO ornament_master_new (id, name, user_id, created_at)
+        SELECT id, name, COALESCE(user_id, 1), created_at FROM ornament_master;
+      DROP TABLE ornament_master;
+      ALTER TABLE ornament_master_new RENAME TO ornament_master;
+    `)
+  }
+} catch (e) { console.log('[migrate] ornament_master rebuild skipped:', e.message) }
 
 // Assign user_id = 1 to existing records that have no user_id set
 try {

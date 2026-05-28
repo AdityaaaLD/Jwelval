@@ -83,6 +83,10 @@ export const appraiserProfile = sqliteTable('appraiser_profile', {
   address: text('address'),
   empanelmentId: text('empanelment_id'),
   gstn: text('gstn'),
+  proprietorName: text('proprietor_name'),
+  qualification: text('qualification'),
+  organization: text('organization'),
+  certNumber: text('cert_number'),
   userId: integer('user_id'),
   updatedAt: text('updated_at'),
 })

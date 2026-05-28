@@ -30,6 +30,24 @@ export function OrnamentTable({ valuation }) {
   )
 }
 
+export function LetterheadSubheader({ profile }) {
+  if (!profile) return null
+  const proprietor = profile.appraiser_name
+  const qualification = profile.qualification
+  const organization = profile.organization
+  const address = profile.address
+  const certNumber = profile.cert_number
+  if (!proprietor && !qualification && !organization && !certNumber) return null
+  return (
+    <div className="letterhead-subheader">
+      {proprietor && <p>Propriter, {proprietor}{qualification ? `, ${qualification}` : ''}</p>}
+      {organization && <p>{organization}</p>}
+      {address && <p>{address}{certNumber ? ` No. ${certNumber}` : ''}</p>}
+      {!address && certNumber && <p>No. {certNumber}</p>}
+    </div>
+  )
+}
+
 export function SignatureGrid({ labels }) {
   return <div className="signature-grid">{labels.map((label) => <div key={label} className="signature-box">{label}</div>)}</div>
 }

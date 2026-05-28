@@ -1,19 +1,20 @@
+import { useEffect, useState } from 'react'
 import { inr } from '../../lib/format'
-import { OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
+import { api } from '../../lib/api'
+import { LetterheadSubheader, OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
 
 export default function PrintRushikesh({ valuation }) {
   const customer = valuation.customer || {}
+  const [profile, setProfile] = useState(null)
+  useEffect(() => { api.profile.get().then(setProfile).catch(() => {}) }, [])
   return (
     <article className="print-page">
       <header className="print-letterhead">
         <PhotoBox src={valuation.personPhoto} label="Borrower Photo" />
         <div>
-          <h1>RUSHIKESH JEWELLERS</h1>
-          <p>Proprietor: Rameshwar Prakash Udawant</p>
-          <p>MSME / Govt Approved Gold Appraiser</p>
-          <p>Sr.No. - 638 Samarth Nagar, Bibwewadi, Pune - 411037</p>
-          <p>PTDC/TRG/OSP/2021-22/23238 | Membership No.1914/Kholapur</p>
-          <p>Mo: 9021642306 / 9921037009</p>
+          <h1>{profile?.business_name || 'RUSHIKESH JEWELLERS'}</h1>
+          <LetterheadSubheader profile={profile} />
+          {profile?.mobile && <p>Mo: {profile.mobile}</p>}
         </div>
         <PhotoBox src={valuation.jewelleryPhoto} label="Jewellery Photo" />
       </header>

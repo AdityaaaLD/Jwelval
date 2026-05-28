@@ -1,19 +1,20 @@
+import { useEffect, useState } from 'react'
 import { inr } from '../../lib/format'
-import { OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
+import { api } from '../../lib/api'
+import { LetterheadSubheader, OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
 
 export default function PrintDnyaneshwari({ valuation }) {
   const customer = valuation.customer || {}
+  const [profile, setProfile] = useState(null)
+  useEffect(() => { api.profile.get().then(setProfile).catch(() => {}) }, [])
   return (
     <article className="print-page">
       <header className="print-letterhead">
         <PhotoBox src={valuation.personPhoto} label="Borrower Photo" />
         <div>
-          <h1>DNYANESHWARI JEWELLERS</h1>
-          <p>Proprietor: Vishwambar Digambar Bendre</p>
-          <p>PTDC/TRG/OSP/2021-22/23239 | Shop Act: 101267631903</p>
-          <p>Membership No.1919/Kholapur</p>
-          <p>Sr.No. - 638 Samarth Nagar, Bibwewadi, Pune - 411037</p>
-          <p>Mo: 9767630252 / 9421085516 | vishwambar.bendre@gmail.com</p>
+          <h1>{profile?.business_name || 'DNYANESHWARI JEWELLERS'}</h1>
+          <LetterheadSubheader profile={profile} />
+          {profile?.mobile && <p>Mo: {profile.mobile}{profile?.email ? ` | ${profile.email}` : ''}</p>}
         </div>
         <PhotoBox src={valuation.jewelleryPhoto} label="Jewellery Photo" />
       </header>

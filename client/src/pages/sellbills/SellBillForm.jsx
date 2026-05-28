@@ -38,15 +38,15 @@ export default function SellBillForm() {
       if (qCustomer || qValuation) {
         setForm((f) => ({ ...f, customerId: qCustomer || f.customerId, valuationId: qValuation || f.valuationId }))
       }
-      // Auto-populate items from valuation
+      // Auto-populate items from valuation — use valuation fee as the sell bill amount
       if (qValuation) {
         api.valuations.get(qValuation).then((val) => {
-          if (val?.items?.length) {
-            const items = val.items.map((it) => ({
-              particular: it.description || '',
-              amount: it.approxValueInr || '',
-            }))
-            setForm((f) => ({ ...f, items: items.length ? items : [blankItem()] }))
+          if (val) {
+            const fee = Number(val.valuationFee) || 0
+            const items = fee > 0
+              ? [{ particular: 'Valuation Fee', amount: fee }]
+              : [blankItem()]
+            setForm((f) => ({ ...f, items }))
           }
         }).catch(() => {})
       }
