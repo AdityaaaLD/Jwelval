@@ -18,9 +18,13 @@ import DemoData from './pages/settings/DemoData'
 import DailyRates from './pages/settings/DailyRates'
 import AppraiserProfile from './pages/settings/AppraiserProfile'
 import BankPresets from './pages/settings/BankPresets'
+import OrnamentMaster from './pages/settings/OrnamentMaster'
+import SellBillList from './pages/sellbills/SellBillList'
+import SellBillForm from './pages/sellbills/SellBillForm'
 import VerifyCertificate from './pages/VerifyCertificate'
 import Login from './pages/Login'
 import Subscribe from './pages/Subscribe'
+import ManageUsers from './pages/admin/ManageUsers'
 
 function AppShell({ children }) {
   return (
@@ -57,6 +61,11 @@ export default function App() {
           <Route path="/settings/rates" element={<AppShell><DailyRates /></AppShell>} />
           <Route path="/settings/profile" element={<AppShell><AppraiserProfile /></AppShell>} />
           <Route path="/settings/banks" element={<AppShell><BankPresets /></AppShell>} />
+          <Route path="/settings/ornaments" element={<AppShell><OrnamentMaster /></AppShell>} />
+          <Route path="/sell-bills" element={<AppShell><SellBillList /></AppShell>} />
+          <Route path="/sell-bills/new" element={<AppShell><SellBillForm /></AppShell>} />
+          <Route path="/sell-bills/:id" element={<AppShell><SellBillForm /></AppShell>} />
+          <Route path="/admin/users" element={<AppShell><ManageUsers /></AppShell>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

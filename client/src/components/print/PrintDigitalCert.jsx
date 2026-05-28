@@ -10,13 +10,11 @@ export default function PrintDigitalCert({ valuation }) {
   useEffect(() => { api.profile.get().then(setProfile).catch(() => {}) }, [])
 
   const totals = items.reduce((acc, item) => ({
+    units: acc.units + (Number(item.noOfUnits) || 0),
     gross: acc.gross + (Number(item.grossWeightGm) || 0),
     net: acc.net + (Number(item.netWeightGm) || 0),
-    net22: acc.net22 + (Number(item.net22kGoldGm) || 0),
     value: acc.value + (Number(item.approxValueInr) || 0),
-  }), { gross: 0, net: 0, net22: 0, value: 0 })
-
-  const marketRatePerGram = totals.net22 > 0 ? totals.value / totals.net22 : (Number(valuation.goldRate22k) || 0)
+  }), { units: 0, gross: 0, net: 0, value: 0 })
 
   const dateStr = valuation.valuationDate
     ? new Date(valuation.valuationDate + 'T00:00:00').toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
@@ -64,49 +62,52 @@ export default function PrintDigitalCert({ valuation }) {
 
         <p className="dc-currency">(Rs. in Actual)</p>
 
+        {valuation.loanType && (
+          <div className="dc-row-box">
+            <span><b>Loan Type:</b> {valuation.loanType}</span>
+            {valuation.rateOfInterest != null && <span style={{ marginLeft: '24px' }}><b>Rate of Interest:</b> {valuation.rateOfInterest}%</span>}
+          </div>
+        )}
+
         <table className="dc-table">
           <thead>
             <tr>
               <th>No.</th>
-              <th>Description of the Jewels/Orn aments assessed</th>
-              <th>Digital ID</th>
-              <th>Gross Weight (grams)</th>
-              <th>Net Weight (grams)</th>
-              <th>Purity Hall mark-(carat)</th>
-              <th>Net Weight as per purity (grams)</th>
-              <th>Market Value per gram</th>
-              <th>Total Market Value of Net Weight of</th>
+              <th>Description of Ornaments</th>
+              <th>Units</th>
+              <th>Karat</th>
+              <th>Gross Wt (gm)</th>
+              <th>Net Wt (gm)</th>
+              <th>Rate/gm</th>
+              <th>Approx Value</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item, index) => {
-              const itemRate = Number(item.net22kGoldGm) > 0
-                ? (Number(item.approxValueInr) / Number(item.net22kGoldGm))
-                : Number(valuation.goldRate22k) || 0
+              const rate22k = Number(valuation.goldRate22k) || 0
               return (
                 <tr key={item.id || index}>
                   <td>{index + 1}</td>
                   <td className="dc-td-left">{item.description}</td>
-                  <td>{item.digitalId || ''}</td>
-                  <td>{num(item.grossWeightGm, 2)}</td>
-                  <td>{num(item.netWeightGm, 2)}</td>
-                  <td>{num(item.purityCarat, 0)}</td>
-                  <td>{num(item.net22kGoldGm, 2)}</td>
-                  <td>{num(itemRate, 1)}</td>
-                  <td>{num(item.approxValueInr, 1)}</td>
+                  <td>{item.noOfUnits}</td>
+                  <td>22K</td>
+                  <td>{num(item.grossWeightGm, 3)}</td>
+                  <td>{num(item.netWeightGm, 3)}</td>
+                  <td>{num(rate22k, 0)}</td>
+                  <td>{num(item.approxValueInr, 0)}</td>
                 </tr>
               )
             })}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan="3"><b>Total</b></td>
-              <td><b>{num(totals.gross, 2)}</b></td>
-              <td><b>{num(totals.net, 2)}</b></td>
+              <td colSpan="2"><b>Total</b></td>
+              <td><b>{totals.units}</b></td>
               <td></td>
-              <td><b>{num(totals.net22, 2)}</b></td>
-              <td><b>{num(marketRatePerGram, 1)}</b></td>
-              <td><b>{num(totals.value, 1)}</b></td>
+              <td><b>{num(totals.gross, 3)}</b></td>
+              <td><b>{num(totals.net, 3)}</b></td>
+              <td></td>
+              <td><b>{num(totals.value, 0)}</b></td>
             </tr>
           </tfoot>
         </table>

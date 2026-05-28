@@ -28,6 +28,12 @@ export function AuthProvider({ children }) {
       setUser(res.user)
       return res.user
     },
+    signup: async (name, email, password) => {
+      const res = await api.auth.signup({ name, email, password })
+      localStorage.setItem('jewelval_token', res.token)
+      setUser(res.user)
+      return res.user
+    },
     logout: async () => {
       try { await api.auth.logout() } catch {}
       localStorage.removeItem('jewelval_token')

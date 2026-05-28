@@ -54,17 +54,28 @@ function pickItems(n, varianceSeed) {
   return out
 }
 
-export async function resetAllData() {
-  sqlite.exec(`
-    DELETE FROM payments;
-    DELETE FROM valuation_items;
-    DELETE FROM valuations;
-    DELETE FROM customers;
-    UPDATE valuation_series SET current_number = 0;
-  `)
+export async function resetAllData(userId) {
+  if (userId) {
+    // Only delete data belonging to this user
+    sqlite.exec(`
+      DELETE FROM payments WHERE valuation_id IN (SELECT id FROM valuations WHERE user_id = ${userId});
+      DELETE FROM valuation_items WHERE valuation_id IN (SELECT id FROM valuations WHERE user_id = ${userId});
+      DELETE FROM valuations WHERE user_id = ${userId};
+      DELETE FROM customers WHERE user_id = ${userId};
+      UPDATE valuation_series SET current_number = 0 WHERE user_id = ${userId};
+    `)
+  } else {
+    sqlite.exec(`
+      DELETE FROM payments;
+      DELETE FROM valuation_items;
+      DELETE FROM valuations;
+      DELETE FROM customers;
+      UPDATE valuation_series SET current_number = 0;
+    `)
+  }
 }
 
-export async function runDemoSeed() {
+export async function runDemoSeed(userId = 1) {
   const now = new Date().toISOString()
 
   // Customers
@@ -74,10 +85,10 @@ export async function runDemoSeed() {
     const code = `CUST-${String(i + 1).padStart(4, '0')}`
     const r = sqlite
       .prepare(`INSERT INTO customers (customer_code, name, address, mobile, aadhar_number, aadhar_photo,
-                savings_ac_no, bank_name, branch, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+                savings_ac_no, bank_name, branch, user_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(code, c.name, c.address || '', c.mobile || '', c.aadharNumber || '',
-           '', c.savingsAcNo || '', c.bankName || '', c.branch || '', now)
+           '', c.savingsAcNo || '', c.bankName || '', c.branch || '', userId, now)
     customerIds.push(r.lastInsertRowid)
   }
 
@@ -114,14 +125,14 @@ export async function runDemoSeed() {
     const r = sqlite.prepare(`
       INSERT INTO valuations (valuation_number, series_id, customer_id, format_type, valuation_date,
         ac_no, branch, gold_rate_22k, gold_rate_24k, market_value, loan_amount, valuation_fee, rate_of_interest,
-        person_photo, jewellery_photo, status, printed_at, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        person_photo, jewellery_photo, status, printed_at, user_id, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       reserved.number, series.id, customer.id, p.fmt, vd,
       customer.savings_ac_no, customer.branch || 'Bibwewadi',
       GOLD_RATE_22K, GOLD_RATE_24K,
       +totals.marketValue.toFixed(2), +(totals.marketValue * LOAN_LTV).toFixed(2),
-      750 + (i % 3) * 250, 9.5, '', '', p.status, printedAt, ts, ts
+      750 + (i % 3) * 250, 9.5, '', '', p.status, printedAt, userId, ts, ts
     )
     const valuationId = r.lastInsertRowid
     createdValuationIds.push({ id: valuationId, status: p.status, loan: +(totals.marketValue * LOAN_LTV).toFixed(2) })

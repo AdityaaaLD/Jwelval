@@ -8,9 +8,11 @@ import { scanAadhaarImage } from '../../lib/aadharOcr'
 const emptyCustomer = {
   name: '',
   mobile: '',
+  alternateMobile: '',
   address: '',
   aadharNumber: '',
   aadharPhoto: '',
+  aadharPhotoBack: '',
   savingsAcNo: '',
   bankName: '',
   branch: '',
@@ -22,8 +24,10 @@ export default function CustomerForm() {
   const isEdit = Boolean(id)
   const [form, setForm] = useState(emptyCustomer)
   const [saving, setSaving] = useState(false)
-  const [scanning, setScanning] = useState(false)
-  const [ocrText, setOcrText] = useState('')
+  const [scanningFront, setScanningFront] = useState(false)
+  const [scanningBack, setScanningBack] = useState(false)
+  const [ocrTextFront, setOcrTextFront] = useState('')
+  const [ocrTextBack, setOcrTextBack] = useState('')
 
   useEffect(() => {
     if (!isEdit) return
@@ -31,9 +35,11 @@ export default function CustomerForm() {
       setForm({
         name: customer.name || '',
         mobile: customer.mobile || '',
+        alternateMobile: customer.alternateMobile || '',
         address: customer.address || '',
         aadharNumber: customer.aadharNumber || '',
         aadharPhoto: customer.aadharPhoto || '',
+        aadharPhotoBack: customer.aadharPhotoBack || '',
         savingsAcNo: customer.savingsAcNo || '',
         bankName: customer.bankName || '',
         branch: customer.branch || '',
@@ -43,27 +49,51 @@ export default function CustomerForm() {
 
   const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
 
-  const scanAadhaar = (file) => {
+  const scanFront = (file) => {
     if (!file) return
     const reader = new FileReader()
     reader.onload = async () => {
       const image = reader.result
       setForm((current) => ({ ...current, aadharPhoto: image }))
-      setScanning(true)
+      setScanningFront(true)
       try {
-        const parsed = await scanAadhaarImage(image)
-        setOcrText(parsed.rawText)
+        const parsed = await scanAadhaarImage(image, 'front')
+        setOcrTextFront(parsed.rawText)
         setForm((current) => ({
           ...current,
           name: parsed.name || current.name,
           aadharNumber: parsed.aadharNumber || current.aadharNumber,
+          mobile: parsed.mobile || current.mobile,
+        }))
+        toast.success('Front side scanned. Please verify fields.')
+      } catch (error) {
+        toast.error('Could not read front side details.')
+      } finally {
+        setScanningFront(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const scanBack = (file) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const image = reader.result
+      setForm((current) => ({ ...current, aadharPhotoBack: image }))
+      setScanningBack(true)
+      try {
+        const parsed = await scanAadhaarImage(image, 'back')
+        setOcrTextBack(parsed.rawText)
+        setForm((current) => ({
+          ...current,
           address: parsed.address || current.address,
         }))
-        toast.success('Aadhaar scan completed. Please verify the fields.')
+        toast.success('Back side scanned. Please verify address.')
       } catch (error) {
-        toast.error('Could not read Aadhaar details from this image.')
+        toast.error('Could not read back side details.')
       } finally {
-        setScanning(false)
+        setScanningBack(false)
       }
     }
     reader.readAsDataURL(file)
@@ -99,32 +129,42 @@ export default function CustomerForm() {
 
       <form onSubmit={submit} className="card p-5">
         <section className="mb-5 rounded-md border border-gold-200 bg-gold-50 p-4">
-          <div className="flex flex-col gap-4 md:flex-row">
-            <div className="w-full md:w-52">
-              <div className="grid h-32 place-items-center overflow-hidden rounded-md border border-gold-200 bg-white text-sm text-slate-500">
-                {form.aadharPhoto ? <img src={form.aadharPhoto} alt="Aadhaar card" className="h-full w-full object-cover" /> : <FileScan size={28} />}
+          <div className="mb-3">
+            <h2 className="font-semibold text-slate-950">Aadhaar Auto-fill</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Upload front side for name, Aadhaar number & mobile. Upload back side for address. Verify all details before saving.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold text-slate-700 mb-1">Front Side</p>
+              <div className="grid h-36 place-items-center overflow-hidden rounded-md border border-gold-200 bg-white text-sm text-slate-500">
+                {form.aadharPhoto ? <img src={form.aadharPhoto} alt="Aadhaar front" className="h-full w-full object-cover" /> : <FileScan size={28} />}
               </div>
               <label className="btn-secondary mt-2 w-full">
-                <Upload size={16} /> {scanning ? 'Scanning...' : 'Scan Aadhaar'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="sr-only"
-                  disabled={scanning}
-                  onChange={(event) => scanAadhaar(event.target.files?.[0])}
-                />
+                <Upload size={16} /> {scanningFront ? 'Scanning...' : 'Scan Front'}
+                <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={scanningFront} onChange={(e) => scanFront(e.target.files?.[0])} />
               </label>
+              {ocrTextFront && (
+                <details className="mt-2 text-xs text-slate-500">
+                  <summary className="cursor-pointer font-medium">View front OCR</summary>
+                  <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap rounded bg-white p-2">{ocrTextFront}</pre>
+                </details>
+              )}
             </div>
-            <div className="flex-1">
-              <h2 className="font-semibold text-slate-950">Aadhaar auto-fill</h2>
-              <p className="mt-1 text-sm text-slate-600">
-                Upload or capture the Aadhaar card to fill name, Aadhaar number, and address. Verify details before saving.
-              </p>
-              {ocrText && (
-                <details className="mt-3 text-xs text-slate-500">
-                  <summary className="cursor-pointer font-medium">View scanned text</summary>
-                  <pre className="mt-2 max-h-28 overflow-auto whitespace-pre-wrap rounded bg-white p-2">{ocrText}</pre>
+            <div>
+              <p className="text-xs font-semibold text-slate-700 mb-1">Back Side</p>
+              <div className="grid h-36 place-items-center overflow-hidden rounded-md border border-gold-200 bg-white text-sm text-slate-500">
+                {form.aadharPhotoBack ? <img src={form.aadharPhotoBack} alt="Aadhaar back" className="h-full w-full object-cover" /> : <FileScan size={28} />}
+              </div>
+              <label className="btn-secondary mt-2 w-full">
+                <Upload size={16} /> {scanningBack ? 'Scanning...' : 'Scan Back'}
+                <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={scanningBack} onChange={(e) => scanBack(e.target.files?.[0])} />
+              </label>
+              {ocrTextBack && (
+                <details className="mt-2 text-xs text-slate-500">
+                  <summary className="cursor-pointer font-medium">View back OCR</summary>
+                  <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap rounded bg-white p-2">{ocrTextBack}</pre>
                 </details>
               )}
             </div>
@@ -139,6 +179,10 @@ export default function CustomerForm() {
           <div>
             <label className="label" htmlFor="mobile">Mobile*</label>
             <input id="mobile" className="input" value={form.mobile} onChange={update('mobile')} maxLength="10" required />
+          </div>
+          <div>
+            <label className="label" htmlFor="altMobile">Alternate Mobile</label>
+            <input id="altMobile" className="input" value={form.alternateMobile} onChange={update('alternateMobile')} maxLength="10" />
           </div>
           <div className="md:col-span-2">
             <label className="label" htmlFor="address">Address</label>

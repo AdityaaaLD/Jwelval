@@ -10,15 +10,17 @@ const num = (v) => {
 }
 
 export function deriveItem(item, goldRate22k) {
-  const purityPercent = num(item.purityPercent)
   const grossWeightGm = num(item.grossWeightGm)
   const netWeightGm = num(item.netWeightGm)
   const noOfUnits = Number.isInteger(item.noOfUnits) ? item.noOfUnits : parseInt(item.noOfUnits, 10) || 1
 
-  const purityCarat = +(purityPercent * 24 / 100).toFixed(4)
+  // Fixed 22K: purity = 91.67%, carat = 22
+  const purityPercent = 91.67
+  const purityCarat = 22
   const net24kGoldGm = +(netWeightGm * (purityPercent / 100)).toFixed(4)
-  const net22kGoldGm = +(net24kGoldGm * (24 / 22)).toFixed(4)
-  const approxValueInr = +(net22kGoldGm * num(goldRate22k)).toFixed(2)
+  const net22kGoldGm = +(netWeightGm).toFixed(4)
+  // Value = 22K rate × net weight
+  const approxValueInr = +(num(goldRate22k) * netWeightGm).toFixed(2)
 
   return {
     description: item.description || '',
@@ -30,7 +32,6 @@ export function deriveItem(item, goldRate22k) {
     net24kGoldGm,
     net22kGoldGm,
     approxValueInr,
-    digitalId: item.digitalId || '',
   }
 }
 

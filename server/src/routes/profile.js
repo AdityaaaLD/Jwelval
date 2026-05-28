@@ -3,18 +3,20 @@ import { sqlite } from '../db/client.js'
 
 const router = Router()
 
-router.get('/', (_req, res) => {
-  res.json(sqlite.prepare('SELECT * FROM appraiser_profile WHERE id = 1').get() || {})
+router.get('/', (req, res) => {
+  const userId = req.user.id
+  res.json(sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId) || {})
 })
 
 router.put('/', (req, res) => {
+  const userId = req.user.id
   const { appraiserName, businessName, mobile, email, upiId, logoPhoto, address, empanelmentId, gstn } = req.body
   sqlite.prepare(`
     UPDATE appraiser_profile
     SET appraiser_name = ?, business_name = ?, mobile = ?, email = ?, upi_id = ?, logo_photo = ?, address = ?, empanelment_id = ?, gstn = ?, updated_at = ?
-    WHERE id = 1
-  `).run(appraiserName || '', businessName || '', mobile || '', email || '', upiId || '', logoPhoto || '', address || '', empanelmentId || '', gstn || '', new Date().toISOString())
-  res.json(sqlite.prepare('SELECT * FROM appraiser_profile WHERE id = 1').get())
+    WHERE user_id = ?
+  `).run(appraiserName || '', businessName || '', mobile || '', email || '', upiId || '', logoPhoto || '', address || '', empanelmentId || '', gstn || '', new Date().toISOString(), userId)
+  res.json(sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId))
 })
 
 export default router

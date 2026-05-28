@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard, Users, FileText, IndianRupee, BarChart3,
-  Settings, Gem, Menu, X, ChevronDown, LogOut,
+  LayoutDashboard, Users, FileText, BarChart3,
+  Settings, Gem, Menu, X, ChevronDown, LogOut, Receipt, ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -64,18 +64,22 @@ export default function Layout({ children }) {
           <NavLink to="/dashboard" className={linkClass}><LayoutDashboard size={18} />Dashboard</NavLink>
           <NavLink to="/customers" className={linkClass}><Users size={18} />Customers</NavLink>
           <NavLink to="/valuations" className={linkClass}><FileText size={18} />Valuations</NavLink>
-          <NavLink to="/payments" className={linkClass}><IndianRupee size={18} />Payments</NavLink>
+          <NavLink to="/sell-bills" className={linkClass}><Receipt size={18} />Sell Bills</NavLink>
           <NavGroup icon={BarChart3} label="Reports" items={[
-            { to: '/reports/item-wise', label: 'Item-wise' },
+            { to: '/reports/item-wise', label: 'Item Type' },
             { to: '/reports/customer-wise', label: 'Customer-wise' },
           ]} />
           <NavGroup icon={Settings} label="Settings" items={[
             { to: '/settings/series', label: 'Number Series' },
             { to: '/settings/rates', label: 'Daily Gold Rate' },
             { to: '/settings/banks', label: 'Bank Presets' },
+            { to: '/settings/ornaments', label: 'Ornament Master' },
             { to: '/settings/profile', label: 'Appraiser Profile' },
             { to: '/settings/demo', label: 'Demo Data' },
           ]} />
+          {user?.role === 'admin' && (
+            <NavLink to="/admin/users" className={linkClass}><ShieldCheck size={18} />Manage Users</NavLink>
+          )}
         </nav>
         <div className="border-t border-ink-700 px-4 py-3">
           <p className="text-xs text-slate-400">{user?.name || 'Appraiser'}</p>

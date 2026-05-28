@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Save, Upload } from 'lucide-react'
+import { Save } from 'lucide-react'
 import QrImage from '../../components/QrImage'
 import { api } from '../../lib/api'
 import { upiUrl } from '../../lib/qr'
 
 export default function AppraiserProfile() {
-  const [form, setForm] = useState({ appraiserName: '', businessName: '', mobile: '', email: '', upiId: '', address: '', logoPhoto: '', empanelmentId: '', gstn: '' })
-  useEffect(() => { api.profile.get().then((p) => setForm({ appraiserName: p.appraiser_name || '', businessName: p.business_name || '', mobile: p.mobile || '', email: p.email || '', upiId: p.upi_id || '', address: p.address || '', logoPhoto: p.logo_photo || '', empanelmentId: p.empanelment_id || '', gstn: p.gstn || '' })) }, [])
-  const photo = (file) => { if (!file) return; const r = new FileReader(); r.onload = () => setForm({ ...form, logoPhoto: r.result }); r.readAsDataURL(file) }
+  const [form, setForm] = useState({ appraiserName: '', businessName: '', mobile: '', email: '', upiId: '', address: '', empanelmentId: '', gstn: '' })
+  useEffect(() => { api.profile.get().then((p) => setForm({ appraiserName: p.appraiser_name || '', businessName: p.business_name || '', mobile: p.mobile || '', email: p.email || '', upiId: p.upi_id || '', address: p.address || '', empanelmentId: p.empanelment_id || '', gstn: p.gstn || '' })) }, [])
   const save = async () => { await api.profile.update(form); toast.success('Profile saved.') }
   return (
     <div className="space-y-5">
@@ -21,7 +20,6 @@ export default function AppraiserProfile() {
         <div><label className="label">UPI ID</label><input className="input" value={form.upiId} onChange={(e) => setForm({ ...form, upiId: e.target.value })} /></div>
         <div><label className="label">Empanelment ID</label><input className="input" placeholder="e.g. BOMPUN1413_24" value={form.empanelmentId} onChange={(e) => setForm({ ...form, empanelmentId: e.target.value })} /></div>
         <div><label className="label">GSTN/PAN/TAN</label><input className="input" placeholder="e.g. ACHPU8474H" value={form.gstn} onChange={(e) => setForm({ ...form, gstn: e.target.value })} /></div>
-        <div><label className="label">Logo</label><label className="btn-secondary w-full"><Upload size={16} /> Upload Logo<input className="sr-only" type="file" accept="image/*" onChange={(e) => photo(e.target.files?.[0])} /></label></div>
         <div className="md:col-span-2"><label className="label">Address</label><textarea className="input min-h-20" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
         {form.upiId && <div className="rounded-md border border-slate-200 p-4"><QrImage text={upiUrl({ upiId: form.upiId, name: form.businessName })} className="h-32 w-32" /><p className="mt-2 text-sm text-slate-500">UPI collection QR</p></div>}
         <button className="btn-primary md:col-span-2" onClick={save}><Save size={16} /> Save Profile</button>

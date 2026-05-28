@@ -12,22 +12,20 @@ export function OrnamentTable({ valuation }) {
     units: acc.units + (Number(item.noOfUnits) || 0),
     gross: acc.gross + (Number(item.grossWeightGm) || 0),
     net: acc.net + (Number(item.netWeightGm) || 0),
-    gold24: acc.gold24 + (Number(item.net24kGoldGm) || 0),
-    gold22: acc.gold22 + (Number(item.net22kGoldGm) || 0),
     value: acc.value + (Number(item.approxValueInr) || 0),
-  }), { units: 0, gross: 0, net: 0, gold24: 0, gold22: 0, value: 0 })
+  }), { units: 0, gross: 0, net: 0, value: 0 })
 
   return (
     <table className="print-table">
-      <thead><tr><th>Sr.</th><th>Description</th><th>Units</th><th>Purity %</th><th>Carat</th><th>Gross Wt</th><th>Net Wt</th><th>Net 24K</th><th>Net 22K</th><th>Approx Value</th></tr></thead>
+      <thead><tr><th>Sr.</th><th>Description</th><th>Units</th><th>Karat</th><th>Gross Wt (gm)</th><th>Net Wt (gm)</th><th>Approx Value</th></tr></thead>
       <tbody>
         {items.map((item, index) => (
           <tr key={item.id || index}>
-            <td>{index + 1}</td><td>{item.description}</td><td>{item.noOfUnits}</td><td>{num(item.purityPercent, 2)}</td><td>{num(item.purityCarat, 2)}</td><td>{num(item.grossWeightGm, 3)}</td><td>{num(item.netWeightGm, 3)}</td><td>{num(item.net24kGoldGm, 3)}</td><td>{num(item.net22kGoldGm, 3)}</td><td>{inr(item.approxValueInr)}</td>
+            <td>{index + 1}</td><td>{item.description}</td><td>{item.noOfUnits}</td><td>22K</td><td>{num(item.grossWeightGm, 3)}</td><td>{num(item.netWeightGm, 3)}</td><td>{inr(item.approxValueInr)}</td>
           </tr>
         ))}
       </tbody>
-      <tfoot><tr><td colSpan="2">Total</td><td>{totals.units}</td><td></td><td></td><td>{num(totals.gross, 3)}</td><td>{num(totals.net, 3)}</td><td>{num(totals.gold24, 3)}</td><td>{num(totals.gold22, 3)}</td><td>{inr(totals.value)}</td></tr></tfoot>
+      <tfoot><tr><td colSpan="2">Total</td><td>{totals.units}</td><td></td><td>{num(totals.gross, 3)}</td><td>{num(totals.net, 3)}</td><td>{inr(totals.value)}</td></tr></tfoot>
     </table>
   )
 }

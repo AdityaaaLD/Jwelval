@@ -33,15 +33,16 @@ async function hydrate(valuationRow) {
 }
 
 router.get('/', async (req, res) => {
+  const userId = req.user.id
   const { customer_id, status, format_type, date_from, date_to } = req.query
-  const conds = []
+  const conds = [eq(valuations.userId, userId)]
   if (customer_id) conds.push(eq(valuations.customerId, parseInt(customer_id, 10)))
   if (status) conds.push(eq(valuations.status, status))
   if (format_type) conds.push(eq(valuations.formatType, format_type))
   if (date_from) conds.push(gte(valuations.valuationDate, date_from))
   if (date_to) conds.push(lte(valuations.valuationDate, date_to))
 
-  const where = conds.length ? and(...conds) : undefined
+  const where = and(...conds)
   const rows = await db.select().from(valuations).where(where).orderBy(desc(valuations.id))
   const ids = rows.map((r) => r.customerId)
   const custs = ids.length
@@ -59,7 +60,8 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
-  const [v] = await db.select().from(valuations).where(eq(valuations.id, id))
+  const userId = req.user.id
+  const [v] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   if (!v) return res.status(404).json({ error: 'Not found' })
   res.json(await hydrate(v))
 })
@@ -68,7 +70,7 @@ router.post(
   '/',
   body('customerId').isInt(),
   body('seriesId').isInt(),
-  body('goldRate22k').isFloat({ min: 0 }),
+  body('goldRate22k').isFloat({ gt: 0 }).withMessage('Gold rate must be greater than zero'),
   body('items').isArray({ min: 1 }),
   validate,
   async (req, res) => {
@@ -79,12 +81,14 @@ router.post(
       branchCode,
       acNo,
       applicationId,
+      bankPresetId,
       valuationDate,
       goldRate22k,
       goldRate24k,
       rateOfInterest,
       loanAmount,
       valuationFee,
+      loanType,
       personPhoto,
       jewelleryPhoto,
       ornamentPhotos,
@@ -93,7 +97,21 @@ router.post(
       items,
     } = req.body
 
+    const userId = req.user.id
     const reserved = reserveNextValuationNumber(seriesId)
+
+    // Deferred App ID: consume the number from the bank preset only on actual save
+    let finalApplicationId = applicationId || ''
+    if (bankPresetId && applicationId) {
+      const preset = sqlite.prepare('SELECT * FROM bank_presets WHERE id = ? AND user_id = ?').get(bankPresetId, userId)
+      if (preset && preset.app_id_prefix) {
+        const nextNum = preset.app_id_current_number + 1
+        sqlite.prepare('UPDATE bank_presets SET app_id_current_number = ? WHERE id = ?').run(nextNum, bankPresetId)
+        const padded = String(nextNum).padStart(preset.app_id_digits || 10, '0')
+        finalApplicationId = `${preset.app_id_prefix}${padded}`
+      }
+    }
+
     const derived = items.map((it) => deriveItem(it, goldRate22k))
     const totals = totalsFromItems(derived)
     const now = new Date().toISOString()
@@ -111,19 +129,21 @@ router.post(
         acNo: acNo || '',
         branch: branch || '',
         branchCode: branchCode || '',
-        applicationId: applicationId || '',
+        applicationId: finalApplicationId,
         goldRate22k: Number(goldRate22k),
         goldRate24k: finalGoldRate24k,
         marketValue: +totals.marketValue.toFixed(2),
         loanAmount: finalLoan,
         valuationFee: valuationFee != null ? Number(valuationFee) : 0,
         rateOfInterest: rateOfInterest != null ? Number(rateOfInterest) : null,
+        loanType: loanType || '',
         personPhoto: personPhoto || '',
         jewelleryPhoto: jewelleryPhoto || '',
         ornamentPhotos: JSON.stringify(ornamentPhotos || []),
         aadharPhotoDoc: aadharPhotoDoc || '',
         panPhoto: panPhoto || '',
         status: 'DRAFT',
+        userId,
         createdAt: now,
         updatedAt: now,
       })
@@ -131,7 +151,7 @@ router.post(
 
     if (derived.length) {
       await db.insert(valuationItems).values(
-        derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: created.id, digitalId: it.digitalId || '' }))
+        derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: created.id }))
       )
     }
     res.status(201).json(await hydrate(created))
@@ -140,7 +160,8 @@ router.post(
 
 router.put('/:id', body('items').optional().isArray(), validate, async (req, res) => {
   const id = parseInt(req.params.id, 10)
-  const [existing] = await db.select().from(valuations).where(eq(valuations.id, id))
+  const userId = req.user.id
+  const [existing] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   if (!existing) return res.status(404).json({ error: 'Not found' })
   if (isLocked(existing.status)) {
     return res.status(403).json({
@@ -159,6 +180,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
     rateOfInterest,
     loanAmount,
     valuationFee,
+    loanType,
     personPhoto,
     jewelleryPhoto,
     ornamentPhotos,
@@ -187,6 +209,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
       goldRate22k: rate22,
       goldRate24k: rate24,
       rateOfInterest: rateOfInterest != null ? Number(rateOfInterest) : existing.rateOfInterest,
+      loanType: loanType ?? existing.loanType,
       personPhoto: personPhoto ?? existing.personPhoto,
       jewelleryPhoto: jewelleryPhoto ?? existing.jewelleryPhoto,
       ornamentPhotos: ornamentPhotos != null ? JSON.stringify(ornamentPhotos || []) : existing.ornamentPhotos,
@@ -197,13 +220,13 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
       marketValue: Array.isArray(items) ? +totals.marketValue.toFixed(2) : existing.marketValue,
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(valuations.id, id))
+    .where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
 
   if (Array.isArray(items)) {
     await db.delete(valuationItems).where(eq(valuationItems.valuationId, id))
     if (derived.length) {
       await db.insert(valuationItems).values(
-        derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: id, digitalId: it.digitalId || '' }))
+        derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: id }))
       )
     }
   }
@@ -214,7 +237,8 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
 
 router.post('/:id/duplicate', async (req, res) => {
   const id = parseInt(req.params.id, 10)
-  const [source] = await db.select().from(valuations).where(eq(valuations.id, id))
+  const userId = req.user.id
+  const [source] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   if (!source) return res.status(404).json({ error: 'Not found' })
   const full = await hydrate(source)
   req.body = {
@@ -255,6 +279,7 @@ router.post('/:id/duplicate', async (req, res) => {
     jewelleryPhoto: '',
     ornamentPhotos: '[]',
     status: 'DRAFT',
+    userId,
     createdAt: now,
     updatedAt: now,
   }).returning()
@@ -264,13 +289,14 @@ router.post('/:id/duplicate', async (req, res) => {
 
 router.post('/:id/mark-printed', async (req, res) => {
   const id = parseInt(req.params.id, 10)
-  const [existing] = await db.select().from(valuations).where(eq(valuations.id, id))
+  const userId = req.user.id
+  const [existing] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   if (!existing) return res.status(404).json({ error: 'Not found' })
   const now = new Date().toISOString()
   await db
     .update(valuations)
     .set({ status: 'LOCKED', printedAt: now, updatedAt: now })
-    .where(eq(valuations.id, id))
+    .where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   console.log(`[lock] valuation ${id} printed by ${req.ip} at ${now}`)
   const [v] = await db.select().from(valuations).where(eq(valuations.id, id))
   res.json(await hydrate(v))
@@ -278,12 +304,13 @@ router.post('/:id/mark-printed', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
-  const [existing] = await db.select().from(valuations).where(eq(valuations.id, id))
+  const userId = req.user.id
+  const [existing] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   if (!existing) return res.status(404).json({ error: 'Not found' })
   if (existing.status !== 'DRAFT') {
     return res.status(403).json({ error: 'NOT_DRAFT', message: 'Only DRAFT valuations can be deleted.' })
   }
-  await db.delete(valuations).where(eq(valuations.id, id))
+  await db.delete(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   res.status(204).end()
 })
 

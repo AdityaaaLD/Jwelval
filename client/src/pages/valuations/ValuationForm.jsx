@@ -1,14 +1,50 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Camera, Copy, Eye, Plus, Printer, Save, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Camera, Copy, Eye, Plus, Printer, Receipt, Save, Trash2, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { inr, num } from '../../lib/format'
 import { useValuationStore } from '../../store/valuationStore'
 import PrintModal from '../../components/print/PrintModal'
-import PaymentSection from '../payments/PaymentSection'
 
 const lockedStatus = (status) => status === 'PRINTED' || status === 'LOCKED'
+
+const LOAN_TYPES = ['', 'Gold Loan', 'Agri Gold Loan', 'Housing Loan', 'Personal Loan', 'Vehicle Loan', 'Business Loan']
+
+function OrnamentInput({ value, onChange, disabled, ornaments }) {
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState('')
+  const ref = useRef(null)
+
+  const filtered = useMemo(() => {
+    const q = (filter || value || '').toLowerCase()
+    if (!q) return ornaments
+    return ornaments.filter((o) => o.name.toLowerCase().includes(q))
+  }, [filter, value, ornaments])
+
+  return (
+    <div className="relative" ref={ref}>
+      <input
+        className="input"
+        value={value}
+        disabled={disabled}
+        onChange={(e) => { onChange(e.target.value); setFilter(e.target.value); setOpen(true) }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Type ornament..."
+      />
+      {open && filtered.length > 0 && (
+        <ul className="absolute left-0 top-full z-30 mt-1 max-h-40 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg text-sm">
+          {filtered.slice(0, 12).map((o) => (
+            <li key={o.id} className="cursor-pointer px-3 py-1.5 hover:bg-slate-100" onMouseDown={() => { onChange(o.name); setOpen(false) }}>
+              {o.name}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export default function ValuationForm() {
   const { id } = useParams()
@@ -18,24 +54,26 @@ export default function ValuationForm() {
   const [customers, setCustomers] = useState([])
   const [series, setSeries] = useState([])
   const [bankPresets, setBankPresets] = useState([])
+  const [ornaments, setOrnaments] = useState([])
   const [valuation, setValuation] = useState(null)
   const [printOpen, setPrintOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const { form, dirty, reset, hydrate, setField, setItem, addItem, removeItem, markClean, payload } = useValuationStore()
 
   useEffect(() => {
-    Promise.all([api.customers.list(), api.series.list(), api.presets.banks(), api.rates.get()]).then(([customerRows, seriesRows, presetRows, rate]) => {
+    Promise.all([api.customers.list(), api.series.list(), api.presets.banks(), api.rates.get(), api.ornaments.list()]).then(([customerRows, seriesRows, presetRows, rate, ornRows]) => {
       setCustomers(customerRows)
       setSeries(seriesRows)
       setBankPresets(presetRows)
+      setOrnaments(ornRows)
       if (!isEdit) {
         reset()
         const customerId = searchParams.get('customer_id')
         if (customerId) setField('customerId', customerId)
         if (rate.goldRate22k) {
           setField('goldRate22k', rate.goldRate22k)
-          setField('goldRate24k', rate.goldRate24k)
         }
+        if (seriesRows.length) setField('seriesId', String(seriesRows[0].id))
       }
     })
   }, [isEdit, reset, searchParams, setField])
@@ -62,22 +100,15 @@ export default function ValuationForm() {
     return () => clearInterval(timer)
   }, [dirty, form, id, isEdit, markClean, payload, valuation?.status])
 
-  const selectedSeries = useMemo(
-    () => series.find((item) => String(item.id) === String(form.seriesId)),
-    [form.seriesId, series]
-  )
   const disabled = lockedStatus(valuation?.status)
   const totals = useMemo(() => form.items.reduce((acc, item) => ({
     gross: acc.gross + (Number(item.grossWeightGm) || 0),
     net: acc.net + (Number(item.netWeightGm) || 0),
-    gold24: acc.gold24 + (Number(item.net24kGoldGm) || 0),
-    gold22: acc.gold22 + (Number(item.net22kGoldGm) || 0),
     value: acc.value + (Number(item.approxValueInr) || 0),
-  }), { gross: 0, net: 0, gold24: 0, gold22: 0, value: 0 }), [form.items])
+  }), { gross: 0, net: 0, value: 0 }), [form.items])
 
   const save = async (preview = false) => {
     if (!form.customerId) return toast.error('Select a customer.')
-    if (!form.seriesId) return toast.error('Select a number series.')
     if (!Number(form.goldRate22k)) return toast.error('Enter the 22K gold rate.')
     if (!form.items.some((item) => item.description && Number(item.netWeightGm) > 0)) {
       return toast.error('Add at least one ornament item.')
@@ -115,11 +146,21 @@ export default function ValuationForm() {
     reader.readAsDataURL(file)
   }
 
-  const applyPreset = (presetId) => {
+  const applyPreset = async (presetId) => {
     const preset = bankPresets.find((p) => String(p.id) === String(presetId))
     if (!preset) return
     setField('branch', preset.branch || '')
+    setField('branchCode', preset.branchCode || '')
     setField('rateOfInterest', preset.rateOfInterest || '')
+    if (preset.loanLtv) setField('loanLtv', preset.loanLtv)
+    setField('bankPresetId', preset.id)
+    // Preview application ID (does NOT consume the number yet — that happens on save)
+    if (preset.appIdPrefix && !isEdit) {
+      try {
+        const { applicationId } = await api.presets.previewAppId(preset.id)
+        setField('applicationId', applicationId)
+      } catch {}
+    }
     toast.success('Bank preset applied.')
   }
 
@@ -158,10 +199,15 @@ export default function ValuationForm() {
             <h1 className="text-2xl font-semibold text-slate-950">
               {valuation?.valuationNumber || 'New Valuation'}
             </h1>
-        <p className="text-sm text-slate-500">Gold valuation certificate for bank submission.</p>
+            <p className="text-sm text-slate-500">Gold valuation certificate for bank submission.</p>
           </div>
         </div>
-        {disabled && <button className="btn-primary" type="button" onClick={() => setPrintOpen(true)}><Printer size={16} /> Print Again</button>}
+        {disabled && (
+          <div className="flex gap-2">
+            <Link to={`/sell-bills/new?valuation=${valuation?.id}&customer=${valuation?.customerId}`} className="btn-secondary"><Receipt size={16} /> Create Sales Invoice</Link>
+            <button className="btn-primary" type="button" onClick={() => setPrintOpen(true)}><Printer size={16} /> Print Again</button>
+          </div>
+        )}
       </div>
 
       {disabled && (
@@ -174,32 +220,30 @@ export default function ValuationForm() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="xl:col-span-2">
             <label className="label">Select Customer</label>
-            <select className="input" value={form.customerId} onChange={(e) => setField('customerId', e.target.value)} disabled={disabled || isEdit}>
+            <select className="input" value={form.customerId} onChange={(e) => {
+              const cId = e.target.value
+              setField('customerId', cId)
+              const cust = customers.find((c) => String(c.id) === cId)
+              if (cust?.savingsAcNo) setField('acNo', cust.savingsAcNo)
+            }} disabled={disabled || isEdit}>
               <option value="">Choose customer</option>
               {customers.map((customer) => (
                 <option key={customer.id} value={customer.id}>
-                  {customer.customerCode} - {customer.name} - {customer.mobile || 'No mobile'}
+                  {customer.customerCode} - {customer.name}
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="label">Number Series</label>
-            <select className="input" value={form.seriesId} onChange={(e) => setField('seriesId', e.target.value)} disabled={disabled || isEdit}>
-              <option value="">Choose series</option>
-              {series.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.seriesName} - {item.formatType}
-                </option>
-              ))}
-            </select>
-            {selectedSeries?.nextNumber && (
-              <p className="mt-1 text-xs text-slate-500">Next: {selectedSeries.nextNumber}</p>
-            )}
           </div>
           <div>
             <label className="label">Valuation Date</label>
             <input type="date" className="input" value={form.valuationDate} onChange={(e) => setField('valuationDate', e.target.value)} disabled={disabled} />
+          </div>
+          <div>
+            <label className="label">Bank Format</label>
+            <select className="input" onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
+              <option value="">Select bank format</option>
+              {bankPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.bankName} - {preset.branch}</option>)}
+            </select>
           </div>
           <div>
             <label className="label">Branch</label>
@@ -210,27 +254,27 @@ export default function ValuationForm() {
             <input className="input" placeholder="e.g. 0859" value={form.branchCode} onChange={(e) => setField('branchCode', e.target.value)} disabled={disabled} />
           </div>
           <div>
-            <label className="label">Bank/Branch Preset</label>
-            <select className="input" onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
-              <option value="">Apply preset</option>
-              {bankPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.bankName} - {preset.branch}</option>)}
-            </select>
-          </div>
-          <div>
             <label className="label">A/C No</label>
             <input className="input" value={form.acNo} onChange={(e) => setField('acNo', e.target.value)} disabled={disabled} />
           </div>
           <div>
             <label className="label">Application ID</label>
-            <input className="input" placeholder="e.g. BOMGL0000097726" value={form.applicationId} onChange={(e) => setField('applicationId', e.target.value)} disabled={disabled} />
+            <input className="input" placeholder="Auto from bank preset" value={form.applicationId} onChange={(e) => setField('applicationId', e.target.value)} disabled={disabled} />
           </div>
           <div>
-            <label className="label">Gold Rate 22K Today</label>
+            <label className="label">Gold Rate 22K (per gram)</label>
             <input type="number" className="input" value={form.goldRate22k} onChange={(e) => setField('goldRate22k', e.target.value)} disabled={disabled} />
           </div>
           <div>
-            <label className="label">Gold Rate 24K Today</label>
-            <input type="number" className="input" value={form.goldRate24k} onChange={(e) => setField('goldRate24k', e.target.value)} disabled={disabled} />
+            <label className="label">Customer Type</label>
+            <select className="input" value={form.loanType} onChange={(e) => setField('loanType', e.target.value)} disabled={disabled}>
+              {LOAN_TYPES.map((t) => <option key={t} value={t}>{t || '— Select —'}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Loan % (LTV)</label>
+            <input type="number" className="input" placeholder="e.g. 70" value={form.loanLtv} onChange={(e) => setField('loanLtv', e.target.value)} disabled={disabled} />
+            <p className="mt-1 text-xs text-slate-500">% of market value offered as loan</p>
           </div>
         </div>
       </section>
@@ -273,36 +317,30 @@ export default function ValuationForm() {
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[1180px] divide-y divide-slate-200 text-sm">
+          <table className="min-w-[700px] w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-3 py-3">Sr</th>
-                <th className="px-3 py-3">Description</th>
-                <th className="px-3 py-3">Digital ID</th>
-                <th className="px-3 py-3">Units</th>
-                <th className="px-3 py-3">Purity %</th>
-                <th className="px-3 py-3">Carat</th>
-                <th className="px-3 py-3">Gross Wt</th>
-                <th className="px-3 py-3">Net Wt</th>
-                <th className="px-3 py-3">Net 24K</th>
-                <th className="px-3 py-3">Net 22K</th>
-                <th className="px-3 py-3 text-right">Approx Value</th>
-                <th className="px-3 py-3"></th>
+                <th className="px-3 py-3" style={{ width: 48 }}>Sr</th>
+                <th className="px-3 py-3" style={{ minWidth: 180 }}>Description</th>
+                <th className="px-3 py-3" style={{ width: 80 }}>Units</th>
+                <th className="px-3 py-3" style={{ width: 70 }}>Karat</th>
+                <th className="px-3 py-3" style={{ width: 110 }}>Gross Wt (gm)</th>
+                <th className="px-3 py-3" style={{ width: 110 }}>Net Wt (gm)</th>
+                <th className="px-3 py-3 text-right" style={{ width: 130 }}>Approx Value</th>
+                <th className="px-3 py-3" style={{ width: 48 }}></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {form.items.map((item, index) => (
                 <tr key={index}>
                   <td className="px-3 py-2">{index + 1}</td>
-                  <td className="px-3 py-2"><input className="input" value={item.description} onChange={(e) => setItem(index, 'description', e.target.value)} disabled={disabled} /></td>
-                  <td className="px-3 py-2"><input className="input" placeholder="BOM..." value={item.digitalId} onChange={(e) => setItem(index, 'digitalId', e.target.value)} disabled={disabled} /></td>
+                  <td className="px-3 py-2">
+                    <OrnamentInput value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
+                  </td>
                   <td className="px-3 py-2"><input type="number" className="input" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} /></td>
-                  <td className="px-3 py-2"><input type="number" className="input" value={item.purityPercent} onChange={(e) => setItem(index, 'purityPercent', e.target.value)} disabled={disabled} /></td>
-                  <td className="px-3 py-2 font-medium">{num(item.purityCarat, 2)}</td>
-                  <td className="px-3 py-2"><input type="number" className="input" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} /></td>
-                  <td className="px-3 py-2"><input type="number" className="input" value={item.netWeightGm} onChange={(e) => setItem(index, 'netWeightGm', e.target.value)} disabled={disabled} /></td>
-                  <td className="px-3 py-2">{num(item.net24kGoldGm, 3)}</td>
-                  <td className="px-3 py-2">{num(item.net22kGoldGm, 3)}</td>
+                  <td className="px-3 py-2 text-center font-medium text-xs">22K</td>
+                  <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} /></td>
+                  <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.netWeightGm} onChange={(e) => setItem(index, 'netWeightGm', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2 text-right font-medium">{inr(item.approxValueInr)}</td>
                   <td className="px-3 py-2 text-right">
                     <button type="button" className="btn-ghost" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
@@ -314,11 +352,9 @@ export default function ValuationForm() {
             </tbody>
             <tfoot className="bg-slate-50 text-sm font-semibold">
               <tr>
-                <td className="px-3 py-3" colSpan="5">Total</td>
+                <td className="px-3 py-3" colSpan="4">Total</td>
                 <td className="px-3 py-3">{num(totals.gross, 3)}</td>
                 <td className="px-3 py-3">{num(totals.net, 3)}</td>
-                <td className="px-3 py-3">{num(totals.gold24, 3)}</td>
-                <td className="px-3 py-3">{num(totals.gold22, 3)}</td>
                 <td className="px-3 py-3 text-right">{inr(totals.value)}</td>
                 <td></td>
               </tr>
@@ -338,7 +374,7 @@ export default function ValuationForm() {
             <input type="number" className="input" value={form.loanAmount} onChange={(e) => setField('loanAmount', e.target.value)} disabled={disabled} />
           </div>
           <div>
-            <label className="label">Rate of Interest</label>
+            <label className="label">Rate of Interest (%)</label>
             <input type="number" className="input" value={form.rateOfInterest} onChange={(e) => setField('rateOfInterest', e.target.value)} disabled={disabled} />
           </div>
           <div>
@@ -365,7 +401,6 @@ export default function ValuationForm() {
         </div>
       )}
 
-      {valuation && <PaymentSection valuation={valuation} />}
 
       {printOpen && valuation && (
         <PrintModal

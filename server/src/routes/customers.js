@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { body, validationResult } from 'express-validator'
-import { eq, sql, desc } from 'drizzle-orm'
+import { eq, and, desc } from 'drizzle-orm'
 import { db, sqlite } from '../db/client.js'
 import { customers, valuations } from '../db/schema.js'
 import { formatCustomerCode } from '../lib/numbering.js'
@@ -13,28 +13,33 @@ const validate = (req, res, next) => {
   next()
 }
 
-router.get('/', async (_req, res) => {
+router.get('/', async (req, res) => {
+  const userId = req.user.id
   const rows = sqlite.prepare(`
     SELECT c.id, c.customer_code AS customerCode, c.name, c.mobile,
            c.aadhar_number AS aadharNumber,
            c.aadhar_photo AS aadharPhoto,
+           c.aadhar_photo_back AS aadharPhotoBack,
+           c.savings_ac_no AS savingsAcNo,
            COUNT(v.id) AS valuationCount
     FROM customers c
     LEFT JOIN valuations v ON v.customer_id = c.id
+    WHERE c.user_id = ?
     GROUP BY c.id
     ORDER BY c.id DESC
-  `).all()
+  `).all(userId)
   res.json(rows)
 })
 
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
-  const [c] = await db.select().from(customers).where(eq(customers.id, id))
+  const userId = req.user.id
+  const [c] = await db.select().from(customers).where(and(eq(customers.id, id), eq(customers.userId, userId)))
   if (!c) return res.status(404).json({ error: 'Not found' })
   const vals = await db
     .select()
     .from(valuations)
-    .where(eq(valuations.customerId, id))
+    .where(and(eq(valuations.customerId, id), eq(valuations.userId, userId)))
     .orderBy(desc(valuations.id))
   res.json({ ...c, valuations: vals })
 })
@@ -46,18 +51,19 @@ router.post(
   validate,
   async (req, res) => {
     const now = new Date().toISOString()
-    const { name, mobile, address, aadharNumber, aadharPhoto, savingsAcNo, bankName, branch } = req.body
+    const userId = req.user.id
+    const { name, mobile, alternateMobile, address, aadharNumber, aadharPhoto, aadharPhotoBack, savingsAcNo, bankName, branch } = req.body
 
     const txn = sqlite.transaction(() => {
-      const row = sqlite.prepare('SELECT MAX(id) AS m FROM customers').get()
+      const row = sqlite.prepare('SELECT MAX(id) AS m FROM customers WHERE user_id = ?').get(userId)
       const nextId = (row?.m || 0) + 1
       const code = formatCustomerCode(nextId)
       const insert = sqlite.prepare(`
-        INSERT INTO customers (customer_code, name, address, mobile, aadhar_number, aadhar_photo,
-                               savings_ac_no, bank_name, branch, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(code, name, address || '', mobile || '', aadharNumber || '', aadharPhoto || '',
-             savingsAcNo || '', bankName || '', branch || '', now)
+        INSERT INTO customers (customer_code, name, address, mobile, alternate_mobile, aadhar_number, aadhar_photo,
+                               aadhar_photo_back, savings_ac_no, bank_name, branch, user_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(code, name, address || '', mobile || '', alternateMobile || '', aadharNumber || '', aadharPhoto || '',
+             aadharPhotoBack || '', savingsAcNo || '', bankName || '', branch || '', userId, now)
       return insert.lastInsertRowid
     })
 
@@ -69,40 +75,48 @@ router.post(
 
 router.put('/:id', body('name').isString().trim().notEmpty(), validate, async (req, res) => {
   const id = parseInt(req.params.id, 10)
+  const userId = req.user.id
+  // Verify ownership
+  const [own] = await db.select().from(customers).where(and(eq(customers.id, id), eq(customers.userId, userId)))
+  if (!own) return res.status(404).json({ error: 'Not found' })
+
   const locked = sqlite.prepare(
-    `SELECT COUNT(*) AS n FROM valuations WHERE customer_id = ? AND status IN ('PRINTED','LOCKED')`
-  ).get(id)
+    `SELECT COUNT(*) AS n FROM valuations WHERE customer_id = ? AND user_id = ? AND status IN ('PRINTED','LOCKED')`
+  ).get(id, userId)
   if (locked.n > 0) {
     return res.status(403).json({
       error: 'CUSTOMER_LOCKED',
       message: 'Customer has printed/locked valuations and cannot be edited.',
     })
   }
-  const { name, mobile, address, aadharNumber, aadharPhoto, savingsAcNo, bankName, branch } = req.body
+  const { name, mobile, alternateMobile, address, aadharNumber, aadharPhoto, aadharPhotoBack, savingsAcNo, bankName, branch } = req.body
   await db
     .update(customers)
     .set({
       name,
       mobile: mobile || '',
+      alternateMobile: alternateMobile || '',
       address: address || '',
       aadharNumber: aadharNumber || '',
       aadharPhoto: aadharPhoto || '',
+      aadharPhotoBack: aadharPhotoBack || '',
       savingsAcNo: savingsAcNo || '',
       bankName: bankName || '',
       branch: branch || '',
     })
-    .where(eq(customers.id, id))
+    .where(and(eq(customers.id, id), eq(customers.userId, userId)))
   const [updated] = await db.select().from(customers).where(eq(customers.id, id))
   res.json(updated)
 })
 
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10)
-  const has = sqlite.prepare('SELECT COUNT(*) AS n FROM valuations WHERE customer_id = ?').get(id)
+  const userId = req.user.id
+  const has = sqlite.prepare('SELECT COUNT(*) AS n FROM valuations WHERE customer_id = ? AND user_id = ?').get(id, userId)
   if (has.n > 0) {
     return res.status(403).json({ error: 'HAS_VALUATIONS', message: 'Customer has valuations.' })
   }
-  await db.delete(customers).where(eq(customers.id, id))
+  await db.delete(customers).where(and(eq(customers.id, id), eq(customers.userId, userId)))
   res.status(204).end()
 })
 

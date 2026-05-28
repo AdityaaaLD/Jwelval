@@ -4,14 +4,11 @@ import { today } from '../lib/format'
 const blankItem = () => ({
   description: '',
   noOfUnits: 1,
-  purityPercent: 86,
-  purityCarat: 20.64,
+  purityPercent: 91.67,
+  purityCarat: 22,
   grossWeightGm: '',
   netWeightGm: '',
-  net24kGoldGm: 0,
-  net22kGoldGm: 0,
   approxValueInr: 0,
-  digitalId: '',
 })
 
 const initialForm = () => ({
@@ -22,11 +19,13 @@ const initialForm = () => ({
   branchCode: '',
   acNo: '',
   applicationId: '',
+  bankPresetId: '',
+  loanLtv: 57,
   goldRate22k: '',
-  goldRate24k: '',
   loanAmount: '',
   valuationFee: '',
   rateOfInterest: '',
+  loanType: '',
   personPhoto: '',
   jewelleryPhoto: '',
   ornamentPhotos: [],
@@ -39,11 +38,14 @@ const n = (value) => Number(value) || 0
 const round = (value, digits = 2) => +value.toFixed(digits)
 
 export const deriveItem = (item, goldRate22k) => {
-  const purityPercent = n(item.purityPercent)
   const netWeightGm = n(item.netWeightGm)
-  const purityCarat = round(purityPercent * 24 / 100, 4)
+  // Fixed 22K: purity = 91.67%, carat = 22
+  const purityPercent = 91.67
+  const purityCarat = 22
   const net24kGoldGm = round(netWeightGm * (purityPercent / 100), 4)
-  const net22kGoldGm = round(net24kGoldGm * (24 / 22), 4)
+  const net22kGoldGm = round(netWeightGm, 4)
+  // Value = 22K rate × net weight (simple multiplication)
+  const approxValueInr = round(n(goldRate22k) * netWeightGm, 2)
   return {
     ...item,
     noOfUnits: parseInt(item.noOfUnits, 10) || 1,
@@ -53,7 +55,7 @@ export const deriveItem = (item, goldRate22k) => {
     netWeightGm: item.netWeightGm,
     net24kGoldGm,
     net22kGoldGm,
-    approxValueInr: round(net22kGoldGm * n(goldRate22k), 2),
+    approxValueInr,
   }
 }
 
@@ -61,12 +63,12 @@ const deriveForm = (form, keepLoan = false) => {
   const goldRate22k = n(form.goldRate22k)
   const items = form.items.map((item) => deriveItem(item, goldRate22k))
   const marketValue = round(items.reduce((sum, item) => sum + n(item.approxValueInr), 0), 2)
+  const ltv = (n(form.loanLtv) || 57) / 100
   return {
     ...form,
-    goldRate24k: form.goldRate24k || (goldRate22k ? round(goldRate22k * 24 / 22, 2) : ''),
     items,
     marketValue,
-    loanAmount: keepLoan && form.loanAmount !== '' ? form.loanAmount : round(marketValue * 0.57, 2),
+    loanAmount: keepLoan && form.loanAmount !== '' ? form.loanAmount : round(marketValue * ltv, 2),
   }
 }
 
@@ -83,11 +85,13 @@ export const useValuationStore = create((set, get) => ({
       branchCode: valuation.branchCode || '',
       acNo: valuation.acNo || '',
       applicationId: valuation.applicationId || '',
+      bankPresetId: valuation.bankPresetId || '',
+      loanLtv: valuation.loanLtv || 57,
       goldRate22k: valuation.goldRate22k || '',
-      goldRate24k: valuation.goldRate24k || '',
       loanAmount: valuation.loanAmount || '',
       valuationFee: valuation.valuationFee || '',
       rateOfInterest: valuation.rateOfInterest || '',
+      loanType: valuation.loanType || '',
       personPhoto: valuation.personPhoto || '',
       jewelleryPhoto: valuation.jewelleryPhoto || '',
       ornamentPhotos: valuation.ornamentPhotos || [],
@@ -96,14 +100,11 @@ export const useValuationStore = create((set, get) => ({
       items: (valuation.items?.length ? valuation.items : [blankItem()]).map((item) => ({
         description: item.description || '',
         noOfUnits: item.noOfUnits || 1,
-        purityPercent: item.purityPercent || 0,
-        purityCarat: item.purityCarat || 0,
+        purityPercent: 91.67,
+        purityCarat: 22,
         grossWeightGm: item.grossWeightGm || '',
         netWeightGm: item.netWeightGm || '',
-        net24kGoldGm: item.net24kGoldGm || 0,
-        net22kGoldGm: item.net22kGoldGm || 0,
         approxValueInr: item.approxValueInr || 0,
-        digitalId: item.digitalId || '',
       })),
     }, true),
     dirty: false,
@@ -135,11 +136,13 @@ export const useValuationStore = create((set, get) => ({
       branchCode: form.branchCode,
       acNo: form.acNo,
       applicationId: form.applicationId,
+      bankPresetId: form.bankPresetId ? Number(form.bankPresetId) : null,
       goldRate22k: Number(form.goldRate22k),
-      goldRate24k: Number(form.goldRate24k),
+      goldRate24k: +(Number(form.goldRate22k) * 24 / 22).toFixed(2),
       loanAmount: Number(form.loanAmount),
       valuationFee: Number(form.valuationFee) || 0,
       rateOfInterest: form.rateOfInterest === '' ? null : Number(form.rateOfInterest),
+      loanType: form.loanType || '',
       personPhoto: form.personPhoto || '',
       jewelleryPhoto: form.jewelleryPhoto || '',
       ornamentPhotos: form.ornamentPhotos || [],
@@ -151,7 +154,6 @@ export const useValuationStore = create((set, get) => ({
         purityPercent: Number(item.purityPercent) || 0,
         grossWeightGm: Number(item.grossWeightGm) || 0,
         netWeightGm: Number(item.netWeightGm) || 0,
-        digitalId: item.digitalId || '',
       })),
     }
   },

@@ -1,28 +1,44 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { BadgeCheck, Camera, FileLock2, Gem, QrCode, ShieldCheck } from 'lucide-react'
 import SplashScreen from '../components/SplashScreen'
 import { useAuth } from '../context/AuthContext'
+import { api } from '../lib/api'
 
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login } = useAuth()
-  const [form, setForm] = useState({ email: 'demo@jwelval.in', password: 'admin123' })
+  const { login, signup } = useAuth()
+  const [mode, setMode] = useState('login') // 'login' | 'signup'
+  const [signupOpen, setSignupOpen] = useState(false)
+  const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [splash, setSplash] = useState(false)
   const from = location.state?.from || '/dashboard'
+
+  useEffect(() => {
+    api.auth.signupStatus().then((res) => {
+      setSignupOpen(res.signupOpen)
+      if (res.signupOpen) setMode('signup')
+    }).catch(() => {})
+  }, [])
 
   const submit = async (event) => {
     event.preventDefault()
     setLoading(true)
     try {
-      await login(form.email, form.password)
+      if (mode === 'signup') {
+        if (!form.name.trim()) { toast.error('Name is required.'); setLoading(false); return }
+        if (form.password.length < 6) { toast.error('Password must be at least 6 characters.'); setLoading(false); return }
+        await signup(form.name.trim(), form.email, form.password)
+      } else {
+        await login(form.email, form.password)
+      }
       setSplash(true)
       setTimeout(() => navigate(from, { replace: true }), 1800)
     } catch (error) {
-      toast.error(error.message || 'Unable to login.')
+      toast.error(error.message || (mode === 'signup' ? 'Unable to create account.' : 'Unable to login.'))
       setLoading(false)
     }
   }
@@ -86,19 +102,32 @@ export default function Login() {
               <ShieldCheck size={23} />
             </div>
             <div>
-              <h2 className="font-display text-2xl font-bold">Welcome back</h2>
-              <p className="text-sm text-slate-500">Demo credentials are prefilled.</p>
+              <h2 className="font-display text-2xl font-bold">{mode === 'signup' ? 'Create Account' : 'Welcome back'}</h2>
+              <p className="text-sm text-slate-500">{mode === 'signup' ? 'Set up your appraiser account.' : 'Sign in to continue.'}</p>
             </div>
           </div>
-          <label className="label mt-6">Email</label>
-          <input className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          {mode === 'signup' && (
+            <>
+              <label className="label mt-6">Full Name</label>
+              <input className="input" placeholder="Your name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </>
+          )}
+          <label className="label mt-4">Email</label>
+          <input className="input" type="email" placeholder="you@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           <label className="label mt-4">Password</label>
-          <input className="input" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" />
-          <button className="btn-primary mt-6 w-full py-3" disabled={loading}>{loading ? 'Signing in...' : 'Login'}</button>
-          <div className="mt-5 rounded-md bg-slate-50 p-3 text-xs text-slate-500">
-            Demo: demo@jwelval.in / admin123
-          </div>
-          <Link to="/subscribe" className="mt-5 block text-center text-sm font-medium text-gold-700">Need a plan? View subscriptions</Link>
+          <input className="input" placeholder={mode === 'signup' ? 'Min 6 characters' : ''} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" />
+          <button className="btn-primary mt-6 w-full py-3" disabled={loading}>
+            {loading ? (mode === 'signup' ? 'Creating account...' : 'Signing in...') : (mode === 'signup' ? 'Create Account' : 'Login')}
+          </button>
+          {signupOpen && (
+            <p className="mt-5 text-center text-sm text-slate-500">
+              {mode === 'signup' ? (
+                <>Already have an account? <button type="button" className="font-medium text-gold-700 hover:underline" onClick={() => setMode('login')}>Sign in</button></>
+              ) : (
+                <>First time? <button type="button" className="font-medium text-gold-700 hover:underline" onClick={() => setMode('signup')}>Create owner account</button></>
+              )}
+            </p>
+          )}
         </form>
       </div>
     </div>

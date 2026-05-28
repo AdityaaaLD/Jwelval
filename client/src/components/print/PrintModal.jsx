@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { Printer, X } from 'lucide-react'
@@ -9,7 +8,6 @@ import PrintRushikesh from './PrintRushikesh'
 import PrintDnyaneshwari from './PrintDnyaneshwari'
 import PrintBankOfMaha from './PrintBankOfMaha'
 import PrintDigitalCert from './PrintDigitalCert'
-import FeeReceipt from './FeeReceipt'
 
 function Template({ valuation }) {
   if (valuation.formatType === 'DNYANESHWARI') return <PrintDnyaneshwari valuation={valuation} />
@@ -19,9 +17,6 @@ function Template({ valuation }) {
 }
 
 export default function PrintModal({ valuation, onClose, onLocked }) {
-  const [showReceipt, setShowReceipt] = useState(false)
-  const [profile, setProfile] = useState(null)
-  useEffect(() => { api.profile.get().then(setProfile).catch(() => {}) }, [])
   const lockAfterPrint = async () => {
     if (valuation.status === 'DRAFT') onLocked?.(await api.valuations.markPrinted(valuation.id))
   }
@@ -35,13 +30,12 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
     <div id="print-portal" className="print-overlay">
       <div className="print-modal-toolbar no-print">
         <button type="button" className="btn-secondary" onClick={onClose}><X size={16} /> Close</button>
-        <button type="button" className="btn-secondary" onClick={() => setShowReceipt(!showReceipt)}>Fee Receipt</button>
         <button type="button" className="btn-secondary" onClick={() => shareViaWhatsApp({ text: `Gold Valuation Certificate ${valuation.valuationNumber}: ${verificationUrl(valuation.valuationNumber)}` })}>WhatsApp</button>
         <button type="button" className="btn-primary" onClick={handlePrint}><Printer size={16} /> Print / Save PDF</button>
       </div>
       <div className="print-preview-scroll">
         <div className="print-preview-center">
-          {showReceipt ? <FeeReceipt valuation={valuation} profile={profile} /> : <Template valuation={valuation} />}
+          <Template valuation={valuation} />
         </div>
       </div>
     </div>,

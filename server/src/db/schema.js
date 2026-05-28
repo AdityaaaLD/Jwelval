@@ -6,11 +6,14 @@ export const customers = sqliteTable('customers', {
   name: text('name').notNull(),
   address: text('address'),
   mobile: text('mobile'),
+  alternateMobile: text('alternate_mobile'),
   aadharNumber: text('aadhar_number'),
   aadharPhoto: text('aadhar_photo'),
+  aadharPhotoBack: text('aadhar_photo_back'),
   savingsAcNo: text('savings_ac_no'),
   bankName: text('bank_name'),
   branch: text('branch'),
+  userId: integer('user_id').notNull().default(1),
   createdAt: text('created_at').notNull(),
 })
 
@@ -20,7 +23,8 @@ export const valuationSeries = sqliteTable('valuation_series', {
   prefix: text('prefix').notNull(),
   currentNumber: integer('current_number').notNull().default(0),
   numberOfDigits: integer('number_of_digits').notNull().default(4),
-  formatType: text('format_type').notNull(), // RUSHIKESH | DNYANESHWARI | BANK_OF_MAHA
+  formatType: text('format_type').notNull(), // RUSHIKESH | DNYANESHWARI | BANK_OF_MAHA | DIGITAL_CERT
+  userId: integer('user_id').notNull().default(1),
   createdAt: text('created_at').notNull(),
 })
 
@@ -43,6 +47,7 @@ export const valuations = sqliteTable('valuations', {
   loanAmount: real('loan_amount').notNull().default(0),
   valuationFee: real('valuation_fee').notNull().default(0),
   rateOfInterest: real('rate_of_interest'),
+  loanType: text('loan_type'),
   personPhoto: text('person_photo'),
   jewelleryPhoto: text('jewellery_photo'),
   ornamentPhotos: text('ornament_photos'),
@@ -53,13 +58,16 @@ export const valuations = sqliteTable('valuations', {
   status: text('status').notNull().default('DRAFT'), // DRAFT | PRINTED | LOCKED
   printedAt: text('printed_at'),
   createdAt: text('created_at').notNull(),
+  userId: integer('user_id').notNull().default(1),
   updatedAt: text('updated_at').notNull(),
 })
 
 export const dailyRates = sqliteTable('daily_rates', {
-  rateDate: text('rate_date').primaryKey(),
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  rateDate: text('rate_date').notNull(),
   goldRate22k: real('gold_rate_22k').notNull().default(0),
   goldRate24k: real('gold_rate_24k').notNull().default(0),
+  userId: integer('user_id').notNull().default(1),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
@@ -75,6 +83,7 @@ export const appraiserProfile = sqliteTable('appraiser_profile', {
   address: text('address'),
   empanelmentId: text('empanelment_id'),
   gstn: text('gstn'),
+  userId: integer('user_id'),
   updatedAt: text('updated_at'),
 })
 
@@ -82,10 +91,15 @@ export const bankPresets = sqliteTable('bank_presets', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   bankName: text('bank_name').notNull(),
   branch: text('branch').notNull(),
+  branchCode: text('branch_code'),
   rateOfInterest: real('rate_of_interest'),
   loanLtv: real('loan_ltv'),
   managerName: text('manager_name'),
   address: text('address'),
+  appIdPrefix: text('app_id_prefix'),
+  appIdCurrentNumber: integer('app_id_current_number').notNull().default(0),
+  appIdDigits: integer('app_id_digits').notNull().default(10),
+  userId: integer('user_id').notNull().default(1),
   createdAt: text('created_at').notNull(),
 })
 
@@ -118,4 +132,58 @@ export const payments = sqliteTable('payments', {
   referenceNumber: text('reference_number'),
   notes: text('notes'),
   createdAt: text('created_at').notNull(),
+})
+
+export const ornamentMaster = sqliteTable('ornament_master', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  userId: integer('user_id').notNull().default(1),
+  createdAt: text('created_at').notNull(),
+})
+
+export const billSeries = sqliteTable('bill_series', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  seriesName: text('series_name').notNull(),
+  prefix: text('prefix').notNull(),
+  currentNumber: integer('current_number').notNull().default(0),
+  numberOfDigits: integer('number_of_digits').notNull().default(3),
+  userId: integer('user_id').notNull().default(1),
+  createdAt: text('created_at').notNull(),
+})
+
+export const sellBills = sqliteTable('sell_bills', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  billNumber: text('bill_number').notNull().unique(),
+  billSeriesId: integer('bill_series_id').references(() => billSeries.id),
+  valuationId: integer('valuation_id').references(() => valuations.id),
+  customerId: integer('customer_id').notNull().references(() => customers.id),
+  billDate: text('bill_date').notNull(),
+  orderNo: text('order_no'),
+  chequeNo: text('cheque_no'),
+  chequeDate: text('cheque_date'),
+  bank: text('bank'),
+  bankBranch: text('bank_branch'),
+  subtotal: real('subtotal').notNull().default(0),
+  gstPercent: real('gst_percent').notNull().default(3),
+  gstAmount: real('gst_amount').notNull().default(0),
+  total: real('total').notNull().default(0),
+  advance: real('advance').notNull().default(0),
+  balance: real('balance').notNull().default(0),
+  userId: integer('user_id').notNull().default(1),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const sellBillItems = sqliteTable('sell_bill_items', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  billId: integer('bill_id').notNull().references(() => sellBills.id, { onDelete: 'cascade' }),
+  srNo: integer('sr_no').notNull(),
+  particular: text('particular'),
+  karatPurity: text('karat_purity'),
+  pcs: integer('pcs').notNull().default(1),
+  grossWeight: real('gross_weight').notNull().default(0),
+  netWeight: real('net_weight').notNull().default(0),
+  rate: real('rate').notNull().default(0),
+  making: real('making').notNull().default(0),
+  amount: real('amount').notNull().default(0),
 })

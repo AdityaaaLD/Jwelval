@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { body, validationResult } from 'express-validator'
-import { eq, desc } from 'drizzle-orm'
+import { eq, and, desc } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { valuationSeries } from '../db/schema.js'
 import { previewNext } from '../lib/numbering.js'
@@ -13,8 +13,9 @@ const validate = (req, res, next) => {
   next()
 }
 
-router.get('/', async (_req, res) => {
-  const rows = await db.select().from(valuationSeries).orderBy(desc(valuationSeries.id))
+router.get('/', async (req, res) => {
+  const userId = req.user.id
+  const rows = await db.select().from(valuationSeries).where(eq(valuationSeries.userId, userId)).orderBy(desc(valuationSeries.id))
   const enriched = await Promise.all(
     rows.map(async (s) => ({ ...s, nextNumber: await previewNext(s.id) }))
   )
@@ -30,6 +31,7 @@ router.post(
   body('numberOfDigits').optional().isInt({ min: 3, max: 6 }),
   validate,
   async (req, res) => {
+    const userId = req.user.id
     const { seriesName, prefix, formatType, startingNumber = 0, numberOfDigits = 4 } = req.body
     const [created] = await db
       .insert(valuationSeries)
@@ -37,8 +39,9 @@ router.post(
         seriesName,
         prefix,
         formatType,
-        currentNumber: Math.max(0, startingNumber - 1), // store last-issued; next = +1
+        currentNumber: Math.max(0, startingNumber - 1),
         numberOfDigits,
+        userId,
         createdAt: new Date().toISOString(),
       })
       .returning()
@@ -48,10 +51,11 @@ router.post(
 
 router.put('/:id', body('seriesName').isString().trim().notEmpty(), validate, async (req, res) => {
   const id = parseInt(req.params.id, 10)
+  const userId = req.user.id
   await db
     .update(valuationSeries)
     .set({ seriesName: req.body.seriesName })
-    .where(eq(valuationSeries.id, id))
+    .where(and(eq(valuationSeries.id, id), eq(valuationSeries.userId, userId)))
   const [updated] = await db.select().from(valuationSeries).where(eq(valuationSeries.id, id))
   res.json(updated)
 })

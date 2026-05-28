@@ -90,7 +90,6 @@ npm run seed:demo
 
 The app also includes Settings → Demo Data controls for loading or clearing sample records.
 
-## Default Login
+## Getting Started
 
-- **Email:** demo@jwelval.in
-- **Password:** admin123
+Create your account using the **Sign Up** form on the login page. Default data (ornaments, series, profile) is automatically seeded for each new user.
