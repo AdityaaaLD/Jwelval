@@ -55,14 +55,17 @@ router.post(
     const { name, mobile, alternateMobile, address, aadharNumber, aadharPhoto, aadharPhotoBack, savingsAcNo, bankName, branch } = req.body
 
     const txn = sqlite.transaction(() => {
-      const row = sqlite.prepare('SELECT MAX(id) AS m FROM customers WHERE user_id = ?').get(userId)
-      const nextId = (row?.m || 0) + 1
-      const code = formatCustomerCode(nextId)
+      const row = sqlite.prepare('SELECT COUNT(*) AS n FROM customers WHERE user_id = ?').get(userId)
+      const nextNum = (row?.n || 0) + 1
+      const code = formatCustomerCode(nextNum)
+      // If code already exists (edge case), append user id to make unique
+      const exists = sqlite.prepare('SELECT 1 FROM customers WHERE customer_code = ?').get(code)
+      const finalCode = exists ? `${code}-U${userId}` : code
       const insert = sqlite.prepare(`
         INSERT INTO customers (customer_code, name, address, mobile, alternate_mobile, aadhar_number, aadhar_photo,
                                aadhar_photo_back, savings_ac_no, bank_name, branch, user_id, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(code, name, address || '', mobile || '', alternateMobile || '', aadharNumber || '', aadharPhoto || '',
+      `).run(finalCode, name, address || '', mobile || '', alternateMobile || '', aadharNumber || '', aadharPhoto || '',
              aadharPhotoBack || '', savingsAcNo || '', bankName || '', branch || '', userId, now)
       return insert.lastInsertRowid
     })
