@@ -135,6 +135,7 @@ export const payments = sqliteTable('payments', {
   mode: text('mode').notNull(), // RECEIVABLE_FROM_BANK | CASH | UPI
   referenceNumber: text('reference_number'),
   notes: text('notes'),
+  userId: integer('user_id').notNull().default(1),
   createdAt: text('created_at').notNull(),
 })
 

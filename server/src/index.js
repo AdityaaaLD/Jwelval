@@ -22,6 +22,7 @@ import authRouter from './routes/auth.js'
 import ornamentsRouter from './routes/ornaments.js'
 import sellBillsRouter from './routes/sellBills.js'
 import { requireAuth } from './middleware/auth.js'
+import { rateLimit } from './middleware/rateLimit.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -39,18 +40,18 @@ app.use('/api/auth', authRouter)
 app.use('/api/verify', verifyRouter)
 
 // Protected routes (auth required)
-app.use('/api/dashboard', requireAuth, dashboardRouter)
-app.use('/api/customers', requireAuth, customersRouter)
-app.use('/api/series', requireAuth, seriesRouter)
-app.use('/api/valuations', requireAuth, valuationsRouter)
-app.use('/api/payments', requireAuth, paymentsRouter)
-app.use('/api/reports', requireAuth, reportsRouter)
-app.use('/api/demo', requireAuth, demoRouter)
-app.use('/api/rates', requireAuth, ratesRouter)
-app.use('/api/profile', requireAuth, profileRouter)
-app.use('/api/presets', requireAuth, presetsRouter)
-app.use('/api/ornaments', requireAuth, ornamentsRouter)
-app.use('/api/sell-bills', requireAuth, sellBillsRouter)
+app.use('/api/dashboard', rateLimit, requireAuth, dashboardRouter)
+app.use('/api/customers', rateLimit, requireAuth, customersRouter)
+app.use('/api/series', rateLimit, requireAuth, seriesRouter)
+app.use('/api/valuations', rateLimit, requireAuth, valuationsRouter)
+app.use('/api/payments', rateLimit, requireAuth, paymentsRouter)
+app.use('/api/reports', rateLimit, requireAuth, reportsRouter)
+app.use('/api/demo', rateLimit, requireAuth, demoRouter)
+app.use('/api/rates', rateLimit, requireAuth, ratesRouter)
+app.use('/api/profile', rateLimit, requireAuth, profileRouter)
+app.use('/api/presets', rateLimit, requireAuth, presetsRouter)
+app.use('/api/ornaments', rateLimit, requireAuth, ornamentsRouter)
+app.use('/api/sell-bills', rateLimit, requireAuth, sellBillsRouter)
 
 if (isProd) {
   const distPath = resolve(here, '../../client/dist')

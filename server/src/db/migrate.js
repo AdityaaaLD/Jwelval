@@ -217,6 +217,7 @@ for (const stmt of [
   'ALTER TABLE appraiser_profile ADD COLUMN user_id INTEGER',
   "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",
   'ALTER TABLE sell_bills ADD COLUMN payment_mode TEXT',
+  'ALTER TABLE payments ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1',
   'ALTER TABLE appraiser_profile ADD COLUMN proprietor_name TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN qualification TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN organization TEXT',
@@ -225,6 +226,18 @@ for (const stmt of [
   try { sqlite.exec(stmt) } catch (error) {
     if (!String(error.message).includes('duplicate column name')) throw error
   }
+
+// Backfill payments.user_id from valuations
+try {
+  const hasUserId = sqlite.prepare("PRAGMA table_info('payments')").all().some(c => c.name === 'user_id')
+  if (hasUserId) {
+    sqlite.exec(`
+      UPDATE payments SET user_id = (
+        SELECT user_id FROM valuations v WHERE v.id = payments.valuation_id
+      ) WHERE user_id IS NULL OR user_id = 1;
+    `)
+  }
+} catch (e) { console.log('[migrate] payments backfill skipped:', e.message) }
 }
 
 // Recreate daily_rates to support multi-user (rate_date is no longer sole PK)
