@@ -22,7 +22,18 @@ async function hydrateBill(bill) {
 
 router.get('/', async (req, res) => {
   const userId = req.user.id
-  const rows = await db.select().from(sellBills).where(eq(sellBills.userId, userId)).orderBy(desc(sellBills.id))
+  const rows = await db
+    .select({
+      id: sellBills.id,
+      billNumber: sellBills.billNumber,
+      billDate: sellBills.billDate,
+      customerId: sellBills.customerId,
+      total: sellBills.total,
+      balance: sellBills.balance,
+    })
+    .from(sellBills)
+    .where(eq(sellBills.userId, userId))
+    .orderBy(desc(sellBills.id))
   const ids = rows.map((r) => r.customerId)
   const custs = ids.length
     ? sqlite.prepare(`SELECT id, customer_code, name, mobile FROM customers WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids)

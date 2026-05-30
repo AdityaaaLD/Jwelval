@@ -43,7 +43,20 @@ router.get('/', async (req, res) => {
   if (date_to) conds.push(lte(valuations.valuationDate, date_to))
 
   const where = and(...conds)
-  const rows = await db.select().from(valuations).where(where).orderBy(desc(valuations.id))
+  const rows = await db
+    .select({
+      id: valuations.id,
+      valuationNumber: valuations.valuationNumber,
+      customerId: valuations.customerId,
+      formatType: valuations.formatType,
+      valuationDate: valuations.valuationDate,
+      marketValue: valuations.marketValue,
+      valuationFee: valuations.valuationFee,
+      status: valuations.status,
+    })
+    .from(valuations)
+    .where(where)
+    .orderBy(desc(valuations.id))
   const ids = rows.map((r) => r.customerId)
   const custs = ids.length
     ? sqlite.prepare(`SELECT id, customer_code, name, mobile FROM customers WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids)
