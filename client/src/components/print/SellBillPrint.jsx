@@ -42,6 +42,31 @@ export default function SellBillPrint({ bill, onClose }) {
               <span>TAX INVOICE</span>
             </div>
 
+            {/* ── Appraiser Info ── */}
+            {(profile?.appraiser_name || profile?.qualification || profile?.organization || profile?.gstn) && (
+              <div className="sb-appraiser-box">
+                {profile?.appraiser_name && (
+                  <div className="sb-appraiser-name">
+                    {profile.appraiser_name}
+                    {profile?.qualification ? `, ${profile.qualification}` : ''}
+                  </div>
+                )}
+                {profile?.organization && <div className="sb-appraiser-org">{profile.organization}</div>}
+                {(profile?.cert_number || profile?.empanelment_id) && (
+                  <div className="sb-appraiser-cert">
+                    {profile?.cert_number && <span>Cert No: {profile.cert_number}</span>}
+                    {profile?.empanelment_id && <span>Empanelment: {profile.empanelment_id}</span>}
+                  </div>
+                )}
+                {(profile?.mobile || profile?.email) && (
+                  <div className="sb-appraiser-contact">
+                    {profile?.mobile && <span>Mo: {profile.mobile}</span>}
+                    {profile?.email && <span>Email: {profile.email}</span>}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Bill & Customer Info ── */}
             <section className="sb-info-grid">
               <div className="sb-info-left">
