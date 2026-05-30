@@ -4,8 +4,8 @@ import { today } from '../lib/format'
 const blankItem = () => ({
   description: '',
   noOfUnits: 1,
-  purityPercent: 91.67,
   purityCarat: 22,
+  purityPercent: 91.67,
   grossWeightGm: '',
   netWeightGm: '',
   approxValueInr: 0,
@@ -39,13 +39,12 @@ const round = (value, digits = 2) => +value.toFixed(digits)
 
 export const deriveItem = (item, goldRate22k) => {
   const netWeightGm = n(item.netWeightGm)
-  // Fixed 22K: purity = 91.67%, carat = 22
-  const purityPercent = 91.67
-  const purityCarat = 22
+  const purityCarat = n(item.purityCarat) || 22
+  const purityPercent = round((purityCarat / 24) * 100, 2)
   const net24kGoldGm = round(netWeightGm * (purityPercent / 100), 4)
-  const net22kGoldGm = round(netWeightGm, 4)
-  // Value = 22K rate × net weight (simple multiplication)
-  const approxValueInr = round(n(goldRate22k) * netWeightGm, 2)
+  const net22kGoldGm = round(net24kGoldGm * (24 / 22), 4)
+  // Value scaled by entered karat against 22K rate
+  const approxValueInr = round(n(goldRate22k) * (purityCarat / 22) * netWeightGm, 2)
   return {
     ...item,
     noOfUnits: parseInt(item.noOfUnits, 10) || 1,
@@ -100,8 +99,8 @@ export const useValuationStore = create((set, get) => ({
       items: (valuation.items?.length ? valuation.items : [blankItem()]).map((item) => ({
         description: item.description || '',
         noOfUnits: item.noOfUnits || 1,
-        purityPercent: 91.67,
-        purityCarat: 22,
+        purityCarat: item.purityCarat || 22,
+        purityPercent: item.purityPercent || 91.67,
         grossWeightGm: item.grossWeightGm || '',
         netWeightGm: item.netWeightGm || '',
         approxValueInr: item.approxValueInr || 0,
@@ -152,6 +151,7 @@ export const useValuationStore = create((set, get) => ({
         description: item.description,
         noOfUnits: Number(item.noOfUnits) || 1,
         purityPercent: Number(item.purityPercent) || 0,
+        purityCarat: Number(item.purityCarat) || 22,
         grossWeightGm: Number(item.grossWeightGm) || 0,
         netWeightGm: Number(item.netWeightGm) || 0,
       })),

@@ -323,7 +323,7 @@ export default function ValuationForm() {
                 <th className="px-3 py-3" style={{ width: 48 }}>Sr</th>
                 <th className="px-3 py-3" style={{ minWidth: 180 }}>Description</th>
                 <th className="px-3 py-3" style={{ width: 80 }}>Units</th>
-                <th className="px-3 py-3" style={{ width: 70 }}>Karat</th>
+                <th className="px-3 py-3" style={{ width: 80 }}>Karat</th>
                 <th className="px-3 py-3" style={{ width: 110 }}>Gross Wt (gm)</th>
                 <th className="px-3 py-3" style={{ width: 110 }}>Net Wt (gm)</th>
                 <th className="px-3 py-3 text-right" style={{ width: 130 }}>Approx Value</th>
@@ -338,7 +338,19 @@ export default function ValuationForm() {
                     <OrnamentInput value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
                   </td>
                   <td className="px-3 py-2"><input type="number" className="input" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} /></td>
-                  <td className="px-3 py-2 text-center font-medium text-xs">22K</td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="number"
+                      className="input text-center"
+                      value={item.purityCarat}
+                      onChange={(e) => setItem(index, 'purityCarat', e.target.value)}
+                      disabled={disabled}
+                      min="1"
+                      max="24"
+                      step="0.1"
+                      placeholder="22"
+                    />
+                  </td>
                   <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.netWeightGm} onChange={(e) => setItem(index, 'netWeightGm', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2 text-right font-medium">{inr(item.approxValueInr)}</td>
