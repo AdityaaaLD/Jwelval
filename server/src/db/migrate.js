@@ -317,24 +317,20 @@ try {
 } catch (e) { console.log('[migrate] ornament_master rebuild skipped:', e.message) }
 
 // Remove global UNIQUE on customer_code, valuation_number, bill_number for multi-user
+// Must disable FK checks so we can drop/rebuild tables that are referenced by others
+sqlite.exec('PRAGMA foreign_keys = OFF')
 for (const table of ['customers', 'valuations', 'sell_bills']) {
   try {
     const info = sqlite.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name=?`).get(table)
     if (!info?.sql) continue
-    // Check if UNIQUE appears in column definitions (not in PRIMARY KEY)
     if (!info.sql.match(/\bUNIQUE\b/i)) continue
-    // Get all column names from the existing table
     const cols = sqlite.prepare(`PRAGMA table_info('${table}')`).all()
     const colList = cols.map(c => c.name).join(', ')
-    // Build new CREATE TABLE by stripping UNIQUE from the original DDL
-    // Replace the table name reference (handles quotes and backticks)
     let newDdl = info.sql.replace(
       new RegExp(`CREATE\\s+TABLE\\s+["'\`]?${table}["'\`]?`, 'i'),
       `CREATE TABLE "${table}_rebuild"`
     )
-    // Remove all UNIQUE keywords
     newDdl = newDdl.replace(/\bUNIQUE\b/gi, '')
-    // Execute as transaction for atomicity
     sqlite.exec(`DROP TABLE IF EXISTS "${table}_rebuild"`)
     sqlite.exec(newDdl)
     sqlite.exec(`INSERT INTO "${table}_rebuild" (${colList}) SELECT ${colList} FROM "${table}"`)
@@ -343,12 +339,13 @@ for (const table of ['customers', 'valuations', 'sell_bills']) {
     console.log(`[migrate] rebuilt ${table} — removed UNIQUE constraint`)
   } catch (e) { console.log(`[migrate] ${table} rebuild skipped:`, e.message) }
 }
-// Also clean up any leftover temp tables from prior failed migrations
+// Clean up any leftover temp tables from prior failed migrations
 for (const suffix of ['_new', '_rebuild']) {
   for (const table of ['customers', 'valuations', 'sell_bills']) {
     try { sqlite.exec(`DROP TABLE IF EXISTS "${table}${suffix}"`) } catch (e) { /* ignore */ }
   }
 }
+sqlite.exec('PRAGMA foreign_keys = ON')
 
 // Assign user_id = 1 to existing records that have no user_id set
 try {
