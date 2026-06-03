@@ -71,6 +71,19 @@ export function VerificationBlock({ valuation, profile }) {
   )
 }
 
+const DEFAULT_RULES = `I hereby certify that value of the above jewels is not less than value mentioned above.
+I also certify that the fineness / purity weights and valuation rates given above are correct.
+Further, I declare that the applicant is / are not my relative / associate etc., and I also do not have any interest whatsoever in the gold ornaments / jewellery that have been assessed / appraised by me.`
+
+export function CertificateRules({ valuation, className = 'certificate-rules' }) {
+  const text = valuation?.certificateRules || DEFAULT_RULES
+  return (
+    <div className={className}>
+      {text.split('\n').filter(Boolean).map((line, i) => <p key={i}>{line}</p>)}
+    </div>
+  )
+}
+
 export function OrnamentPhotoStrip({ valuation }) {
   const photos = valuation.ornamentPhotos || []
   if (!photos.length) return null

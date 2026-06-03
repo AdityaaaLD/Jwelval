@@ -108,11 +108,19 @@ router.post(
       ornamentPhotos,
       aadharPhotoDoc,
       panPhoto,
+      certificateRules,
       items,
     } = req.body
 
     const userId = req.user.id
     const reserved = reserveNextValuationNumber(seriesId)
+
+    // Resolve certificate rules from bank preset if not provided directly
+    let finalCertificateRules = certificateRules || ''
+    if (!finalCertificateRules && bankPresetId) {
+      const preset = sqlite.prepare('SELECT certificate_rules FROM bank_presets WHERE id = ? AND user_id = ?').get(bankPresetId, userId)
+      if (preset?.certificate_rules) finalCertificateRules = preset.certificate_rules
+    }
 
     // Deferred App ID: consume the number from the bank preset only on actual save
     let finalApplicationId = applicationId || ''
@@ -157,6 +165,7 @@ router.post(
         ornamentPhotos: JSON.stringify(ornamentPhotos || []),
         aadharPhotoDoc: aadharPhotoDoc || '',
         panPhoto: panPhoto || '',
+        certificateRules: finalCertificateRules,
         status: 'DRAFT',
         userId,
         createdAt: now,
@@ -202,6 +211,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
     ornamentPhotos,
     aadharPhotoDoc,
     panPhoto,
+    certificateRules,
     items,
   } = req.body
 
@@ -231,6 +241,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
       ornamentPhotos: ornamentPhotos != null ? JSON.stringify(ornamentPhotos || []) : existing.ornamentPhotos,
       aadharPhotoDoc: aadharPhotoDoc ?? existing.aadharPhotoDoc,
       panPhoto: panPhoto ?? existing.panPhoto,
+      certificateRules: certificateRules ?? existing.certificateRules,
       loanAmount: loanAmount != null ? Number(loanAmount) : +(totals.marketValue * LOAN_LTV).toFixed(2),
       bankRecommendedValue: bankRecommendedValue != null ? Number(bankRecommendedValue) : existing.bankRecommendedValue,
       valuationFee: valuationFee != null ? Number(valuationFee) : existing.valuationFee,
@@ -280,6 +291,7 @@ router.post('/:id/duplicate', async (req, res) => {
     valuationFee: Number(full.valuationFee) || 0,
     rateOfInterest: full.rateOfInterest != null ? Number(full.rateOfInterest) : null,
     loanType: full.loanType || '',
+    certificateRules: full.certificateRules || '',
     personPhoto: '',
     jewelleryPhoto: '',
     ornamentPhotos: '[]',

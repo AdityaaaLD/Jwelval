@@ -56,6 +56,7 @@ export const valuations = sqliteTable('valuations', {
   branchCode: text('branch_code'),
   aadharPhotoDoc: text('aadhar_photo_doc'),
   panPhoto: text('pan_photo'),
+  certificateRules: text('certificate_rules'),
   status: text('status').notNull().default('DRAFT'), // DRAFT | PRINTED | LOCKED
   printedAt: text('printed_at'),
   createdAt: text('created_at').notNull(),
@@ -104,6 +105,7 @@ export const bankPresets = sqliteTable('bank_presets', {
   appIdPrefix: text('app_id_prefix'),
   appIdCurrentNumber: integer('app_id_current_number').notNull().default(0),
   appIdDigits: integer('app_id_digits').notNull().default(10),
+  certificateRules: text('certificate_rules'),
   userId: integer('user_id').notNull().default(1),
   createdAt: text('created_at').notNull(),
 })

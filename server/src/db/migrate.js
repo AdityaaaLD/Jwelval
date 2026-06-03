@@ -378,6 +378,10 @@ try { sqlite.exec(`ALTER TABLE valuation_items ADD COLUMN remarks TEXT`) } catch
 // Add bank_recommended_value column to valuations
 try { sqlite.exec(`ALTER TABLE valuations ADD COLUMN bank_recommended_value REAL`) } catch (e) { /* already exists */ }
 
+// Add certificate_rules column to bank_presets and valuations
+try { sqlite.exec(`ALTER TABLE bank_presets ADD COLUMN certificate_rules TEXT`) } catch (e) { /* already exists */ }
+try { sqlite.exec(`ALTER TABLE valuations ADD COLUMN certificate_rules TEXT`) } catch (e) { /* already exists */ }
+
 // No demo user seeded — users must sign up.
 // Default data (ornaments, series, profile, presets) is seeded per-user on signup via seedDefaultsForUser in auth.js.
 

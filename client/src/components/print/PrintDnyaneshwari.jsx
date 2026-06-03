@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { inr } from '../../lib/format'
 import { api } from '../../lib/api'
-import { LetterheadSubheader, OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
+import { CertificateRules, LetterheadSubheader, OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
 
 export default function PrintDnyaneshwari({ valuation }) {
   const customer = valuation.customer || {}
@@ -25,11 +25,7 @@ export default function PrintDnyaneshwari({ valuation }) {
       <OrnamentPhotoStrip valuation={valuation} />
       <div className="print-summary"><span>Market Value: {inr(valuation.marketValue)}</span><span>Recommended Loan Amount: {inr(valuation.loanAmount)}</span></div>
       <VerificationBlock valuation={valuation} profile={profile} />
-      <div className="certificate-rules">
-        <p>I hereby certify that value of the above jewels is not less than value mentioned above.</p>
-        <p>I also certify that the fineness / purity weights and valuation rates given above are correct.</p>
-        <p>Further, I declare that the applicant is / are not my relative / associate etc., and I also do not have any interest whatsoever in the gold ornaments / jewellery that have been assessed / appraised by me.</p>
-      </div>
+      <CertificateRules valuation={valuation} />
       <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
     </article>
   )

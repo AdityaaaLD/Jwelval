@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 import { Pencil, Plus, Trash2, Check, X } from 'lucide-react'
 import { api } from '../../lib/api'
 
-const emptyForm = { bankName: 'Bank of Maharashtra', branch: '', branchCode: '', rateOfInterest: '', loanLtv: 57, managerName: '', address: '', appIdPrefix: '', appIdDigits: 10 }
+const emptyForm = { bankName: 'Bank of Maharashtra', branch: '', branchCode: '', rateOfInterest: '', loanLtv: 57, managerName: '', address: '', appIdPrefix: '', appIdDigits: 10, certificateRules: '' }
 
 export default function BankPresets() {
   const [rows, setRows] = useState([])
@@ -28,7 +28,7 @@ export default function BankPresets() {
 
   const startEdit = (r) => {
     setEditId(r.id)
-    setForm({ bankName: r.bankName, branch: r.branch, branchCode: r.branchCode || '', rateOfInterest: r.rateOfInterest || '', loanLtv: r.loanLtv || 57, managerName: r.managerName || '', address: r.address || '', appIdPrefix: r.appIdPrefix || '', appIdDigits: r.appIdDigits || 10 })
+    setForm({ bankName: r.bankName, branch: r.branch, branchCode: r.branchCode || '', rateOfInterest: r.rateOfInterest || '', loanLtv: r.loanLtv || 57, managerName: r.managerName || '', address: r.address || '', appIdPrefix: r.appIdPrefix || '', appIdDigits: r.appIdDigits || 10, certificateRules: r.certificateRules || '' })
   }
 
   const cancelEdit = () => { setEditId(null); setForm({ ...emptyForm }) }
@@ -56,6 +56,10 @@ export default function BankPresets() {
           <div><label className="label">Manager Name</label><input className="input" value={form.managerName} onChange={(e) => setForm({ ...form, managerName: e.target.value })} /></div>
           <div><label className="label">App ID Prefix</label><input className="input" value={form.appIdPrefix} onChange={(e) => setForm({ ...form, appIdPrefix: e.target.value })} /></div>
           <div><label className="label">App ID Digits</label><input type="number" className="input" value={form.appIdDigits} onChange={(e) => setForm({ ...form, appIdDigits: e.target.value })} /></div>
+        </div>
+        <div>
+          <label className="label">Certificate Rules / Declaration Text</label>
+          <textarea className="input" rows={4} placeholder="Enter bank-specific certificate rules or declaration text that will appear on the printed valuation report..." value={form.certificateRules} onChange={(e) => setForm({ ...form, certificateRules: e.target.value })} />
         </div>
         <div className="flex gap-2">
           <button className="btn-primary" onClick={save}>{editId ? <><Check size={16} /> Update</> : <><Plus size={16} /> Add Preset</>}</button>

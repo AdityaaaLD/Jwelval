@@ -43,6 +43,7 @@ const initialForm = () => ({
   ornamentPhotos: [],
   aadharPhotoDoc: '',
   panPhoto: '',
+  certificateRules: '',
   items: [blankItem()],
 })
 
@@ -113,6 +114,7 @@ export const useValuationStore = create((set, get) => ({
       ornamentPhotos: valuation.ornamentPhotos || [],
       aadharPhotoDoc: valuation.aadharPhotoDoc || '',
       panPhoto: valuation.panPhoto || '',
+      certificateRules: valuation.certificateRules || '',
       items: (valuation.items?.length ? valuation.items : [blankItem()]).map((item) => ({
         description: item.description || '',
         noOfUnits: item.noOfUnits || 1,
@@ -167,6 +169,7 @@ export const useValuationStore = create((set, get) => ({
       ornamentPhotos: form.ornamentPhotos || [],
       aadharPhotoDoc: form.aadharPhotoDoc || '',
       panPhoto: form.panPhoto || '',
+      certificateRules: form.certificateRules || '',
       items: form.items.map((item) => ({
         description: item.description,
         noOfUnits: Number(item.noOfUnits) || 1,

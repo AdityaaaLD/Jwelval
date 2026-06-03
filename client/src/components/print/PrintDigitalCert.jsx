@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { num } from '../../lib/format'
 import { api } from '../../lib/api'
-import { SignatureGrid, VerificationBlock } from './PrintHelpers'
+import { CertificateRules, SignatureGrid, VerificationBlock } from './PrintHelpers'
 
 export default function PrintDigitalCert({ valuation }) {
   const customer = valuation.customer || {}
@@ -113,10 +113,7 @@ export default function PrintDigitalCert({ valuation }) {
           </tfoot>
         </table>
 
-        <div className="dc-cert-text">
-          <p>I hereby certify that the value of the above jewels is not less than the value mentioned above. I also certify that the fineness/purity weights and valuation rates given above are correct.</p>
-          <p style={{ marginTop: '8px' }}>Further, I declare that the applicant is /are not my relative /associate etc. and also do not have any interest whatsoever in the Gold ornaments/Jewellery that have been assessed/apprised by me.</p>
-        </div>
+        <CertificateRules valuation={valuation} className="dc-cert-text" />
 
         {/* Photos section — above signature */}
         {(valuation.personPhoto || valuation.jewelleryPhoto) && (

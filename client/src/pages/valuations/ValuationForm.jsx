@@ -154,6 +154,7 @@ export default function ValuationForm() {
     setField('rateOfInterest', preset.rateOfInterest || '')
     if (preset.loanLtv) setField('loanLtv', preset.loanLtv)
     setField('bankPresetId', preset.id)
+    if (preset.certificateRules) setField('certificateRules', preset.certificateRules)
     // Preview application ID (does NOT consume the number yet — that happens on save)
     if (preset.appIdPrefix && !isEdit) {
       try {

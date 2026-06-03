@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { inr } from '../../lib/format'
 import { api } from '../../lib/api'
-import { OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
+import { CertificateRules, OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
 
 export default function PrintBankOfMaha({ valuation }) {
   const customer = valuation.customer || {}
@@ -29,11 +29,7 @@ export default function PrintBankOfMaha({ valuation }) {
       <OrnamentPhotoStrip valuation={valuation} />
       <p className="print-copy">* Net Weight = Gross Weight - Weight of Wax, Stones, Dust etc.</p>
       <p className="print-copy">Declaration of Borrower: I, {customer.name}, hereby declare that I have submitted the above ornaments to the bank in good faith and without any coercion.</p>
-      <div className="certificate-rules">
-        <p>I hereby certify that value of the above jewels is not less than value mentioned above.</p>
-        <p>I also certify that the fineness / purity weights and valuation rates given above are correct.</p>
-        <p>I declare that I do not have any interest whatsoever in the gold ornaments assessed by me.</p>
-      </div>
+      <CertificateRules valuation={valuation} />
       <div className="print-summary"><span>Valuation: {inr(valuation.marketValue)}</span><span>Recommended for Loan: {inr(valuation.loanAmount)}</span></div>
       <VerificationBlock valuation={valuation} profile={profile} />
       <SignatureGrid labels={['Signature of Appraiser', 'Signature of Borrower', 'Manager/Officer']} />
