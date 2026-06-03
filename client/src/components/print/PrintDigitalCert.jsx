@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { num } from '../../lib/format'
 import { api } from '../../lib/api'
-import { VerificationBlock } from './PrintHelpers'
+import { SignatureGrid, VerificationBlock } from './PrintHelpers'
 
 export default function PrintDigitalCert({ valuation }) {
   const customer = valuation.customer || {}
@@ -135,11 +135,7 @@ export default function PrintDigitalCert({ valuation }) {
           </div>
         )}
 
-        <div className="dc-signature">
-          <p><b>Yours faithfully,</b></p>
-          <div className="dc-sign-space"></div>
-          <p><b>(SIGNATURE OF APPRAISER WITH NAME)</b></p>
-        </div>
+        <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
 
         <VerificationBlock valuation={valuation} profile={profile} />
       </article>
