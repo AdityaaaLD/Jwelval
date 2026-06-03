@@ -417,7 +417,11 @@ export default function ValuationForm() {
           <div>
             <label className="label">Recommended Loan Amount</label>
             <input type="number" className="input" value={form.loanAmount} onChange={(e) => setField('loanAmount', e.target.value)} disabled={disabled} />
-            <p className="mt-1 text-xs text-slate-500">Lower of LTV% or bank value</p>
+            {form.suggestedLoan > 0 && (
+              <p className="mt-1 text-xs text-slate-500">
+                Suggested: <button type="button" className="text-gold-700 underline" onClick={() => setField('loanAmount', form.suggestedLoan)} disabled={disabled}>₹{form.suggestedLoan.toLocaleString('en-IN')}</button> (LTV {form.loanLtv}%)
+              </p>
+            )}
           </div>
           <div>
             <label className="label">Rate of Interest (%)</label>

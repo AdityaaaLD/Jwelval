@@ -71,20 +71,20 @@ export const deriveItem = (item, goldRate22k) => {
   }
 }
 
-const deriveForm = (form, keepLoan = false) => {
+const deriveForm = (form) => {
   const goldRate22k = n(form.goldRate22k)
   const items = form.items.map((item) => deriveItem(item, goldRate22k))
   const marketValue = round(items.reduce((sum, item) => sum + n(item.approxValueInr), 0), 2)
   const ltv = (n(form.loanLtv) || 57) / 100
   const ltvLoan = round(marketValue * ltv, 2)
   const bankVal = n(form.bankRecommendedValue)
-  let computedLoan = ltvLoan
-  if (bankVal > 0) computedLoan = Math.min(ltvLoan, bankVal)
+  let suggestedLoan = ltvLoan
+  if (bankVal > 0) suggestedLoan = Math.min(ltvLoan, bankVal)
   return {
     ...form,
     items,
     marketValue,
-    loanAmount: keepLoan && form.loanAmount !== '' ? form.loanAmount : computedLoan,
+    suggestedLoan,
   }
 }
 
@@ -126,23 +126,23 @@ export const useValuationStore = create((set, get) => ({
         remarks: item.remarks || '',
         remarksCustom: item.remarksCustom || '',
       })),
-    }, true),
+    }),
     dirty: false,
   }),
   setField: (field, value) => set((state) => ({
-    form: deriveForm({ ...state.form, [field]: value }, field === 'loanAmount'),
+    form: deriveForm({ ...state.form, [field]: value }),
     dirty: true,
   })),
   setItem: (index, field, value) => set((state) => {
     const items = state.form.items.map((item, i) => i === index ? { ...item, [field]: value } : item)
-    return { form: deriveForm({ ...state.form, items }, true), dirty: true }
+    return { form: deriveForm({ ...state.form, items }), dirty: true }
   }),
   addItem: () => set((state) => ({
-    form: deriveForm({ ...state.form, items: [...state.form.items, blankItem()] }, true),
+    form: deriveForm({ ...state.form, items: [...state.form.items, blankItem()] }),
     dirty: true,
   })),
   removeItem: (index) => set((state) => ({
-    form: deriveForm({ ...state.form, items: state.form.items.filter((_, i) => i !== index) }, true),
+    form: deriveForm({ ...state.form, items: state.form.items.filter((_, i) => i !== index) }),
     dirty: true,
   })),
   markClean: () => set({ dirty: false }),
