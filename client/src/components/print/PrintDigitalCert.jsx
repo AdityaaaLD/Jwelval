@@ -45,8 +45,8 @@ export default function PrintDigitalCert({ valuation }) {
         <div className="dc-row-box dc-parties">
           <div>
             <p><b>From,</b></p>
-            <p>Prop : {profile?.appraiser_name || ''}</p>
-            <p>{profile?.address || ''}</p>
+            <p>{profile?.appraiser_name || ''}</p>
+            {profile?.empanelment_id && <p>Empanelment ID: {profile.empanelment_id}</p>}
           </div>
           <div>
             <p><b>To,</b></p>
@@ -57,8 +57,9 @@ export default function PrintDigitalCert({ valuation }) {
 
         <div className="dc-row-box dc-borrower">
           <p><b>Borrower Name: {customer.name}</b></p>
-          <p><b>Borrower CIF: {customer.customerCode}</b></p>
           <p><b>Borrower Mob. No: {customer.mobile}</b></p>
+          {(valuation.acNo || customer.savingsAcNo) && <p><b>A/C No: {valuation.acNo || customer.savingsAcNo}</b></p>}
+          <p><b>Bank: {customer.bankName || 'Bank of Maharashtra'}, Branch: {valuation.branch || customer.branch || ''}</b></p>
         </div>
 
         <p className="dc-currency">(Rs. in Actual)</p>

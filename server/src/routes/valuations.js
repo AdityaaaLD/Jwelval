@@ -50,6 +50,7 @@ router.get('/', async (req, res) => {
       customerId: valuations.customerId,
       formatType: valuations.formatType,
       valuationDate: valuations.valuationDate,
+      branch: valuations.branch,
       marketValue: valuations.marketValue,
       valuationFee: valuations.valuationFee,
       status: valuations.status,
