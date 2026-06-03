@@ -6,6 +6,8 @@
   },
   "deploy": {
     "startCommand": "NODE_ENV=production DB_PATH=/data/jewelval.db node server/src/index.js",
+    "healthcheckPath": "/api/auth/signup-status",
+    "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
