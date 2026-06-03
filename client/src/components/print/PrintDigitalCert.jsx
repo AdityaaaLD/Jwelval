@@ -25,8 +25,9 @@ export default function PrintDigitalCert({ valuation }) {
       {/* PAGE 1 — Certificate */}
       <article className="print-page digital-cert">
         <header className="dc-header-box">
-          <p className="dc-header-line"><b>GOLD APPRAISAL CERTIFICATE (DIGITAL)</b></p>
+          <p className="dc-header-line"><b>{profile?.business_name || 'GOLD APPRAISAL CERTIFICATE (DIGITAL)'}</b></p>
           <p className="dc-header-line"><b>{profile?.appraiser_name || ''}</b></p>
+          <p className="dc-header-line"><b>GOLD APPRAISAL CERTIFICATE (DIGITAL)</b></p>
           <p className="dc-header-line">(Digital ID of Empanelment: {profile?.empanelment_id || ''})</p>
           <p className="dc-header-line">Add: {profile?.address || ''}</p>
           <p className="dc-header-line">Mob: {profile?.mobile || ''}</p>
