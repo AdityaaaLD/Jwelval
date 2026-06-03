@@ -4,12 +4,12 @@ import toast from 'react-hot-toast'
 import { ArrowLeft, Camera, Copy, Eye, Plus, Printer, Receipt, Save, Trash2, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { inr, num } from '../../lib/format'
-import { useValuationStore } from '../../store/valuationStore'
+import { useValuationStore, REMARK_OPTIONS } from '../../store/valuationStore'
 import PrintModal from '../../components/print/PrintModal'
 
 const lockedStatus = (status) => status === 'PRINTED' || status === 'LOCKED'
 
-const LOAN_TYPES = ['', 'Gold Loan', 'Agri Gold Loan', 'Housing Loan', 'Personal Loan', 'Vehicle Loan', 'Business Loan']
+const LOAN_TYPES = ['', 'Gold Loan', 'Agri Gold Loan', 'Housing Loan', 'Personal Loan', 'Vehicle Loan', 'Business Loan', 'Others']
 
 function OrnamentInput({ value, onChange, disabled, ornaments }) {
   const [open, setOpen] = useState(false)
@@ -267,9 +267,12 @@ export default function ValuationForm() {
           </div>
           <div>
             <label className="label">Customer Type</label>
-            <select className="input" value={form.loanType} onChange={(e) => setField('loanType', e.target.value)} disabled={disabled}>
+            <select className="input" value={LOAN_TYPES.includes(form.loanType) ? form.loanType : 'Others'} onChange={(e) => setField('loanType', e.target.value)} disabled={disabled}>
               {LOAN_TYPES.map((t) => <option key={t} value={t}>{t || '— Select —'}</option>)}
             </select>
+            {(form.loanType === 'Others' || (!LOAN_TYPES.includes(form.loanType) && form.loanType)) && (
+              <input className="input mt-1" placeholder="Enter customer type..." value={form.loanType === 'Others' ? '' : form.loanType} onChange={(e) => setField('loanType', e.target.value || 'Others')} disabled={disabled} />
+            )}
           </div>
           <div>
             <label className="label">Loan % (LTV)</label>
@@ -327,6 +330,7 @@ export default function ValuationForm() {
                 <th className="px-3 py-3" style={{ width: 110 }}>Gross Wt (gm)</th>
                 <th className="px-3 py-3" style={{ width: 110 }}>Net Wt (gm)</th>
                 <th className="px-3 py-3 text-right" style={{ width: 130 }}>Approx Value</th>
+                <th className="px-3 py-3" style={{ minWidth: 160 }}>Remarks</th>
                 <th className="px-3 py-3" style={{ width: 48 }}></th>
               </tr>
             </thead>
@@ -354,6 +358,15 @@ export default function ValuationForm() {
                   <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.netWeightGm} onChange={(e) => setItem(index, 'netWeightGm', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2 text-right font-medium">{inr(item.approxValueInr)}</td>
+                  <td className="px-3 py-2">
+                    <select className="input text-xs" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
+                      <option value="">— Select —</option>
+                      {REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    {item.remarks === 'Others' && (
+                      <input className="input mt-1 text-xs" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-right">
                     <button type="button" className="btn-ghost" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
                       <Trash2 size={16} />
@@ -369,6 +382,7 @@ export default function ValuationForm() {
                 <td className="px-3 py-3">{num(totals.net, 3)}</td>
                 <td className="px-3 py-3 text-right">{inr(totals.value)}</td>
                 <td></td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
@@ -376,14 +390,20 @@ export default function ValuationForm() {
       </section>
 
       <section className="card p-5">
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <div>
             <p className="label">Total Market Value</p>
             <p className="rounded-md bg-gold-50 px-3 py-2 text-xl font-semibold text-slate-950">{inr(form.marketValue)}</p>
           </div>
           <div>
+            <label className="label">Bank Recommended Value</label>
+            <input type="number" className="input" placeholder="Enter bank value" value={form.bankRecommendedValue} onChange={(e) => setField('bankRecommendedValue', e.target.value)} disabled={disabled} />
+            <p className="mt-1 text-xs text-slate-500">Flat amount recommended by bank</p>
+          </div>
+          <div>
             <label className="label">Recommended Loan Amount</label>
             <input type="number" className="input" value={form.loanAmount} onChange={(e) => setField('loanAmount', e.target.value)} disabled={disabled} />
+            <p className="mt-1 text-xs text-slate-500">Lower of LTV% or bank value</p>
           </div>
           <div>
             <label className="label">Rate of Interest (%)</label>
@@ -397,21 +417,27 @@ export default function ValuationForm() {
         </div>
       </section>
 
-      {!disabled && (
-        <div className="flex flex-col justify-end gap-2 sm:flex-row">
-          {valuation && <button type="button" className="btn-secondary" onClick={async () => {
+      <div className="flex flex-col justify-end gap-2 sm:flex-row">
+        {valuation && <button type="button" className="btn-secondary" onClick={async () => {
+          try {
             const copy = await api.valuations.duplicate(valuation.id)
-            toast.success('Valuation duplicated.')
+            toast.success('Valuation duplicated. You can now edit the copy.')
             navigate(`/valuations/${copy.id}`)
-          }}><Copy size={16} /> Duplicate</button>}
-          <button type="button" className="btn-secondary" onClick={() => save(true)} disabled={saving}>
-            <Eye size={16} /> Save & Preview Print
-          </button>
-          <button type="button" className="btn-primary" onClick={() => save(false)} disabled={saving}>
-            <Save size={16} /> {saving ? 'Saving...' : 'Save as Draft'}
-          </button>
-        </div>
-      )}
+          } catch (err) {
+            toast.error(err.message || 'Failed to duplicate.')
+          }
+        }}><Copy size={16} /> Duplicate</button>}
+        {!disabled && (
+          <>
+            <button type="button" className="btn-secondary" onClick={() => save(true)} disabled={saving}>
+              <Eye size={16} /> Save & Preview Print
+            </button>
+            <button type="button" className="btn-primary" onClick={() => save(false)} disabled={saving}>
+              <Save size={16} /> {saving ? 'Saving...' : 'Save as Draft'}
+            </button>
+          </>
+        )}
+      </div>
 
 
       {printOpen && valuation && (

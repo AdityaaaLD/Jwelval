@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { api } from '../lib/api'
-import { inr } from '../lib/format'
+
+function formatPrintedAt(isoStr) {
+  if (!isoStr) return '-'
+  const d = new Date(isoStr)
+  if (isNaN(d.getTime())) return isoStr
+  const date = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+  return `${date} at ${time}`
+}
 
 export default function VerifyCertificate() {
   const { number } = useParams()
@@ -21,9 +29,9 @@ export default function VerifyCertificate() {
               <div><dt className="text-slate-500">Certificate No.</dt><dd className="font-semibold">{data.valuationNumber}</dd></div>
               <div><dt className="text-slate-500">Date</dt><dd className="font-semibold">{data.valuationDate}</dd></div>
               <div><dt className="text-slate-500">Customer</dt><dd className="font-semibold">{data.customerName}</dd></div>
-              <div><dt className="text-slate-500">Market Value</dt><dd className="font-semibold">{inr(data.marketValue)}</dd></div>
+              <div><dt className="text-slate-500">Valuer</dt><dd className="font-semibold">{data.valuerName || '-'}</dd></div>
               <div><dt className="text-slate-500">Status</dt><dd className="font-semibold">{data.status}</dd></div>
-              <div><dt className="text-slate-500">Printed At</dt><dd className="font-semibold">{data.printedAt || '-'}</dd></div>
+              <div><dt className="text-slate-500">Printed At</dt><dd className="font-semibold">{formatPrintedAt(data.printedAt)}</dd></div>
             </dl>
           </div>
         )}

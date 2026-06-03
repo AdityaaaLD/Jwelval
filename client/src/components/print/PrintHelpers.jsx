@@ -17,15 +17,15 @@ export function OrnamentTable({ valuation }) {
 
   return (
     <table className="print-table">
-      <thead><tr><th>Sr.</th><th>Description</th><th>Units</th><th>Karat</th><th>Gross Wt (gm)</th><th>Net Wt (gm)</th><th>Approx Value</th></tr></thead>
+      <thead><tr><th>Sr.</th><th>Description</th><th>Units</th><th>Karat</th><th>Gross Wt (gm)</th><th>Net Wt (gm)</th><th>Approx Value</th><th>Remarks</th></tr></thead>
       <tbody>
         {items.map((item, index) => (
           <tr key={item.id || index}>
-            <td>{index + 1}</td><td>{item.description}</td><td>{item.noOfUnits}</td><td>22K</td><td>{num(item.grossWeightGm, 3)}</td><td>{num(item.netWeightGm, 3)}</td><td>{inr(item.approxValueInr)}</td>
+            <td>{index + 1}</td><td>{item.description}</td><td>{item.noOfUnits}</td><td>{item.purityCarat || 22}K</td><td>{num(item.grossWeightGm, 3)}</td><td>{num(item.netWeightGm, 3)}</td><td>{inr(item.approxValueInr)}</td><td>{item.remarks || '-'}</td>
           </tr>
         ))}
       </tbody>
-      <tfoot><tr><td colSpan="2">Total</td><td>{totals.units}</td><td></td><td>{num(totals.gross, 3)}</td><td>{num(totals.net, 3)}</td><td>{inr(totals.value)}</td></tr></tfoot>
+      <tfoot><tr><td colSpan="2">Total</td><td>{totals.units}</td><td></td><td>{num(totals.gross, 3)}</td><td>{num(totals.net, 3)}</td><td>{inr(totals.value)}</td><td></td></tr></tfoot>
     </table>
   )
 }
@@ -52,14 +52,20 @@ export function SignatureGrid({ labels }) {
   return <div className="signature-grid">{labels.map((label) => <div key={label} className="signature-box">{label}</div>)}</div>
 }
 
-export function VerificationBlock({ valuation }) {
+export function VerificationBlock({ valuation, profile }) {
   if (!valuation?.valuationNumber) return null
+  const printedAt = valuation.printedAt ? new Date(valuation.printedAt) : new Date()
+  const dateStr = printedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const timeStr = printedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+  const valuerName = profile?.appraiser_name || profile?.appraiserName || ''
   return (
     <div className="verification-block">
       <QrImage text={verificationUrl(valuation.valuationNumber)} className="verification-qr" />
       <div>
         <b>Scan to verify certificate</b>
         <p>{valuation.valuationNumber}</p>
+        <p style={{ fontSize: '9px', marginTop: 2 }}>{dateStr} at {timeStr}</p>
+        {valuerName && <p style={{ fontSize: '9px' }}>Valuer: {valuerName}</p>}
       </div>
     </div>
   )

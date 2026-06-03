@@ -24,7 +24,7 @@ export default function PrintDnyaneshwari({ valuation }) {
       <OrnamentTable valuation={valuation} />
       <OrnamentPhotoStrip valuation={valuation} />
       <div className="print-summary"><span>Market Value: {inr(valuation.marketValue)}</span><span>Recommended Loan Amount: {inr(valuation.loanAmount)}</span></div>
-      <VerificationBlock valuation={valuation} />
+      <VerificationBlock valuation={valuation} profile={profile} />
       <div className="certificate-rules">
         <p>I hereby certify that value of the above jewels is not less than value mentioned above.</p>
         <p>I also certify that the fineness / purity weights and valuation rates given above are correct.</p>

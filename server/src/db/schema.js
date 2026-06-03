@@ -45,6 +45,7 @@ export const valuations = sqliteTable('valuations', {
   goldRate24k: real('gold_rate_24k').notNull().default(0),
   marketValue: real('market_value').notNull().default(0),
   loanAmount: real('loan_amount').notNull().default(0),
+  bankRecommendedValue: real('bank_recommended_value'),
   valuationFee: real('valuation_fee').notNull().default(0),
   rateOfInterest: real('rate_of_interest'),
   loanType: text('loan_type'),
@@ -122,6 +123,7 @@ export const valuationItems = sqliteTable('valuation_items', {
   net24kGoldGm: real('net_24k_gold_gm').notNull().default(0),
   net22kGoldGm: real('net_22k_gold_gm').notNull().default(0),
   approxValueInr: real('approx_value_inr').notNull().default(0),
+  remarks: text('remarks'),
   digitalId: text('digital_id'),
 })
 

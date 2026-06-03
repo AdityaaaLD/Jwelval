@@ -100,6 +100,7 @@ router.post(
       goldRate24k,
       rateOfInterest,
       loanAmount,
+      bankRecommendedValue,
       valuationFee,
       loanType,
       personPhoto,
@@ -147,6 +148,7 @@ router.post(
         goldRate24k: finalGoldRate24k,
         marketValue: +totals.marketValue.toFixed(2),
         loanAmount: finalLoan,
+        bankRecommendedValue: bankRecommendedValue != null ? Number(bankRecommendedValue) : null,
         valuationFee: valuationFee != null ? Number(valuationFee) : 0,
         rateOfInterest: rateOfInterest != null ? Number(rateOfInterest) : null,
         loanType: loanType || '',
@@ -192,6 +194,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
     goldRate24k,
     rateOfInterest,
     loanAmount,
+    bankRecommendedValue,
     valuationFee,
     loanType,
     personPhoto,
@@ -229,6 +232,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
       aadharPhotoDoc: aadharPhotoDoc ?? existing.aadharPhotoDoc,
       panPhoto: panPhoto ?? existing.panPhoto,
       loanAmount: loanAmount != null ? Number(loanAmount) : +(totals.marketValue * LOAN_LTV).toFixed(2),
+      bankRecommendedValue: bankRecommendedValue != null ? Number(bankRecommendedValue) : existing.bankRecommendedValue,
       valuationFee: valuationFee != null ? Number(valuationFee) : existing.valuationFee,
       marketValue: Array.isArray(items) ? +totals.marketValue.toFixed(2) : existing.marketValue,
       updatedAt: new Date().toISOString(),
@@ -254,40 +258,28 @@ router.post('/:id/duplicate', async (req, res) => {
   const [source] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   if (!source) return res.status(404).json({ error: 'Not found' })
   const full = await hydrate(source)
-  req.body = {
-    customerId: req.body.customerId || full.customerId,
-    seriesId: req.body.seriesId || full.seriesId,
-    branch: full.branch,
-    acNo: full.acNo,
-    valuationDate: new Date().toISOString().slice(0, 10),
-    goldRate22k: full.goldRate22k,
-    goldRate24k: full.goldRate24k,
-    rateOfInterest: full.rateOfInterest,
-    valuationFee: full.valuationFee,
-    loanAmount: full.loanAmount,
-    items: full.items,
-    personPhoto: '',
-    jewelleryPhoto: '',
-    ornamentPhotos: [],
-  }
-  const reserved = reserveNextValuationNumber(req.body.seriesId)
-  const derived = req.body.items.map((it) => deriveItem(it, req.body.goldRate22k))
+  const derived = full.items.map((it) => deriveItem(it, full.goldRate22k))
   const totals = totalsFromItems(derived)
+  const reserved = reserveNextValuationNumber(req.body.seriesId || full.seriesId)
   const now = new Date().toISOString()
   const [created] = await db.insert(valuations).values({
     valuationNumber: reserved.number,
-    seriesId: req.body.seriesId,
-    customerId: req.body.customerId,
+    seriesId: req.body.seriesId || full.seriesId,
+    customerId: req.body.customerId || full.customerId,
     formatType: reserved.formatType,
-    valuationDate: req.body.valuationDate,
-    acNo: req.body.acNo || '',
-    branch: req.body.branch || '',
-    goldRate22k: Number(req.body.goldRate22k),
-    goldRate24k: Number(req.body.goldRate24k),
+    valuationDate: new Date().toISOString().slice(0, 10),
+    acNo: full.acNo || '',
+    branch: full.branch || '',
+    branchCode: full.branchCode || '',
+    applicationId: full.applicationId || '',
+    goldRate22k: Number(full.goldRate22k),
+    goldRate24k: Number(full.goldRate24k),
     marketValue: +totals.marketValue.toFixed(2),
-    loanAmount: +(totals.marketValue * LOAN_LTV).toFixed(2),
-    valuationFee: Number(req.body.valuationFee) || 0,
-    rateOfInterest: req.body.rateOfInterest != null ? Number(req.body.rateOfInterest) : null,
+    loanAmount: full.loanAmount != null ? Number(full.loanAmount) : +(totals.marketValue * LOAN_LTV).toFixed(2),
+    bankRecommendedValue: full.bankRecommendedValue != null ? Number(full.bankRecommendedValue) : null,
+    valuationFee: Number(full.valuationFee) || 0,
+    rateOfInterest: full.rateOfInterest != null ? Number(full.rateOfInterest) : null,
+    loanType: full.loanType || '',
     personPhoto: '',
     jewelleryPhoto: '',
     ornamentPhotos: '[]',

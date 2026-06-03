@@ -1,8 +1,12 @@
+import { useEffect, useState } from 'react'
 import { inr } from '../../lib/format'
+import { api } from '../../lib/api'
 import { OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
 
 export default function PrintBankOfMaha({ valuation }) {
   const customer = valuation.customer || {}
+  const [profile, setProfile] = useState(null)
+  useEffect(() => { api.profile.get().then(setProfile).catch(() => {}) }, [])
   return (
     <article className="print-page bank-pass">
       <header className="bank-header">
@@ -31,7 +35,7 @@ export default function PrintBankOfMaha({ valuation }) {
         <p>I declare that I do not have any interest whatsoever in the gold ornaments assessed by me.</p>
       </div>
       <div className="print-summary"><span>Valuation: {inr(valuation.marketValue)}</span><span>Recommended for Loan: {inr(valuation.loanAmount)}</span></div>
-      <VerificationBlock valuation={valuation} />
+      <VerificationBlock valuation={valuation} profile={profile} />
       <SignatureGrid labels={['Signature of Appraiser', 'Signature of Borrower', 'Manager/Officer']} />
       <p className="print-note">** Note: Interest rates are subject to RBI and bank regulations and may change. **</p>
     </article>

@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
   const userId = req.user.id
   const rows = sqlite.prepare(`
     SELECT c.id, c.customer_code AS customerCode, c.name, c.mobile,
-           c.aadhar_number AS aadharNumber,
+           c.aadhar_number AS aadharNumber, c.savings_ac_no AS savingsAcNo,
            COUNT(v.id) AS valuationCount
     FROM customers c
     LEFT JOIN valuations v ON v.customer_id = c.id

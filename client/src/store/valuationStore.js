@@ -1,6 +1,15 @@
 import { create } from 'zustand'
 import { today } from '../lib/format'
 
+export const REMARK_OPTIONS = [
+  'No defect',
+  'Crack in jewellery',
+  'Pieces/stones missing',
+  'Jewellery is bent',
+  'Solder marks visible',
+  'Others',
+]
+
 const blankItem = () => ({
   description: '',
   noOfUnits: 1,
@@ -9,6 +18,8 @@ const blankItem = () => ({
   grossWeightGm: '',
   netWeightGm: '',
   approxValueInr: 0,
+  remarks: '',
+  remarksCustom: '',
 })
 
 const initialForm = () => ({
@@ -23,6 +34,7 @@ const initialForm = () => ({
   loanLtv: 57,
   goldRate22k: '',
   loanAmount: '',
+  bankRecommendedValue: '',
   valuationFee: '',
   rateOfInterest: '',
   loanType: '',
@@ -63,11 +75,15 @@ const deriveForm = (form, keepLoan = false) => {
   const items = form.items.map((item) => deriveItem(item, goldRate22k))
   const marketValue = round(items.reduce((sum, item) => sum + n(item.approxValueInr), 0), 2)
   const ltv = (n(form.loanLtv) || 57) / 100
+  const ltvLoan = round(marketValue * ltv, 2)
+  const bankVal = n(form.bankRecommendedValue)
+  let computedLoan = ltvLoan
+  if (bankVal > 0) computedLoan = Math.min(ltvLoan, bankVal)
   return {
     ...form,
     items,
     marketValue,
-    loanAmount: keepLoan && form.loanAmount !== '' ? form.loanAmount : round(marketValue * ltv, 2),
+    loanAmount: keepLoan && form.loanAmount !== '' ? form.loanAmount : computedLoan,
   }
 }
 
@@ -88,6 +104,7 @@ export const useValuationStore = create((set, get) => ({
       loanLtv: valuation.loanLtv || 57,
       goldRate22k: valuation.goldRate22k || '',
       loanAmount: valuation.loanAmount || '',
+      bankRecommendedValue: valuation.bankRecommendedValue || '',
       valuationFee: valuation.valuationFee || '',
       rateOfInterest: valuation.rateOfInterest || '',
       loanType: valuation.loanType || '',
@@ -104,6 +121,8 @@ export const useValuationStore = create((set, get) => ({
         grossWeightGm: item.grossWeightGm || '',
         netWeightGm: item.netWeightGm || '',
         approxValueInr: item.approxValueInr || 0,
+        remarks: item.remarks || '',
+        remarksCustom: item.remarksCustom || '',
       })),
     }, true),
     dirty: false,
@@ -139,6 +158,7 @@ export const useValuationStore = create((set, get) => ({
       goldRate22k: Number(form.goldRate22k),
       goldRate24k: +(Number(form.goldRate22k) * 24 / 22).toFixed(2),
       loanAmount: Number(form.loanAmount),
+      bankRecommendedValue: form.bankRecommendedValue !== '' ? Number(form.bankRecommendedValue) : null,
       valuationFee: Number(form.valuationFee) || 0,
       rateOfInterest: form.rateOfInterest === '' ? null : Number(form.rateOfInterest),
       loanType: form.loanType || '',
@@ -154,6 +174,7 @@ export const useValuationStore = create((set, get) => ({
         purityCarat: Number(item.purityCarat) || 22,
         grossWeightGm: Number(item.grossWeightGm) || 0,
         netWeightGm: Number(item.netWeightGm) || 0,
+        remarks: item.remarks === 'Others' ? (item.remarksCustom || '') : (item.remarks || ''),
       })),
     }
   },

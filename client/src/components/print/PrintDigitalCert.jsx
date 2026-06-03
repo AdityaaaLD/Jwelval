@@ -141,7 +141,7 @@ export default function PrintDigitalCert({ valuation }) {
           <p><b>(SIGNATURE OF APPRAISER WITH NAME)</b></p>
         </div>
 
-        <VerificationBlock valuation={valuation} />
+        <VerificationBlock valuation={valuation} profile={profile} />
       </article>
 
       {/* PAGE 2 — Aadhar & PAN (back of the certificate) */}
