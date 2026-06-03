@@ -25,13 +25,13 @@ export default function PrintDigitalCert({ valuation }) {
       {/* PAGE 1 — Certificate */}
       <article className="print-page digital-cert">
         <header className="dc-header-box">
-          <p className="dc-header-line"><b>{profile?.business_name || 'GOLD APPRAISAL CERTIFICATE (DIGITAL)'}</b></p>
-          <p className="dc-header-line"><b>{profile?.appraiser_name || ''}</b></p>
-          <p className="dc-header-line"><b>GOLD APPRAISAL CERTIFICATE (DIGITAL)</b></p>
-          <p className="dc-header-line">(Digital ID of Empanelment: {profile?.empanelment_id || ''})</p>
-          <p className="dc-header-line">Add: {profile?.address || ''}</p>
-          <p className="dc-header-line">Mob: {profile?.mobile || ''}</p>
-          <p className="dc-header-line">GSTN/PAN/TAN: {profile?.gstn || ''}</p>
+          <p className="dc-header-line" style={{ fontSize: '18px', letterSpacing: '1px' }}><b>{(profile?.business_name || 'JEWELLERS').toUpperCase()}</b></p>
+          <p className="dc-header-line">Proprietor, {profile?.appraiser_name || ''}, {profile?.qualification || 'Government Approved Gold Appaisal'}</p>
+          {profile?.organization && <p className="dc-header-line">({profile.organization})</p>}
+          <p className="dc-header-line">{profile?.address || ''}</p>
+          {profile?.cert_number && <p className="dc-header-line">No. {profile.cert_number}</p>}
+          <p className="dc-header-line">{[profile?.mobile ? `Mob: ${profile.mobile}` : '', profile?.email || ''].filter(Boolean).join(' | ')}{profile?.gstn ? ` | GSTN: ${profile.gstn}` : ''}</p>
+          {profile?.empanelment_id && <p className="dc-header-line">(Digital ID of Empanelment: {profile.empanelment_id})</p>}
         </header>
 
         <div className="dc-row-box">
