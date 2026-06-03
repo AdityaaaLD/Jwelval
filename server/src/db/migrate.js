@@ -338,8 +338,10 @@ for (const { table, cols, insert } of [
     const info = sqlite.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='${table}'`).get()
     if (info?.sql?.includes('UNIQUE')) {
       const colNames = insert.replace(/COALESCE\([^)]+\)/g, m => m.split(',')[0].replace('COALESCE(', '')).trim()
+      // Drop leftover _new table from a previous failed attempt
+      sqlite.exec(`DROP TABLE IF EXISTS ${table}_new`)
       sqlite.exec(`
-        CREATE TABLE IF NOT EXISTS ${table}_new (${cols});
+        CREATE TABLE ${table}_new (${cols});
         INSERT INTO ${table}_new (${colNames}) SELECT ${insert} FROM ${table};
         DROP TABLE ${table};
         ALTER TABLE ${table}_new RENAME TO ${table};
@@ -362,6 +364,17 @@ try {
     UPDATE appraiser_profile SET user_id = 1 WHERE user_id IS NULL;
   `)
 } catch (e) { console.log('[migrate] user_id assignment skipped:', e.message) }
+
+// Fallback: if table rebuild failed but UNIQUE indexes exist as separate indexes, drop them
+try {
+  const indexes = sqlite.prepare("SELECT name, tbl_name FROM sqlite_master WHERE type='index' AND sql LIKE '%UNIQUE%'").all()
+  for (const idx of indexes) {
+    if (['customers', 'valuations', 'sell_bills'].includes(idx.tbl_name)) {
+      try { sqlite.exec(`DROP INDEX IF EXISTS "${idx.name}"`) } catch (e2) { /* ignore */ }
+      console.log(`[migrate] dropped UNIQUE index ${idx.name} on ${idx.tbl_name}`)
+    }
+  }
+} catch (e) { /* ignore */ }
 
 // Add remarks column to valuation_items
 try { sqlite.exec(`ALTER TABLE valuation_items ADD COLUMN remarks TEXT`) } catch (e) { /* already exists */ }
