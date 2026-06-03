@@ -102,10 +102,11 @@ export default function ValuationForm() {
 
   const disabled = lockedStatus(valuation?.status)
   const totals = useMemo(() => form.items.reduce((acc, item) => ({
+    units: acc.units + (Number(item.noOfUnits) || 0),
     gross: acc.gross + (Number(item.grossWeightGm) || 0),
     net: acc.net + (Number(item.netWeightGm) || 0),
     value: acc.value + (Number(item.approxValueInr) || 0),
-  }), { gross: 0, net: 0, value: 0 }), [form.items])
+  }), { units: 0, gross: 0, net: 0, value: 0 }), [form.items])
 
   const save = async (preview = false) => {
     if (!form.customerId) return toast.error('Select a customer.')
@@ -323,16 +324,27 @@ export default function ValuationForm() {
         <div className="overflow-x-auto">
           <table className="min-w-[700px] w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="text-[9px] text-slate-400 normal-case tracking-normal">
+                <th className="px-3 pt-2 pb-0"></th>
+                <th className="px-3 pt-2 pb-0">Description of jewels / Ornaments</th>
+                <th className="px-3 pt-2 pb-0"></th>
+                <th className="px-3 pt-2 pb-0">No. of jewels</th>
+                <th className="px-3 pt-2 pb-0">Gross weight incl. wax, stones etc.</th>
+                <th className="px-3 pt-2 pb-0">Equiv. weight of carat jewellery</th>
+                <th className="px-3 pt-2 pb-0">Purity</th>
+                <th className="px-3 pt-2 pb-0 text-right">Approx Value (BJA 22K rate)</th>
+                <th className="px-3 pt-2 pb-0"></th>
+              </tr>
               <tr>
-                <th className="px-3 py-3" style={{ width: 48 }}>Sr</th>
-                <th className="px-3 py-3" style={{ minWidth: 180 }}>Description</th>
-                <th className="px-3 py-3" style={{ width: 80 }}>Units</th>
-                <th className="px-3 py-3" style={{ width: 80 }}>Karat</th>
-                <th className="px-3 py-3" style={{ width: 110 }}>Gross Wt (gm)</th>
-                <th className="px-3 py-3" style={{ width: 110 }}>Net Wt (gm)</th>
-                <th className="px-3 py-3 text-right" style={{ width: 130 }}>Approx Value</th>
-                <th className="px-3 py-3" style={{ minWidth: 160 }}>Remarks</th>
-                <th className="px-3 py-3" style={{ width: 48 }}></th>
+                <th className="px-3 py-2" style={{ width: 48 }}>Sr</th>
+                <th className="px-3 py-2" style={{ minWidth: 180 }}>Description</th>
+                <th className="px-3 py-2" style={{ minWidth: 140 }}>Remarks</th>
+                <th className="px-3 py-2" style={{ width: 80 }}>Units</th>
+                <th className="px-3 py-2" style={{ width: 110 }}>Gross Wt (gm)</th>
+                <th className="px-3 py-2" style={{ width: 110 }}>Net Wt (gm)</th>
+                <th className="px-3 py-2" style={{ width: 80 }}>Karat</th>
+                <th className="px-3 py-2 text-right" style={{ width: 130 }}>Approx Value</th>
+                <th className="px-3 py-2" style={{ width: 48 }}></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -342,7 +354,18 @@ export default function ValuationForm() {
                   <td className="px-3 py-2">
                     <OrnamentInput value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
                   </td>
+                  <td className="px-3 py-2">
+                    <select className="input text-xs" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
+                      <option value="">— Select —</option>
+                      {REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    {item.remarks === 'Others' && (
+                      <input className="input mt-1 text-xs" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
+                    )}
+                  </td>
                   <td className="px-3 py-2"><input type="number" className="input" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} /></td>
+                  <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} /></td>
+                  <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.netWeightGm} onChange={(e) => setItem(index, 'netWeightGm', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2">
                     <input
                       type="number"
@@ -356,18 +379,7 @@ export default function ValuationForm() {
                       placeholder="22"
                     />
                   </td>
-                  <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} /></td>
-                  <td className="px-3 py-2"><input type="number" step="0.001" className="input" value={item.netWeightGm} onChange={(e) => setItem(index, 'netWeightGm', e.target.value)} disabled={disabled} /></td>
                   <td className="px-3 py-2 text-right font-medium">{inr(item.approxValueInr)}</td>
-                  <td className="px-3 py-2">
-                    <select className="input text-xs" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
-                      <option value="">— Select —</option>
-                      {REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                    {item.remarks === 'Others' && (
-                      <input className="input mt-1 text-xs" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
-                    )}
-                  </td>
                   <td className="px-3 py-2 text-right">
                     <button type="button" className="btn-ghost" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
                       <Trash2 size={16} />
@@ -378,11 +390,12 @@ export default function ValuationForm() {
             </tbody>
             <tfoot className="bg-slate-50 text-sm font-semibold">
               <tr>
-                <td className="px-3 py-3" colSpan="4">Total</td>
+                <td className="px-3 py-3" colSpan="3">Total</td>
+                <td className="px-3 py-3">{totals.units}</td>
                 <td className="px-3 py-3">{num(totals.gross, 3)}</td>
                 <td className="px-3 py-3">{num(totals.net, 3)}</td>
+                <td className="px-3 py-3"></td>
                 <td className="px-3 py-3 text-right">{inr(totals.value)}</td>
-                <td></td>
                 <td></td>
               </tr>
             </tfoot>

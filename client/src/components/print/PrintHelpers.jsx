@@ -17,15 +17,27 @@ export function OrnamentTable({ valuation }) {
 
   return (
     <table className="print-table">
-      <thead><tr><th>Sr.</th><th>Description</th><th>Units</th><th>Karat</th><th>Gross Wt (gm)</th><th>Net Wt (gm)</th><th>Approx Value</th><th>Remarks</th></tr></thead>
+      <thead>
+        <tr className="print-table-info">
+          <th>Sr.</th>
+          <th>Description of jewels / Ornaments</th>
+          <th></th>
+          <th>No. of jewels</th>
+          <th>Total Gross weight of jewellery including wax, stones, beads, plastic, lac, alloy, strings, fastrings, dust &amp; other Material</th>
+          <th>Approx Equivalent Weight of Carat Jewellery Contents</th>
+          <th>Purity in Carat</th>
+          <th>By(BJA) Indian Bullion Jewellers Association ltd, Mumbai 22 carat Gold Price. Total Approx Value of The Jewellery</th>
+        </tr>
+        <tr><th>No.</th><th>Assessed</th><th>Remarks</th><th>Ornaments</th><th>In Grams</th><th>In Grams</th><th>Carat</th><th>In Rs.</th></tr>
+      </thead>
       <tbody>
         {items.map((item, index) => (
           <tr key={item.id || index}>
-            <td>{index + 1}</td><td>{item.description}</td><td>{item.noOfUnits}</td><td>{item.purityCarat || 22}K</td><td>{num(item.grossWeightGm, 3)}</td><td>{num(item.netWeightGm, 3)}</td><td>{inr(item.approxValueInr)}</td><td>{item.remarks || '-'}</td>
+            <td>{index + 1}</td><td>{item.description}</td><td>{item.remarks || '-'}</td><td>{item.noOfUnits}</td><td>{num(item.grossWeightGm, 3)}</td><td>{num(item.netWeightGm, 3)}</td><td>{item.purityCarat || 22}K</td><td>{inr(item.approxValueInr)}</td>
           </tr>
         ))}
       </tbody>
-      <tfoot><tr><td colSpan="2">Total</td><td>{totals.units}</td><td></td><td>{num(totals.gross, 3)}</td><td>{num(totals.net, 3)}</td><td>{inr(totals.value)}</td><td></td></tr></tfoot>
+      <tfoot><tr><td colSpan="2">Total</td><td></td><td>{totals.units}</td><td>{num(totals.gross, 3)}</td><td>{num(totals.net, 3)}</td><td></td><td>{inr(totals.value)}</td></tr></tfoot>
     </table>
   )
 }

@@ -73,39 +73,46 @@ export default function PrintDigitalCert({ valuation }) {
 
         <table className="dc-table">
           <thead>
+            <tr className="dc-table-info">
+              <th>Sr.</th>
+              <th>Description of jewels / Ornaments</th>
+              <th></th>
+              <th>No. of jewels</th>
+              <th>Total Gross weight of jewellery including wax, stones, beads, plastic, lac, alloy, strings, fastrings, dust &amp; other Material</th>
+              <th>Approx Equivalent Weight of Carat Jewellery Contents</th>
+              <th>Purity in Carat</th>
+              <th>By(BJA) Indian Bullion Jewellers Association ltd, Mumbai 22 carat Gold Price. Total Approx Value of The Jewellery</th>
+            </tr>
             <tr>
               <th>No.</th>
-              <th>Description of Ornaments</th>
-              <th>Units</th>
-              <th>Karat</th>
-              <th>Gross Wt (gm)</th>
-              <th>Net Wt (gm)</th>
-              <th>Rate/gm</th>
-              <th>Approx Value</th>
+              <th>Assessed</th>
+              <th>Remarks</th>
+              <th>Ornaments</th>
+              <th>In Grams</th>
+              <th>In Grams</th>
+              <th>Carat</th>
+              <th>In Rs.</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item, index) => {
-              const rate22k = Number(valuation.goldRate22k) || 0
-              return (
-                <tr key={item.id || index}>
-                  <td>{index + 1}</td>
-                  <td className="dc-td-left">{item.description}</td>
-                  <td>{item.noOfUnits}</td>
-                  <td>22K</td>
-                  <td>{num(item.grossWeightGm, 3)}</td>
-                  <td>{num(item.netWeightGm, 3)}</td>
-                  <td>{num(rate22k, 0)}</td>
-                  <td>{num(item.approxValueInr, 0)}</td>
-                </tr>
-              )
-            })}
+            {items.map((item, index) => (
+              <tr key={item.id || index}>
+                <td>{index + 1}</td>
+                <td className="dc-td-left">{item.description}</td>
+                <td>{item.remarks || '-'}</td>
+                <td>{item.noOfUnits}</td>
+                <td>{num(item.grossWeightGm, 3)}</td>
+                <td>{num(item.netWeightGm, 3)}</td>
+                <td>{item.purityCarat || 22}K</td>
+                <td>{num(item.approxValueInr, 0)}</td>
+              </tr>
+            ))}
           </tbody>
           <tfoot>
             <tr>
               <td colSpan="2"><b>Total</b></td>
-              <td><b>{totals.units}</b></td>
               <td></td>
+              <td><b>{totals.units}</b></td>
               <td><b>{num(totals.gross, 3)}</b></td>
               <td><b>{num(totals.net, 3)}</b></td>
               <td></td>
