@@ -317,38 +317,37 @@ try {
 } catch (e) { console.log('[migrate] ornament_master rebuild skipped:', e.message) }
 
 // Remove global UNIQUE on customer_code, valuation_number, bill_number for multi-user
-for (const { table, cols, insert } of [
-  {
-    table: 'customers',
-    cols: `id INTEGER PRIMARY KEY AUTOINCREMENT, customer_code TEXT NOT NULL, name TEXT NOT NULL, address TEXT, mobile TEXT, alternate_mobile TEXT, aadhar_number TEXT, aadhar_photo TEXT, aadhar_photo_back TEXT, savings_ac_no TEXT, bank_name TEXT, branch TEXT, user_id INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL`,
-    insert: `id, customer_code, name, address, mobile, alternate_mobile, aadhar_number, aadhar_photo, aadhar_photo_back, savings_ac_no, bank_name, branch, COALESCE(user_id,1), created_at`,
-  },
-  {
-    table: 'valuations',
-    cols: `id INTEGER PRIMARY KEY AUTOINCREMENT, valuation_number TEXT NOT NULL, series_id INTEGER NOT NULL REFERENCES valuation_series(id), customer_id INTEGER NOT NULL REFERENCES customers(id), format_type TEXT NOT NULL, valuation_date TEXT NOT NULL, ac_no TEXT, branch TEXT, branch_code TEXT, application_id TEXT, gold_rate_22k REAL NOT NULL DEFAULT 0, gold_rate_24k REAL NOT NULL DEFAULT 0, market_value REAL NOT NULL DEFAULT 0, loan_amount REAL NOT NULL DEFAULT 0, valuation_fee REAL NOT NULL DEFAULT 0, rate_of_interest REAL, loan_type TEXT, person_photo TEXT, jewellery_photo TEXT, ornament_photos TEXT, aadhar_photo_doc TEXT, pan_photo TEXT, status TEXT NOT NULL DEFAULT 'DRAFT', printed_at TEXT, user_id INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL`,
-    insert: `id, valuation_number, series_id, customer_id, format_type, valuation_date, ac_no, branch, branch_code, application_id, gold_rate_22k, gold_rate_24k, market_value, loan_amount, valuation_fee, rate_of_interest, loan_type, person_photo, jewellery_photo, ornament_photos, aadhar_photo_doc, pan_photo, status, printed_at, COALESCE(user_id,1), created_at, updated_at`,
-  },
-  {
-    table: 'sell_bills',
-    cols: `id INTEGER PRIMARY KEY AUTOINCREMENT, bill_number TEXT NOT NULL, bill_series_id INTEGER REFERENCES bill_series(id), valuation_id INTEGER REFERENCES valuations(id), customer_id INTEGER NOT NULL REFERENCES customers(id), bill_date TEXT NOT NULL, order_no TEXT, cheque_no TEXT, cheque_date TEXT, bank TEXT, bank_branch TEXT, subtotal REAL NOT NULL DEFAULT 0, gst_percent REAL NOT NULL DEFAULT 3, gst_amount REAL NOT NULL DEFAULT 0, total REAL NOT NULL DEFAULT 0, advance REAL NOT NULL DEFAULT 0, balance REAL NOT NULL DEFAULT 0, user_id INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL`,
-    insert: `id, bill_number, bill_series_id, valuation_id, customer_id, bill_date, order_no, cheque_no, cheque_date, bank, bank_branch, subtotal, gst_percent, gst_amount, total, advance, balance, COALESCE(user_id,1), created_at, updated_at`,
-  },
-]) {
+for (const table of ['customers', 'valuations', 'sell_bills']) {
   try {
-    const info = sqlite.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name='${table}'`).get()
-    if (info?.sql?.includes('UNIQUE')) {
-      const colNames = insert.replace(/COALESCE\([^)]+\)/g, m => m.split(',')[0].replace('COALESCE(', '')).trim()
-      // Drop leftover _new table from a previous failed attempt
-      sqlite.exec(`DROP TABLE IF EXISTS ${table}_new`)
-      sqlite.exec(`
-        CREATE TABLE ${table}_new (${cols});
-        INSERT INTO ${table}_new (${colNames}) SELECT ${insert} FROM ${table};
-        DROP TABLE ${table};
-        ALTER TABLE ${table}_new RENAME TO ${table};
-      `)
-      console.log(`[migrate] rebuilt ${table} — removed UNIQUE constraint`)
-    }
+    const info = sqlite.prepare(`SELECT sql FROM sqlite_master WHERE type='table' AND name=?`).get(table)
+    if (!info?.sql) continue
+    // Check if UNIQUE appears in column definitions (not in PRIMARY KEY)
+    if (!info.sql.match(/\bUNIQUE\b/i)) continue
+    // Get all column names from the existing table
+    const cols = sqlite.prepare(`PRAGMA table_info('${table}')`).all()
+    const colList = cols.map(c => c.name).join(', ')
+    // Build new CREATE TABLE by stripping UNIQUE from the original DDL
+    // Replace the table name reference (handles quotes and backticks)
+    let newDdl = info.sql.replace(
+      new RegExp(`CREATE\\s+TABLE\\s+["'\`]?${table}["'\`]?`, 'i'),
+      `CREATE TABLE "${table}_rebuild"`
+    )
+    // Remove all UNIQUE keywords
+    newDdl = newDdl.replace(/\bUNIQUE\b/gi, '')
+    // Execute as transaction for atomicity
+    sqlite.exec(`DROP TABLE IF EXISTS "${table}_rebuild"`)
+    sqlite.exec(newDdl)
+    sqlite.exec(`INSERT INTO "${table}_rebuild" (${colList}) SELECT ${colList} FROM "${table}"`)
+    sqlite.exec(`DROP TABLE "${table}"`)
+    sqlite.exec(`ALTER TABLE "${table}_rebuild" RENAME TO "${table}"`)
+    console.log(`[migrate] rebuilt ${table} — removed UNIQUE constraint`)
   } catch (e) { console.log(`[migrate] ${table} rebuild skipped:`, e.message) }
+}
+// Also clean up any leftover temp tables from prior failed migrations
+for (const suffix of ['_new', '_rebuild']) {
+  for (const table of ['customers', 'valuations', 'sell_bills']) {
+    try { sqlite.exec(`DROP TABLE IF EXISTS "${table}${suffix}"`) } catch (e) { /* ignore */ }
+  }
 }
 
 // Assign user_id = 1 to existing records that have no user_id set
