@@ -204,7 +204,7 @@ export default function ValuationForm() {
           </div>
         </div>
         {disabled && (
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <Link to={`/sell-bills/new?valuation=${valuation?.id}&customer=${valuation?.customerId}`} className="btn-secondary"><Receipt size={16} /> Create Sales Invoice</Link>
             <button className="btn-primary" type="button" onClick={() => setPrintOpen(true)}><Printer size={16} /> Print Again</button>
           </div>
@@ -320,7 +320,67 @@ export default function ValuationForm() {
             <Plus size={16} /> Add Row
           </button>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile card layout */}
+        <div className="md:hidden divide-y divide-slate-200">
+          {form.items.map((item, index) => (
+            <div key={index} className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-500">Item {index + 1}</span>
+                <button type="button" className="btn-ghost text-red-500" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500">Description</label>
+                <OrnamentInput value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500">Remarks</label>
+                <select className="input text-xs" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
+                  <option value="">— Select —</option>
+                  {REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                </select>
+                {item.remarks === 'Others' && (
+                  <input className="input mt-1 text-xs" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500">Units</label>
+                  <input type="number" className="input" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500">Karat</label>
+                  <input type="number" className="input" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} min="1" max="24" step="0.1" placeholder="22" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500">Gross Wt (gm)</label>
+                  <input type="number" step="0.001" className="input" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500">Net Wt (gm)</label>
+                  <input type="number" step="0.001" className="input" value={item.netWeightGm} onChange={(e) => setItem(index, 'netWeightGm', e.target.value)} disabled={disabled} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-md bg-gold-50 px-3 py-2">
+                <span className="text-xs text-slate-500">Approx Value</span>
+                <span className="font-semibold text-slate-900">{inr(item.approxValueInr)}</span>
+              </div>
+            </div>
+          ))}
+          <div className="bg-slate-50 px-4 py-3 grid grid-cols-2 gap-2 text-xs font-semibold">
+            <span>Units: {totals.units}</span>
+            <span>Gross: {num(totals.gross, 3)}g</span>
+            <span>Net: {num(totals.net, 3)}g</span>
+            <span>Total: {inr(totals.value)}</span>
+          </div>
+        </div>
+
+        {/* Desktop table layout */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-[700px] w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr className="text-[9px] text-slate-400 normal-case tracking-normal">
@@ -403,8 +463,8 @@ export default function ValuationForm() {
       </section>
 
       <section className="card p-5">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <div>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+          <div className="col-span-2 sm:col-span-1">
             <p className="label">Total Market Value</p>
             <p className="rounded-md bg-gold-50 px-3 py-2 text-xl font-semibold text-slate-950">{inr(form.marketValue)}</p>
           </div>

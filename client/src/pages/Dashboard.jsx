@@ -58,7 +58,26 @@ export default function Dashboard() {
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="font-semibold text-slate-950">Recent Valuations</h2>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile card layout */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {(data?.recent || []).map((v) => (
+            <Link key={v.id} to={`/valuations/${v.id}`} className="block px-4 py-3 active:bg-slate-50">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-slate-900 text-sm">{v.valuationNumber}</span>
+                <StatusBadge status={v.status} />
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">{v.customerName} • {v.valuationDate}</p>
+              <p className="text-sm font-semibold text-slate-800 mt-1">{inr(v.marketValue)}</p>
+            </Link>
+          ))}
+          {!loading && (data?.recent || []).length === 0 && (
+            <p className="px-4 py-10 text-center text-sm text-slate-500">No valuations yet.</p>
+          )}
+        </div>
+
+        {/* Desktop table layout */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>

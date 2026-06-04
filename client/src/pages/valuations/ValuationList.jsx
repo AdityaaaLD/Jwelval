@@ -60,7 +60,30 @@ export default function ValuationList() {
       </div>
 
       <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile card layout */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {filtered.map((valuation) => (
+            <Link key={valuation.id} to={`/valuations/${valuation.id}`} className="block px-4 py-3 active:bg-slate-50">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-slate-900 text-sm">{valuation.valuationNumber}</span>
+                <StatusBadge status={valuation.status} />
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">{valuation.customerName} • {valuation.valuationDate}</p>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-slate-400">{valuation.branch || ''}</span>
+                <span className="text-sm font-semibold text-slate-800">{inr(valuation.marketValue)}</span>
+              </div>
+            </Link>
+          ))}
+          {!loading && filtered.length === 0 && (
+            <p className="px-4 py-10 text-center text-sm text-slate-500">
+              {valuations.length === 0 ? 'No valuations created yet.' : 'No matching valuations found.'}
+            </p>
+          )}
+        </div>
+
+        {/* Desktop table layout */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>

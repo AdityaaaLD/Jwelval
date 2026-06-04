@@ -39,7 +39,7 @@ export default function CustomerList() {
 
       <div className="card overflow-hidden">
         <div className="border-b border-slate-200 p-4">
-          <label className="relative block max-w-md">
+          <label className="relative block">
             <Search className="pointer-events-none absolute left-3 top-2.5 text-slate-400" size={18} />
             <input
               className="input pl-10"
@@ -49,7 +49,31 @@ export default function CustomerList() {
             />
           </label>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile card layout */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {filtered.map((customer) => (
+            <div
+              key={customer.id}
+              className="flex items-center justify-between px-4 py-3 active:bg-slate-50"
+              onClick={() => navigate(`/customers/${customer.id}`)}
+            >
+              <div className="min-w-0">
+                <p className="font-medium text-slate-900 truncate">{customer.name}</p>
+                <p className="text-xs text-slate-500">{customer.customerCode} • {customer.mobile || 'No mobile'}</p>
+              </div>
+              <span className="ml-2 shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                {customer.valuationCount || 0}
+              </span>
+            </div>
+          ))}
+          {!loading && filtered.length === 0 && (
+            <p className="px-4 py-10 text-center text-sm text-slate-500">No customers found.</p>
+          )}
+        </div>
+
+        {/* Desktop table layout */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
