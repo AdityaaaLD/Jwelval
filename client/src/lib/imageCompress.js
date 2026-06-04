@@ -4,13 +4,13 @@
  *
  * @param {File|Blob} file - The image file to compress
  * @param {object} opts - Options
- * @param {number} opts.maxWidth - Max width in px (default 1200)
- * @param {number} opts.maxHeight - Max height in px (default 1200)
- * @param {number} opts.quality - JPEG quality 0-1 (default 0.6)
+ * @param {number} opts.maxWidth - Max width in px (default 800)
+ * @param {number} opts.maxHeight - Max height in px (default 800)
+ * @param {number} opts.quality - JPEG quality 0-1 (default 0.45)
  * @returns {Promise<string>} base64 data URL
  */
 export function compressImage(file, opts = {}) {
-  const { maxWidth = 1200, maxHeight = 1200, quality = 0.6 } = opts
+  const { maxWidth = 800, maxHeight = 800, quality = 0.45 } = opts
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -46,7 +46,7 @@ export function compressImage(file, opts = {}) {
  * @returns {Promise<string>} compressed base64 data URL
  */
 export function compressDataUrl(dataUrl, opts = {}) {
-  const { maxWidth = 1200, maxHeight = 1200, quality = 0.6 } = opts
+  const { maxWidth = 800, maxHeight = 800, quality = 0.45 } = opts
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
