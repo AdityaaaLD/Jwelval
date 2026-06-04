@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { ArrowLeft, FileScan, Save, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { scanAadhaarImage } from '../../lib/aadharOcr'
+import { compressImage } from '../../lib/imageCompress'
 
 const emptyCustomer = {
   name: '',
@@ -49,54 +50,46 @@ export default function CustomerForm() {
 
   const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
 
-  const scanFront = (file) => {
+  const scanFront = async (file) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const image = reader.result
-      setForm((current) => ({ ...current, aadharPhoto: image }))
-      setScanningFront(true)
-      try {
-        const parsed = await scanAadhaarImage(image, 'front')
-        setOcrTextFront(parsed.rawText)
-        setForm((current) => ({
-          ...current,
-          name: parsed.name || current.name,
-          aadharNumber: parsed.aadharNumber || current.aadharNumber,
-          mobile: parsed.mobile || current.mobile,
-        }))
-        toast.success('Front side scanned. Please verify fields.')
-      } catch (error) {
-        toast.error('Could not read front side details.')
-      } finally {
-        setScanningFront(false)
-      }
+    const compressed = await compressImage(file)
+    setForm((current) => ({ ...current, aadharPhoto: compressed }))
+    setScanningFront(true)
+    try {
+      const parsed = await scanAadhaarImage(compressed, 'front')
+      setOcrTextFront(parsed.rawText)
+      setForm((current) => ({
+        ...current,
+        name: parsed.name || current.name,
+        aadharNumber: parsed.aadharNumber || current.aadharNumber,
+        mobile: parsed.mobile || current.mobile,
+      }))
+      toast.success('Front side scanned. Please verify fields.')
+    } catch (error) {
+      toast.error('Could not read front side details.')
+    } finally {
+      setScanningFront(false)
     }
-    reader.readAsDataURL(file)
   }
 
-  const scanBack = (file) => {
+  const scanBack = async (file) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const image = reader.result
-      setForm((current) => ({ ...current, aadharPhotoBack: image }))
-      setScanningBack(true)
-      try {
-        const parsed = await scanAadhaarImage(image, 'back')
-        setOcrTextBack(parsed.rawText)
-        setForm((current) => ({
-          ...current,
-          address: parsed.address || current.address,
-        }))
-        toast.success('Back side scanned. Please verify address.')
-      } catch (error) {
-        toast.error('Could not read back side details.')
-      } finally {
-        setScanningBack(false)
-      }
+    const compressed = await compressImage(file)
+    setForm((current) => ({ ...current, aadharPhotoBack: compressed }))
+    setScanningBack(true)
+    try {
+      const parsed = await scanAadhaarImage(compressed, 'back')
+      setOcrTextBack(parsed.rawText)
+      setForm((current) => ({
+        ...current,
+        address: parsed.address || current.address,
+      }))
+      toast.success('Back side scanned. Please verify address.')
+    } catch (error) {
+      toast.error('Could not read back side details.')
+    } finally {
+      setScanningBack(false)
     }
-    reader.readAsDataURL(file)
   }
 
   const submit = async (event) => {

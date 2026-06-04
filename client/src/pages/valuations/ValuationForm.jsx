@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { ArrowLeft, Camera, Copy, Eye, Plus, Printer, Receipt, Save, Trash2, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { inr, num } from '../../lib/format'
+import { compressImage } from '../../lib/imageCompress'
 import { useValuationStore, REMARK_OPTIONS } from '../../store/valuationStore'
 import PrintModal from '../../components/print/PrintModal'
 
@@ -133,18 +134,16 @@ export default function ValuationForm() {
     }
   }
 
-  const loadPhoto = (field, file) => {
+  const loadPhoto = async (field, file) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setField(field, reader.result)
-    reader.readAsDataURL(file)
+    const compressed = await compressImage(file)
+    setField(field, compressed)
   }
 
-  const addOrnamentPhoto = (file) => {
+  const addOrnamentPhoto = async (file) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setField('ornamentPhotos', [...(form.ornamentPhotos || []), reader.result])
-    reader.readAsDataURL(file)
+    const compressed = await compressImage(file)
+    setField('ornamentPhotos', [...(form.ornamentPhotos || []), compressed])
   }
 
   const applyPreset = async (presetId) => {
