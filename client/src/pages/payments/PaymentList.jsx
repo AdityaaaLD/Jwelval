@@ -46,13 +46,13 @@ export default function PaymentList() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between"><div><h1 className="text-2xl font-semibold text-slate-950">Payments</h1><p className="text-sm text-slate-500">Filter and export payment receipts.</p></div><button className="btn-secondary" onClick={exportCsv}><Download size={16} /> Export CSV</button></div>
-      <div className="card grid gap-3 p-4 md:grid-cols-5">
-        <select className="input" value={filters.customerId} onChange={(e) => setFilters({ ...filters, customerId: e.target.value })}><option value="">All customers</option>{customers.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>
-        <select className="input" value={filters.mode} onChange={(e) => setFilters({ ...filters, mode: e.target.value })}><option value="">All modes</option><option value="RECEIVABLE_FROM_BANK">Receivable from bank</option><option value="CASH">Cash</option><option value="UPI">UPI</option></select>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-semibold text-slate-950">Payments</h1><p className="text-sm text-slate-500">Filter and export payment receipts.</p></div><button className="btn-secondary" onClick={exportCsv}><Download size={16} /> Export CSV</button></div>
+      <div className="card grid grid-cols-2 gap-3 p-4 md:grid-cols-5">
+        <select className="input col-span-2 md:col-span-1" value={filters.customerId} onChange={(e) => setFilters({ ...filters, customerId: e.target.value })}><option value="">All customers</option>{customers.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>
+        <select className="input col-span-2 md:col-span-1" value={filters.mode} onChange={(e) => setFilters({ ...filters, mode: e.target.value })}><option value="">All modes</option><option value="RECEIVABLE_FROM_BANK">Receivable from bank</option><option value="CASH">Cash</option><option value="UPI">UPI</option></select>
         <input type="date" className="input" value={filters.dateFrom} onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })} />
         <input type="date" className="input" value={filters.dateTo} onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })} />
-        <button className="btn-secondary" onClick={() => setFilters({ customerId: '', mode: '', dateFrom: '', dateTo: '' })}>Clear</button>
+        <button className="btn-secondary col-span-2 md:col-span-1" onClick={() => setFilters({ customerId: '', mode: '', dateFrom: '', dateTo: '' })}>Clear</button>
       </div>
       <div className="card overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">

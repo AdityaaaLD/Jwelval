@@ -22,7 +22,7 @@
   .btn-ghost     { @apply btn text-slate-600 hover:bg-slate-100; }
 
   .card  { @apply bg-white rounded-lg shadow-sm border border-slate-200; }
-  .input { @apply block w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500; }
+  .input { @apply block w-full min-w-0 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500; }
   .label { @apply block text-sm font-medium text-slate-700 mb-1; }
 
   .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
@@ -30,6 +30,10 @@
   .badge-printed { @apply badge bg-green-100 text-green-800; }
   .badge-locked  { @apply badge bg-red-100 text-red-800; }
 }
+
+/* Date inputs: prevent overflow on mobile */
+input[type="date"] { max-width: 100%; -webkit-appearance: none; appearance: none; }
+input[type="date"]::-webkit-calendar-picker-indicator { opacity: 0.6; }
 
 @layer utilities {
   .animate-rise-in {

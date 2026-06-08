@@ -39,18 +39,18 @@ export default function PaymentSection({ valuation }) {
       <div className="border-b border-slate-200 px-5 py-4">
         <h2 className="font-semibold text-slate-950">Payments</h2>
       </div>
-      <form onSubmit={submit} className="grid gap-3 p-5 md:grid-cols-6">
-        <input className="input md:col-span-2" value={valuation.valuationNumber} readOnly />
+      <form onSubmit={submit} className="grid grid-cols-2 gap-3 p-5 md:grid-cols-6">
+        <input className="input col-span-2 md:col-span-2" value={valuation.valuationNumber} readOnly />
         <input type="date" className="input" value={form.paymentDate} onChange={(e) => setForm({ ...form, paymentDate: e.target.value })} required />
         <input type="number" className="input" placeholder="Amount" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-        <select className="input" value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}>
+        <select className="input col-span-2 md:col-span-1" value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}>
           <option value="RECEIVABLE_FROM_BANK">Receivable from bank</option>
           <option value="CASH">Cash</option>
           <option value="UPI">UPI</option>
         </select>
-        <input className="input" placeholder="Reference" value={form.referenceNumber} onChange={(e) => setForm({ ...form, referenceNumber: e.target.value })} />
-        <textarea className="input md:col-span-5" placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-        <button className="btn-primary">Add Payment</button>
+        <input className="input col-span-2 md:col-span-1" placeholder="Reference" value={form.referenceNumber} onChange={(e) => setForm({ ...form, referenceNumber: e.target.value })} />
+        <textarea className="input col-span-2 md:col-span-5" placeholder="Notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+        <button className="btn-primary col-span-2 md:col-span-1">Add Payment</button>
       </form>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">

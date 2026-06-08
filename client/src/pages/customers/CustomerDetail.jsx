@@ -70,7 +70,29 @@ export default function CustomerDetail() {
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="font-semibold text-slate-950">Valuation History</h2>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile card layout */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {customer.valuations.map((valuation) => (
+            <Link key={valuation.id} to={`/valuations/${valuation.id}`} className="block px-4 py-3 active:bg-slate-50">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-slate-900 text-sm">{valuation.valuationNumber}</span>
+                <StatusBadge status={valuation.status} />
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">{valuation.valuationDate} • {valuation.formatType}</p>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-slate-400">Loan: {inr(valuation.loanAmount)}</span>
+                <span className="text-sm font-semibold text-slate-800">{inr(valuation.marketValue)}</span>
+              </div>
+            </Link>
+          ))}
+          {customer.valuations.length === 0 && (
+            <p className="px-4 py-10 text-center text-sm text-slate-500">No valuation history yet.</p>
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>

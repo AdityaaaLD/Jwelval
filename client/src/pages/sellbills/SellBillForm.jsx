@@ -116,13 +116,13 @@ export default function SellBillForm() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Link to="/sell-bills" className="btn-secondary"><ArrowLeft size={16} /> Back</Link>
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-950">{bill?.billNumber || 'New Sell Bill'}</h1>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl font-semibold text-slate-950 truncate">{bill?.billNumber || 'New Sell Bill'}</h1>
           <p className="text-sm text-slate-500">Simple jewellery sell bill.</p>
         </div>
-        {bill && <button className="btn-primary ml-auto" onClick={() => setPrintOpen(true)}><Printer size={16} /> Print</button>}
+        {bill && <button className="btn-primary" onClick={() => setPrintOpen(true)}><Printer size={16} /> Print</button>}
       </div>
 
       <section className="card p-5">
