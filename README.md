@@ -80,7 +80,25 @@ Create `server/.env` if needed:
 PORT=3001
 NODE_ENV=development
 DB_PATH=./data/jewel_val.db
+
+# Mail provider: auto | sendgrid | ses | stub
+MAIL_PROVIDER=sendgrid
+EMAIL_FROM=no-reply@jwelval.com
+
+# SendGrid (use now)
+SENDGRID_API_KEY=your_sendgrid_api_key
+
+# AWS SES (switch later by changing MAIL_PROVIDER=ses)
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
 ```
+
+Mailer behavior:
+- `MAIL_PROVIDER=sendgrid`: force SendGrid
+- `MAIL_PROVIDER=ses`: force AWS SES
+- `MAIL_PROVIDER=stub`: local console logging only
+- `MAIL_PROVIDER=auto`: tries SendGrid, then SES, then stub fallback
 
 ## Demo Data
 

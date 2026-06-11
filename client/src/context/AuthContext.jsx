@@ -24,15 +24,24 @@ export function AuthProvider({ children }) {
     loading,
     login: async (email, password) => {
       const res = await api.auth.login({ email, password })
-      localStorage.setItem('jewelval_token', res.token)
-      setUser(res.user)
-      return res.user
+      if (res?.token && res?.user) {
+        localStorage.setItem('jewelval_token', res.token)
+        setUser(res.user)
+      }
+      return res
     },
     signup: async (name, email, password) => {
       const res = await api.auth.signup({ name, email, password })
-      localStorage.setItem('jewelval_token', res.token)
-      setUser(res.user)
-      return res.user
+      if (res?.token && res?.user) {
+        localStorage.setItem('jewelval_token', res.token)
+        setUser(res.user)
+      }
+      return res
+    },
+    setSession: (authPayload) => {
+      if (!authPayload?.token || !authPayload?.user) return
+      localStorage.setItem('jewelval_token', authPayload.token)
+      setUser(authPayload.user)
     },
     logout: async () => {
       try { await api.auth.logout() } catch {}

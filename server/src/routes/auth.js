@@ -3,16 +3,151 @@ import crypto from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { sqlite } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.js'
+import { sendEmail } from '../mailer.js'
 
 const router = Router()
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
+const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10)
+const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5)
+const OTP_MAX_SENDS_PER_HOUR = Number(process.env.OTP_MAX_SENDS_PER_HOUR || 3)
+const ALLOWED_OTP_PURPOSES = new Set(['LOGIN', 'VERIFY_EMAIL', 'RESET_PASSWORD'])
 
 // Legacy SHA-256 hash for migrating old passwords
 const sha256 = (password) => crypto.createHash('sha256').update(password).digest('hex')
 
-// Public signup — only allowed if NO users exist yet (first user becomes admin/owner)
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
+const nowIso = () => new Date().toISOString()
+const maskEmail = (email) => {
+  const [name, domain] = String(email || '').split('@')
+  if (!name || !domain) return email
+  if (name.length <= 2) return `${name[0] || ''}***@${domain}`
+  return `${name.slice(0, 2)}***@${domain}`
+}
+const buildSafeUser = (user) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role || 'user',
+  plan: user.plan,
+  status: user.status || 'ACTIVE',
+  emailVerified: Boolean(user.email_verified),
+})
+
+function createSessionForUser(user, at = nowIso()) {
+  const token = crypto.randomBytes(24).toString('hex')
+  const safeUser = buildSafeUser(user)
+  sqlite.prepare(
+    'INSERT INTO sessions (token, user_id, user_json, created_at) VALUES (?, ?, ?, ?)'
+  ).run(token, user.id, JSON.stringify(safeUser), at)
+  return { token, user: safeUser }
+}
+
+function generateOtp() {
+  return String(Math.floor(100000 + Math.random() * 900000))
+}
+
+function hashOtp(otp) {
+  return sha256(`otp:${otp}`)
+}
+
+function validateOtpPurpose(purpose) {
+  return ALLOWED_OTP_PURPOSES.has(purpose)
+}
+
+function ensureOtpRateLimit(userId, purpose) {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const sentCount = sqlite.prepare(
+    'SELECT COUNT(*) AS n FROM otp_tokens WHERE user_id = ? AND purpose = ? AND created_at >= ?'
+  ).get(userId, purpose, oneHourAgo).n
+  if (sentCount >= OTP_MAX_SENDS_PER_HOUR) {
+    const error = new Error('Too many OTP requests. Please try again later.')
+    error.status = 429
+    error.code = 'OTP_RATE_LIMIT'
+    throw error
+  }
+}
+
+async function sendOtpForPurpose(user, purpose) {
+  ensureOtpRateLimit(user.id, purpose)
+
+  const otp = generateOtp()
+  const createdAt = nowIso()
+  const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000).toISOString()
+
+  sqlite.prepare(
+    'INSERT INTO otp_tokens (user_id, purpose, otp_hash, expires_at, attempts, max_attempts, created_at, consumed_at) VALUES (?, ?, ?, ?, 0, ?, ?, NULL)'
+  ).run(user.id, purpose, hashOtp(otp), expiresAt, OTP_MAX_ATTEMPTS, createdAt)
+
+  const subject = purpose === 'RESET_PASSWORD'
+    ? 'JewelVal password reset OTP'
+    : 'JewelVal verification OTP'
+  const text = `Your JewelVal OTP is ${otp}. It will expire in ${OTP_TTL_MINUTES} minutes. If you did not request this, you can ignore this email.`
+
+  await sendEmail({ to: user.email, subject, text })
+}
+
+function verifyOtp(userId, purpose, otp) {
+  const token = sqlite.prepare(
+    `SELECT id, otp_hash, expires_at, attempts, max_attempts
+     FROM otp_tokens
+     WHERE user_id = ? AND purpose = ? AND consumed_at IS NULL
+     ORDER BY created_at DESC
+     LIMIT 1`
+  ).get(userId, purpose)
+
+  if (!token) {
+    return { ok: false, code: 'OTP_NOT_FOUND', message: 'No active OTP found. Please request a new OTP.' }
+  }
+  if (token.attempts >= token.max_attempts) {
+    return { ok: false, code: 'OTP_TOO_MANY_ATTEMPTS', message: 'Too many incorrect attempts. Request a new OTP.' }
+  }
+  if (new Date(token.expires_at).getTime() < Date.now()) {
+    sqlite.prepare('UPDATE otp_tokens SET consumed_at = ? WHERE id = ?').run(nowIso(), token.id)
+    return { ok: false, code: 'OTP_EXPIRED', message: 'OTP expired. Please request a new OTP.' }
+  }
+
+  const matched = token.otp_hash === hashOtp(otp)
+  if (!matched) {
+    sqlite.prepare('UPDATE otp_tokens SET attempts = attempts + 1 WHERE id = ?').run(token.id)
+    return { ok: false, code: 'OTP_INVALID', message: 'Invalid OTP.' }
+  }
+
+  sqlite.prepare('UPDATE otp_tokens SET consumed_at = ? WHERE id = ?').run(nowIso(), token.id)
+  return { ok: true }
+}
+
+function issueResetToken(userId) {
+  const raw = crypto.randomBytes(24).toString('hex')
+  const createdAt = nowIso()
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
+  sqlite.prepare(
+    'INSERT INTO otp_tokens (user_id, purpose, otp_hash, expires_at, attempts, max_attempts, created_at, consumed_at) VALUES (?, ?, ?, ?, 0, 1, ?, NULL)'
+  ).run(userId, 'RESET_SESSION', hashOtp(raw), expiresAt, createdAt)
+  return raw
+}
+
+function verifyResetToken(userId, token) {
+  const row = sqlite.prepare(
+    `SELECT id, otp_hash, expires_at
+     FROM otp_tokens
+     WHERE user_id = ? AND purpose = 'RESET_SESSION' AND consumed_at IS NULL
+     ORDER BY created_at DESC
+     LIMIT 1`
+  ).get(userId)
+  if (!row) return false
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    sqlite.prepare('UPDATE otp_tokens SET consumed_at = ? WHERE id = ?').run(nowIso(), row.id)
+    return false
+  }
+  if (row.otp_hash !== hashOtp(token)) return false
+  sqlite.prepare('UPDATE otp_tokens SET consumed_at = ? WHERE id = ?').run(nowIso(), row.id)
+  return true
+}
+
+// Public signup — first user becomes admin, all subsequent users stay pending until admin approval
 router.post('/signup', async (req, res) => {
-  const { name, email, password } = req.body
+  const { name, password } = req.body
+  const email = normalizeEmail(req.body.email)
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'VALIDATION', message: 'Name, email and password are required.' })
   }
@@ -20,48 +155,61 @@ router.post('/signup', async (req, res) => {
     return res.status(400).json({ error: 'VALIDATION', message: 'Password must be at least 6 characters.' })
   }
 
-  // Check if any users exist — if yes, public signup is disabled
+  // First user becomes admin and can login immediately.
   const userCount = sqlite.prepare('SELECT COUNT(*) AS n FROM users').get().n
-  if (userCount > 0) {
-    return res.status(403).json({ error: 'SIGNUP_DISABLED', message: 'Public signup is disabled. Contact the administrator to get an account.' })
-  }
 
   const existing = sqlite.prepare('SELECT id FROM users WHERE email = ?').get(email)
   if (existing) {
     return res.status(409).json({ error: 'EMAIL_EXISTS', message: 'An account with this email already exists.' })
   }
+
   const passwordHash = await bcrypt.hash(password, 10)
-  const now = new Date().toISOString()
-  // First user gets 'admin' role
-  const result = sqlite.prepare(
-    'INSERT INTO users (name, email, password_hash, role, plan, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(name, email, passwordHash, 'admin', 'PRO', now)
-  const userId = result.lastInsertRowid
+  const now = nowIso()
 
-  // Auto-login after signup
-  const token = crypto.randomBytes(24).toString('hex')
-  const safeUser = { id: userId, name, email, role: 'admin', plan: 'PRO' }
+  if (userCount === 0) {
+    const result = sqlite.prepare(
+      `INSERT INTO users (name, email, password_hash, role, plan, created_at, status, email_verified, approved_at)
+       VALUES (?, ?, ?, 'admin', 'PRO', ?, 'ACTIVE', 1, ?)`
+    ).run(name.trim(), email, passwordHash, now, now)
+    const userId = Number(result.lastInsertRowid)
+    const user = { id: userId, name: name.trim(), email, role: 'admin', plan: 'PRO', status: 'ACTIVE', email_verified: 1 }
+    seedDefaultsForUser(userId, now)
+    const session = createSessionForUser(user, now)
+    return res.status(201).json(session)
+  }
+
   sqlite.prepare(
-    'INSERT INTO sessions (token, user_id, user_json, created_at) VALUES (?, ?, ?, ?)'
-  ).run(token, userId, JSON.stringify(safeUser), now)
+    `INSERT INTO users (name, email, password_hash, role, plan, created_at, status, email_verified)
+     VALUES (?, ?, ?, 'user', 'PRO', ?, 'PENDING', 0)`
+  ).run(name.trim(), email, passwordHash, now)
 
-  // Seed default data for the new user
-  seedDefaultsForUser(userId, now)
-
-  res.status(201).json({ token, user: safeUser })
+  res.status(201).json({
+    pendingApproval: true,
+    message: 'Signup successful. Your account is pending admin approval.',
+  })
 })
 
 // Check if signup is available (no users yet)
 router.get('/signup-status', (_req, res) => {
   const userCount = sqlite.prepare('SELECT COUNT(*) AS n FROM users').get().n
-  res.json({ signupOpen: userCount === 0 })
+  res.json({ signupOpen: true, firstUserMode: userCount === 0 })
 })
 
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body
-  const user = sqlite.prepare('SELECT id, name, email, role, plan, password_hash FROM users WHERE email = ?').get(email)
+  const email = normalizeEmail(req.body.email)
+  const { password } = req.body
+  const user = sqlite.prepare(
+    'SELECT id, name, email, role, plan, password_hash, status, email_verified FROM users WHERE email = ?'
+  ).get(email)
+
   if (!user) {
     return res.status(401).json({ error: 'INVALID_LOGIN', message: 'Invalid email or password.' })
+  }
+  if (user.status === 'PENDING') {
+    return res.status(403).json({ error: 'ACCOUNT_PENDING', message: 'Your account is awaiting admin approval.' })
+  }
+  if (user.status === 'REJECTED') {
+    return res.status(403).json({ error: 'ACCOUNT_REJECTED', message: 'Your account request was rejected. Contact admin.' })
   }
 
   // Support both bcrypt and legacy SHA-256 hashes (auto-upgrade on login)
@@ -81,12 +229,114 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ error: 'INVALID_LOGIN', message: 'Invalid email or password.' })
   }
 
-  const token = crypto.randomBytes(24).toString('hex')
-  const safeUser = { id: user.id, name: user.name, email: user.email, role: user.role || 'user', plan: user.plan }
-  sqlite.prepare(
-    'INSERT INTO sessions (token, user_id, user_json, created_at) VALUES (?, ?, ?, ?)'
-  ).run(token, user.id, JSON.stringify(safeUser), new Date().toISOString())
-  res.json({ token, user: safeUser })
+  if (!user.email_verified) {
+    return res.status(403).json({
+      error: 'EMAIL_NOT_VERIFIED',
+      message: `Email not verified. Request OTP for ${maskEmail(user.email)} and verify your email first.`,
+    })
+  }
+
+  try {
+    await sendOtpForPurpose(user, 'LOGIN')
+  } catch (error) {
+    return res.status(error.status || 500).json({ error: error.code || 'OTP_SEND_FAILED', message: error.message })
+  }
+
+  res.json({ otpRequired: true, purpose: 'LOGIN', email: user.email, message: 'OTP sent to your email.' })
+})
+
+router.post('/request-otp', async (req, res) => {
+  const email = normalizeEmail(req.body.email)
+  const purpose = String(req.body.purpose || '')
+  if (!email || !validateOtpPurpose(purpose)) {
+    return res.status(400).json({ error: 'VALIDATION', message: 'Valid email and purpose are required.' })
+  }
+
+  const user = sqlite.prepare('SELECT id, email, status, email_verified FROM users WHERE email = ?').get(email)
+  if (!user) {
+    if (purpose === 'RESET_PASSWORD') {
+      return res.json({ sent: true, message: 'If account exists, OTP has been sent.' })
+    }
+    return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'User not found.' })
+  }
+
+  if (user.status !== 'ACTIVE') {
+    return res.status(403).json({ error: 'ACCOUNT_NOT_ACTIVE', message: 'Account is not active.' })
+  }
+  if (purpose === 'VERIFY_EMAIL' && user.email_verified) {
+    return res.json({ sent: false, message: 'Email is already verified.' })
+  }
+
+  try {
+    await sendOtpForPurpose(user, purpose)
+    res.json({ sent: true, expiresInMinutes: OTP_TTL_MINUTES })
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.code || 'OTP_SEND_FAILED', message: error.message })
+  }
+})
+
+router.post('/verify-otp', (req, res) => {
+  const email = normalizeEmail(req.body.email)
+  const purpose = String(req.body.purpose || '')
+  const otp = String(req.body.otp || '').trim()
+
+  if (!email || !validateOtpPurpose(purpose) || otp.length !== 6) {
+    return res.status(400).json({ error: 'VALIDATION', message: 'Email, purpose and 6-digit OTP are required.' })
+  }
+
+  const user = sqlite.prepare(
+    'SELECT id, name, email, role, plan, status, email_verified FROM users WHERE email = ?'
+  ).get(email)
+  if (!user) {
+    return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'User not found.' })
+  }
+
+  const verification = verifyOtp(user.id, purpose, otp)
+  if (!verification.ok) {
+    return res.status(400).json({ error: verification.code, message: verification.message })
+  }
+
+  if (purpose === 'VERIFY_EMAIL') {
+    sqlite.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(user.id)
+    return res.json({ verified: true, message: 'Email verified successfully.' })
+  }
+
+  if (purpose === 'LOGIN') {
+    if (user.status !== 'ACTIVE') {
+      return res.status(403).json({ error: 'ACCOUNT_NOT_ACTIVE', message: 'Account is not active.' })
+    }
+    if (!user.email_verified) {
+      return res.status(403).json({ error: 'EMAIL_NOT_VERIFIED', message: 'Please verify your email first.' })
+    }
+    const session = createSessionForUser(user)
+    return res.json(session)
+  }
+
+  const resetToken = issueResetToken(user.id)
+  res.json({ verified: true, resetToken, expiresInMinutes: 15 })
+})
+
+router.post('/reset-password', async (req, res) => {
+  const email = normalizeEmail(req.body.email)
+  const resetToken = String(req.body.resetToken || '')
+  const newPassword = String(req.body.newPassword || '')
+
+  if (!email || !resetToken || newPassword.length < 6) {
+    return res.status(400).json({ error: 'VALIDATION', message: 'Valid email, reset token and password are required.' })
+  }
+
+  const user = sqlite.prepare('SELECT id FROM users WHERE email = ?').get(email)
+  if (!user) {
+    return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'User not found.' })
+  }
+  if (!verifyResetToken(user.id, resetToken)) {
+    return res.status(400).json({ error: 'INVALID_RESET_TOKEN', message: 'Reset token is invalid or expired.' })
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10)
+  sqlite.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(passwordHash, user.id)
+  sqlite.prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id)
+  res.json({ ok: true, message: 'Password reset successful. Please login again.' })
 })
 
 router.get('/me', (req, res) => {
@@ -101,7 +351,17 @@ router.get('/me', (req, res) => {
     return res.status(401).json({ error: 'SESSION_EXPIRED', message: 'Session expired. Please login again.' })
   }
 
-  res.json({ user: JSON.parse(row.user_json) })
+  const user = sqlite.prepare(
+    'SELECT id, name, email, role, plan, status, email_verified FROM users WHERE id = ?'
+  ).get(row.user_id)
+  if (!user || user.status !== 'ACTIVE') {
+    sqlite.prepare('DELETE FROM sessions WHERE token = ?').run(token)
+    return res.status(401).json({ error: 'UNAUTHENTICATED', message: 'Please login.' })
+  }
+
+  const safeUser = buildSafeUser(user)
+  sqlite.prepare('UPDATE sessions SET user_json = ? WHERE token = ?').run(JSON.stringify(safeUser), token)
+  res.json({ user: safeUser })
 })
 
 router.post('/logout', (req, res) => {
@@ -158,21 +418,23 @@ router.post('/create-user', requireAuth, async (req, res) => {
   if (password.length < 6) {
     return res.status(400).json({ error: 'VALIDATION', message: 'Password must be at least 6 characters.' })
   }
-  const existing = sqlite.prepare('SELECT id FROM users WHERE email = ?').get(email)
+  const normalizedEmail = normalizeEmail(email)
+  const existing = sqlite.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail)
   if (existing) {
     return res.status(409).json({ error: 'EMAIL_EXISTS', message: 'An account with this email already exists.' })
   }
   const passwordHash = await bcrypt.hash(password, 10)
   const now = new Date().toISOString()
   const result = sqlite.prepare(
-    'INSERT INTO users (name, email, password_hash, role, plan, created_at) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(name, email, passwordHash, 'user', 'PRO', now)
+    `INSERT INTO users (name, email, password_hash, role, plan, created_at, status, email_verified, approved_by, approved_at)
+     VALUES (?, ?, ?, 'user', 'PRO', ?, 'ACTIVE', 0, ?, ?)`
+  ).run(name, normalizedEmail, passwordHash, now, req.user.id, now)
   const userId = Number(result.lastInsertRowid)
 
   // Seed default data for the new user
   seedDefaultsForUser(userId, now)
 
-  res.status(201).json({ id: userId, name, email, role: 'user', plan: 'PRO' })
+  res.status(201).json({ id: userId, name, email: normalizedEmail, role: 'user', plan: 'PRO', status: 'ACTIVE', emailVerified: false })
 })
 
 // Admin-only: list all users
@@ -180,8 +442,69 @@ router.get('/users', requireAuth, (req, res) => {
   if (req.user.role !== 'admin') {
     return res.status(403).json({ error: 'FORBIDDEN', message: 'Only administrators can view users.' })
   }
-  const users = sqlite.prepare('SELECT id, name, email, role, plan, created_at AS createdAt FROM users ORDER BY id').all()
+  const users = sqlite.prepare(
+    `SELECT id, name, email, role, plan, status, email_verified AS emailVerified,
+            approved_at AS approvedAt, created_at AS createdAt
+     FROM users
+     ORDER BY id`
+  ).all()
   res.json(users)
+})
+
+router.post('/users/:id/approve', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'FORBIDDEN', message: 'Only administrators can approve users.' })
+  }
+  const id = parseInt(req.params.id, 10)
+  const user = sqlite.prepare('SELECT id, email, status, email_verified FROM users WHERE id = ?').get(id)
+  if (!user) return res.status(404).json({ error: 'NOT_FOUND', message: 'User not found.' })
+
+  sqlite.prepare('UPDATE users SET status = ?, approved_by = ?, approved_at = ? WHERE id = ?').run('ACTIVE', req.user.id, nowIso(), id)
+
+  if (!user.email_verified) {
+    try {
+      await sendOtpForPurpose({ id: user.id, email: user.email }, 'VERIFY_EMAIL')
+    } catch (error) {
+      return res.status(error.status || 500).json({ error: error.code || 'OTP_SEND_FAILED', message: error.message })
+    }
+  }
+
+  res.json({ ok: true, message: 'User approved successfully.' })
+})
+
+router.post('/users/:id/reject', requireAuth, (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'FORBIDDEN', message: 'Only administrators can reject users.' })
+  }
+  const id = parseInt(req.params.id, 10)
+  const user = sqlite.prepare('SELECT id FROM users WHERE id = ?').get(id)
+  if (!user) return res.status(404).json({ error: 'NOT_FOUND', message: 'User not found.' })
+
+  sqlite.prepare('UPDATE users SET status = ?, approved_by = ?, approved_at = ? WHERE id = ?').run('REJECTED', req.user.id, nowIso(), id)
+  sqlite.prepare('DELETE FROM sessions WHERE user_id = ?').run(id)
+  res.json({ ok: true, message: 'User rejected.' })
+})
+
+router.post('/users/:id/send-verification-otp', requireAuth, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'FORBIDDEN', message: 'Only administrators can send verification OTP.' })
+  }
+  const id = parseInt(req.params.id, 10)
+  const user = sqlite.prepare('SELECT id, email, status, email_verified FROM users WHERE id = ?').get(id)
+  if (!user) return res.status(404).json({ error: 'NOT_FOUND', message: 'User not found.' })
+  if (user.status !== 'ACTIVE') {
+    return res.status(400).json({ error: 'ACCOUNT_NOT_ACTIVE', message: 'User is not active.' })
+  }
+  if (user.email_verified) {
+    return res.status(400).json({ error: 'ALREADY_VERIFIED', message: 'Email already verified.' })
+  }
+
+  try {
+    await sendOtpForPurpose(user, 'VERIFY_EMAIL')
+    res.json({ ok: true, message: 'Verification OTP sent.' })
+  } catch (error) {
+    res.status(error.status || 500).json({ error: error.code || 'OTP_SEND_FAILED', message: error.message })
+  }
 })
 
 // Admin-only: delete a user

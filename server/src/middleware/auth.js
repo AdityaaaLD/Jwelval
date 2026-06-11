@@ -20,7 +20,24 @@ export function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'SESSION_EXPIRED', message: 'Session expired. Please login again.' })
   }
 
-  req.user = JSON.parse(row.user_json)
-  req.user.id = row.user_id
+  const user = sqlite.prepare(
+    'SELECT id, name, email, role, plan, status, email_verified FROM users WHERE id = ?'
+  ).get(row.user_id)
+  if (!user || user.status !== 'ACTIVE') {
+    sqlite.prepare('DELETE FROM sessions WHERE token = ?').run(token)
+    return res.status(401).json({ error: 'UNAUTHENTICATED', message: 'Please login.' })
+  }
+
+  const safeUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role || 'user',
+    plan: user.plan,
+    status: user.status,
+    emailVerified: Boolean(user.email_verified),
+  }
+  sqlite.prepare('UPDATE sessions SET user_json = ? WHERE token = ?').run(JSON.stringify(safeUser), token)
+  req.user = safeUser
   next()
 }

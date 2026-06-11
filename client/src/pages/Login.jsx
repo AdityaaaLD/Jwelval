@@ -9,10 +9,13 @@ import { api } from '../lib/api'
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, signup } = useAuth()
-  const [mode, setMode] = useState('login') // 'login' | 'signup'
+  const { login, signup, setSession } = useAuth()
+  const [mode, setMode] = useState('login') // 'login' | 'signup' | 'forgot' | 'verify'
+  const [step, setStep] = useState('credentials') // 'credentials' | 'otp' | 'reset'
   const [signupOpen, setSignupOpen] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', otp: '', newPassword: '' })
+  const [otpPurpose, setOtpPurpose] = useState('LOGIN')
+  const [resetToken, setResetToken] = useState('')
   const [loading, setLoading] = useState(false)
   const [splash, setSplash] = useState(false)
   const from = location.state?.from || '/dashboard'
@@ -20,9 +23,25 @@ export default function Login() {
   useEffect(() => {
     api.auth.signupStatus().then((res) => {
       setSignupOpen(res.signupOpen)
-      if (res.signupOpen) setMode('signup')
+      if (res.firstUserMode) setMode('signup')
     }).catch(() => {})
   }, [])
+
+  const resetToLogin = () => {
+    setMode('login')
+    setStep('credentials')
+    setOtpPurpose('LOGIN')
+    setResetToken('')
+    setForm((prev) => ({ ...prev, otp: '', newPassword: '' }))
+  }
+
+  const startOtpFlow = async (purpose) => {
+    await api.auth.requestOtp({ email: form.email, purpose })
+    setOtpPurpose(purpose)
+    setStep('otp')
+    setForm((prev) => ({ ...prev, otp: '' }))
+    toast.success('OTP sent to your email.')
+  }
 
   const submit = async (event) => {
     event.preventDefault()
@@ -31,14 +50,92 @@ export default function Login() {
       if (mode === 'signup') {
         if (!form.name.trim()) { toast.error('Name is required.'); setLoading(false); return }
         if (form.password.length < 6) { toast.error('Password must be at least 6 characters.'); setLoading(false); return }
-        await signup(form.name.trim(), form.email, form.password)
-      } else {
-        await login(form.email, form.password)
+        const result = await signup(form.name.trim(), form.email, form.password)
+        if (result?.pendingApproval) {
+          toast.success(result.message || 'Signup request submitted. Awaiting admin approval.')
+          setMode('login')
+          setStep('credentials')
+          setForm({ name: '', email: form.email, password: '', otp: '', newPassword: '' })
+          setLoading(false)
+          return
+        }
+        setSplash(true)
+        setTimeout(() => navigate(from, { replace: true }), 1800)
+        return
       }
+
+      if (mode === 'login') {
+        if (step === 'credentials') {
+          const result = await login(form.email, form.password)
+          if (result?.otpRequired) {
+            setOtpPurpose('LOGIN')
+            setStep('otp')
+            setForm((prev) => ({ ...prev, otp: '' }))
+            toast.success('OTP sent to your email.')
+            setLoading(false)
+            return
+          }
+        } else {
+          const authPayload = await api.auth.verifyOtp({ email: form.email, purpose: 'LOGIN', otp: form.otp })
+          setSession(authPayload)
+          setSplash(true)
+          setTimeout(() => navigate(from, { replace: true }), 1800)
+          return
+        }
+      }
+
+      if (mode === 'verify') {
+        if (step === 'credentials') {
+          await startOtpFlow('VERIFY_EMAIL')
+          setLoading(false)
+          return
+        }
+        await api.auth.verifyOtp({ email: form.email, purpose: 'VERIFY_EMAIL', otp: form.otp })
+        toast.success('Email verified. You can login now.')
+        resetToLogin()
+        setLoading(false)
+        return
+      }
+
+      if (mode === 'forgot') {
+        if (step === 'credentials') {
+          await startOtpFlow('RESET_PASSWORD')
+          setLoading(false)
+          return
+        }
+        if (step === 'otp') {
+          const result = await api.auth.verifyOtp({ email: form.email, purpose: 'RESET_PASSWORD', otp: form.otp })
+          setResetToken(result.resetToken)
+          setStep('reset')
+          setForm((prev) => ({ ...prev, newPassword: '' }))
+          toast.success('OTP verified. Set your new password.')
+          setLoading(false)
+          return
+        }
+        if (form.newPassword.length < 6) {
+          toast.error('Password must be at least 6 characters.')
+          setLoading(false)
+          return
+        }
+        await api.auth.resetPassword({ email: form.email, resetToken, newPassword: form.newPassword })
+        toast.success('Password reset successful. Please login.')
+        setForm({ name: '', email: form.email, password: '', otp: '', newPassword: '' })
+        resetToLogin()
+        setLoading(false)
+        return
+      }
+
       setSplash(true)
       setTimeout(() => navigate(from, { replace: true }), 1800)
     } catch (error) {
-      toast.error(error.message || (mode === 'signup' ? 'Unable to create account.' : 'Unable to login.'))
+      if (error?.code === 'EMAIL_NOT_VERIFIED') {
+        toast.error(error.message || 'Please verify your email first.')
+        setMode('verify')
+        setStep('credentials')
+        setOtpPurpose('VERIFY_EMAIL')
+      } else {
+        toast.error(error.message || (mode === 'signup' ? 'Unable to create account.' : 'Unable to login.'))
+      }
       setLoading(false)
     }
   }
@@ -102,30 +199,105 @@ export default function Login() {
               <ShieldCheck size={23} />
             </div>
             <div>
-              <h2 className="font-display text-2xl font-bold">{mode === 'signup' ? 'Create Account' : 'Welcome back'}</h2>
-              <p className="text-sm text-slate-500">{mode === 'signup' ? 'Set up your appraiser account.' : 'Sign in to continue.'}</p>
+              <h2 className="font-display text-2xl font-bold">
+                {mode === 'signup' ? 'Create Account' : mode === 'forgot' ? 'Reset Password' : mode === 'verify' ? 'Verify Email' : 'Welcome back'}
+              </h2>
+              <p className="text-sm text-slate-500">
+                {mode === 'signup'
+                  ? 'Create your account. Admin approval is required for new users.'
+                  : mode === 'forgot'
+                    ? 'Recover your account using email OTP.'
+                    : mode === 'verify'
+                      ? 'Verify your email with OTP to activate login.'
+                      : 'Sign in with password and OTP.'}
+              </p>
             </div>
           </div>
+
           {mode === 'signup' && (
             <>
               <label className="label mt-6">Full Name</label>
               <input className="input" placeholder="Your name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </>
           )}
+
           <label className="label mt-4">Email</label>
           <input className="input" type="email" placeholder="you@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <label className="label mt-4">Password</label>
-          <input className="input" placeholder={mode === 'signup' ? 'Min 6 characters' : ''} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" />
+
+          {(mode === 'login' && step === 'credentials') || mode === 'signup' ? (
+            <>
+              <label className="label mt-4">Password</label>
+              <input className="input" placeholder={mode === 'signup' ? 'Min 6 characters' : ''} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} type="password" />
+            </>
+          ) : null}
+
+          {step === 'otp' && (
+            <>
+              <label className="label mt-4">Enter OTP</label>
+              <input className="input" placeholder="6-digit OTP" value={form.otp} onChange={(e) => setForm({ ...form, otp: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
+              <button
+                type="button"
+                className="btn-secondary mt-3 w-full"
+                onClick={() => startOtpFlow(otpPurpose)}
+                disabled={loading}
+              >
+                Resend OTP
+              </button>
+            </>
+          )}
+
+          {mode === 'forgot' && step === 'reset' && (
+            <>
+              <label className="label mt-4">New Password</label>
+              <input className="input" type="password" placeholder="Min 6 characters" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} />
+            </>
+          )}
+
           <button className="btn-primary mt-6 w-full py-3" disabled={loading}>
-            {loading ? (mode === 'signup' ? 'Creating account...' : 'Signing in...') : (mode === 'signup' ? 'Create Account' : 'Login')}
+            {loading
+              ? 'Please wait...'
+              : mode === 'signup'
+                ? 'Create Account'
+                : mode === 'login' && step === 'credentials'
+                  ? 'Send OTP'
+                  : mode === 'login' && step === 'otp'
+                    ? 'Verify OTP & Login'
+                    : mode === 'verify' && step === 'credentials'
+                      ? 'Send Verification OTP'
+                      : mode === 'verify' && step === 'otp'
+                        ? 'Verify Email'
+                        : mode === 'forgot' && step === 'credentials'
+                          ? 'Send Reset OTP'
+                          : mode === 'forgot' && step === 'otp'
+                            ? 'Verify OTP'
+                            : 'Reset Password'}
           </button>
+
+          {mode === 'login' && step === 'credentials' && (
+            <p className="mt-4 text-center text-sm text-slate-500">
+              <button type="button" className="font-medium text-gold-700 hover:underline" onClick={() => { setMode('forgot'); setStep('credentials'); }}>
+                Forgot password?
+              </button>
+              {' • '}
+              <button type="button" className="font-medium text-gold-700 hover:underline" onClick={() => { setMode('verify'); setStep('credentials'); }}>
+                Verify email
+              </button>
+            </p>
+          )}
+
           {signupOpen && (
             <p className="mt-5 text-center text-sm text-slate-500">
               {mode === 'signup' ? (
-                <>Already have an account? <button type="button" className="font-medium text-gold-700 hover:underline" onClick={() => setMode('login')}>Sign in</button></>
+                <>Already have an account? <button type="button" className="font-medium text-gold-700 hover:underline" onClick={resetToLogin}>Sign in</button></>
               ) : (
-                <>First time? <button type="button" className="font-medium text-gold-700 hover:underline" onClick={() => setMode('signup')}>Create owner account</button></>
+                <>First time? <button type="button" className="font-medium text-gold-700 hover:underline" onClick={() => { setMode('signup'); setStep('credentials') }}>Create account</button></>
               )}
+            </p>
+          )}
+
+          {(mode === 'forgot' || mode === 'verify') && (
+            <p className="mt-5 text-center text-sm text-slate-500">
+              Back to <button type="button" className="font-medium text-gold-700 hover:underline" onClick={resetToLogin}>Sign in</button>
             </p>
           )}
         </form>

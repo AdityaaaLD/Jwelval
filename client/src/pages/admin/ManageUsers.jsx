@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { ShieldCheck, Trash2, UserPlus } from 'lucide-react'
+import { CheckCircle2, MailCheck, ShieldCheck, Trash2, UserPlus, XCircle } from 'lucide-react'
 import { api } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 
@@ -40,6 +40,36 @@ export default function ManageUsers() {
       toast.error(err.message || 'Failed to create user.')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleApprove = async (id, name) => {
+    try {
+      await api.auth.approveUser(id)
+      toast.success(`Approved ${name}. Verification OTP sent.`)
+      loadUsers()
+    } catch (err) {
+      toast.error(err.message || 'Failed to approve user.')
+    }
+  }
+
+  const handleReject = async (id, name) => {
+    if (!confirm(`Reject account request for "${name}"?`)) return
+    try {
+      await api.auth.rejectUser(id)
+      toast.success(`Rejected ${name}.`)
+      loadUsers()
+    } catch (err) {
+      toast.error(err.message || 'Failed to reject user.')
+    }
+  }
+
+  const handleResendVerification = async (id) => {
+    try {
+      await api.auth.sendVerificationOtp(id)
+      toast.success('Verification OTP sent.')
+    } catch (err) {
+      toast.error(err.message || 'Failed to send verification OTP.')
     }
   }
 
@@ -130,6 +160,8 @@ export default function ManageUsers() {
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Name</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Email</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Role</th>
+                <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
+                <th className="px-4 py-3 text-left font-medium text-slate-600">Email</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Plan</th>
                 <th className="px-4 py-3 text-left font-medium text-slate-600">Created</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-600">Actions</th>
@@ -151,18 +183,49 @@ export default function ManageUsers() {
                       {u.role}
                     </span>
                   </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      u.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : u.status === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                    }`}>
+                      {u.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                      u.emailVerified ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {u.emailVerified ? 'Verified' : 'Unverified'}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{u.plan}</td>
                   <td className="px-4 py-3 text-slate-500">{u.createdAt?.slice(0, 10)}</td>
                   <td className="px-4 py-3 text-right">
-                    {u.id !== currentUser.id && (
-                      <button
-                        onClick={() => handleDelete(u.id, u.name)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                        title="Delete user"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+                    <div className="inline-flex items-center gap-1">
+                      {u.id !== currentUser.id && u.status === 'PENDING' && (
+                        <>
+                          <button onClick={() => handleApprove(u.id, u.name)} className="text-green-600 hover:text-green-700 p-1" title="Approve user">
+                            <CheckCircle2 size={16} />
+                          </button>
+                          <button onClick={() => handleReject(u.id, u.name)} className="text-rose-600 hover:text-rose-700 p-1" title="Reject user">
+                            <XCircle size={16} />
+                          </button>
+                        </>
+                      )}
+                      {u.id !== currentUser.id && u.status === 'ACTIVE' && !u.emailVerified && (
+                        <button onClick={() => handleResendVerification(u.id)} className="text-blue-600 hover:text-blue-700 p-1" title="Resend verification OTP">
+                          <MailCheck size={16} />
+                        </button>
+                      )}
+                      {u.id !== currentUser.id && (
+                        <button
+                          onClick={() => handleDelete(u.id, u.name)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Delete user"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

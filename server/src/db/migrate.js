@@ -113,7 +113,11 @@ sqlite.exec(`
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     plan TEXT NOT NULL DEFAULT 'PRO',
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'ACTIVE',
+    email_verified INTEGER NOT NULL DEFAULT 0,
+    approved_by INTEGER,
+    approved_at TEXT
   );
 
   CREATE TABLE IF NOT EXISTS sessions (
@@ -122,6 +126,22 @@ sqlite.exec(`
     user_json TEXT NOT NULL,
     created_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS otp_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose TEXT NOT NULL,
+    otp_hash TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    max_attempts INTEGER NOT NULL DEFAULT 5,
+    created_at TEXT NOT NULL,
+    consumed_at TEXT,
+    UNIQUE(user_id, purpose, created_at)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_otp_user_purpose ON otp_tokens(user_id, purpose);
+  CREATE INDEX IF NOT EXISTS idx_otp_expires ON otp_tokens(expires_at);
 
   CREATE INDEX IF NOT EXISTS idx_val_customer ON valuations(customer_id);
   CREATE INDEX IF NOT EXISTS idx_val_series ON valuations(series_id);
@@ -222,6 +242,10 @@ for (const stmt of [
   'ALTER TABLE appraiser_profile ADD COLUMN qualification TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN organization TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN cert_number TEXT',
+  "ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'ACTIVE'",
+  'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE users ADD COLUMN approved_by INTEGER',
+  'ALTER TABLE users ADD COLUMN approved_at TEXT',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {
     if (!String(error.message).includes('duplicate column name')) throw error
