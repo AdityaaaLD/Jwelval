@@ -57,6 +57,9 @@ export const api = {
     sendVerificationOtp: (id) => request(`/auth/users/${id}/send-verification-otp`, { method: 'POST' }),
     deleteUser: (id) => request(`/auth/users/${id}`, { method: 'DELETE' }),
   },
+  subscriptions: {
+    requestAccess: (data) => request('/subscriptions/request-access', { method: 'POST', body: data }),
+  },
   dashboard: () => request('/dashboard'),
   rates: {
     get: (date) => request(`/rates${qs({ date })}`),

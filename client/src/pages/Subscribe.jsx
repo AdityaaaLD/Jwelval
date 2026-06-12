@@ -1,40 +1,34 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, BadgeCheck, Banknote, Camera, Check, Gem, Headphones, LockKeyhole, QrCode, ShieldCheck, Sparkles, Users } from 'lucide-react'
+import { toast } from 'react-hot-toast'
+import { ArrowRight, BadgeCheck, Banknote, Camera, Check, Gem, Headphones, LockKeyhole, QrCode, ShieldCheck, Sparkles } from 'lucide-react'
+import { api } from '../lib/api'
 
 const plans = [
   {
-    name: 'Starter',
-    price: 'Rs. 999',
-    period: '/mo',
-    volume: 'Up to 300 reports/month',
-    bestFor: 'Solo appraisers testing JewelVal with one branch.',
-    cta: 'Start Starter',
-    tone: 'border-slate-200 bg-white',
-    icon: Gem,
-    features: ['1 appraiser login', 'Customer and ornament photo capture', 'Gold valuation certificate print', 'Manual gold rate and weight entry'],
-  },
-  {
-    name: 'Pro',
-    price: 'Rs. 1,999',
-    period: '/mo',
-    volume: 'Up to 1,000 reports/month',
-    bestFor: 'Best fit for 5K-7K valuation reports per year.',
-    cta: 'Choose Pro',
+    code: 'YEAR_1_ANNUAL',
+    name: 'Year 1 Subscription',
+    price: 'Rs. 10,000',
+    period: '/user/year',
+    volume: 'First-year onboarding pricing',
+    bestFor: 'New customers starting JewelVal with full onboarding and support.',
+    cta: 'Request Year 1 Access',
     recommended: true,
     tone: 'border-blue-300 bg-white shadow-2xl shadow-blue-950/20',
-    icon: ShieldCheck,
-    features: ['Everything in Starter', 'QR verification for banks', 'WhatsApp-ready sharing', 'Fee tracking: bank receivable, cash, UPI', 'Aadhaar scan and autofill'],
+    icon: Gem,
+    features: ['All core valuation workflows included', 'Certificate generation + verification', 'Setup and onboarding support', 'Annual per-user billing model'],
   },
   {
-    name: 'Business',
-    price: 'Rs. 4,999',
-    period: '/mo',
-    volume: 'Branch/team scale',
-    bestFor: 'For jewellers handling multiple branches or operators.',
-    cta: 'Talk to Sales',
+    code: 'YEAR_2_MONTHLY',
+    name: 'Year 2 Onward Renewal',
+    price: 'Rs. 299',
+    period: '/user/month',
+    volume: 'From second year onward',
+    bestFor: 'Customers continuing after Year 1 on flexible monthly per-user billing.',
+    cta: 'Request Renewal Access',
     tone: 'border-slate-200 bg-white',
-    icon: Users,
-    features: ['Multiple appraiser users', 'Priority support', 'Backup and restore assistance', 'Branch-wise reports', 'Custom certificate setup'],
+    icon: ShieldCheck,
+    features: ['No re-onboarding required', 'Per-user monthly billing', 'Same platform and support continuity', 'Best for active teams post launch year'],
   },
 ]
 
@@ -46,6 +40,71 @@ const highlights = [
 ]
 
 export default function Subscribe() {
+  const [selectedPlanCode, setSelectedPlanCode] = useState('YEAR_1_ANNUAL')
+  const [submitting, setSubmitting] = useState(false)
+  const [form, setForm] = useState({
+    fullName: '',
+    phone: '',
+    email: '',
+    companyName: '',
+    teamSize: '',
+    city: '',
+    notes: '',
+  })
+
+  const selectedPlan = plans.find((plan) => plan.code === selectedPlanCode) || plans[0]
+
+  const onFieldChange = (event) => {
+    const { name, value } = event.target
+    setForm((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const selectPlan = (planCode) => {
+    setSelectedPlanCode(planCode)
+    const formEl = document.getElementById('access-request-form')
+    if (formEl) {
+      formEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  const submitRequest = async (event) => {
+    event.preventDefault()
+
+    if (!form.fullName.trim() || !form.phone.trim()) {
+      toast.error('Please enter your name and phone number.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await api.subscriptions.requestAccess({
+        planCode: selectedPlan.code,
+        fullName: form.fullName,
+        phone: form.phone,
+        email: form.email,
+        companyName: form.companyName,
+        teamSize: form.teamSize ? Number(form.teamSize) : undefined,
+        city: form.city,
+        notes: form.notes,
+      })
+
+      toast.success('Access request sent successfully. Our team will contact you soon.')
+      setForm({
+        fullName: '',
+        phone: '',
+        email: '',
+        companyName: '',
+        teamSize: '',
+        city: '',
+        notes: '',
+      })
+    } catch (error) {
+      toast.error(error.message || 'Failed to send access request.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen overflow-hidden bg-slate-50 text-slate-900">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 shadow-sm backdrop-blur">
@@ -70,10 +129,10 @@ export default function Subscribe() {
                 <Sparkles size={16} /> Built for bank gold-loan valuation agents
               </p>
               <h1 className="font-display mt-5 max-w-3xl text-4xl font-extrabold leading-tight md:text-6xl">
-                Pricing that fits real valuation volume.
+                Transparent pricing for real valuation teams.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">
-                For an agent creating around 5K-7K certificates per year, Pro keeps the monthly cost simple while covering QR verification, WhatsApp sharing, Aadhaar scan, and payment tracking.
+                Year 1 is billed at Rs. 10,000 per user annually. From Year 2 onward, billing shifts to Rs. 299 per user monthly.
               </p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                 <a href="#plans" className="group inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-400" style={{ backgroundColor: '#2563eb' }}>
@@ -89,15 +148,15 @@ export default function Subscribe() {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-sm font-semibold text-blue-700">Recommended</p>
-                      <h2 className="font-display text-3xl font-extrabold">Pro Plan</h2>
+                      <h2 className="font-display text-3xl font-extrabold">Year 1 Subscription</h2>
                     </div>
-                    <div className="rounded-md bg-blue-600 px-3 py-2 text-sm font-bold text-white">Rs. 1,999/mo</div>
+                    <div className="rounded-md bg-blue-600 px-3 py-2 text-sm font-bold text-white">Rs. 10,000/user/year</div>
                   </div>
                   <div className="mt-5 grid grid-cols-3 gap-2 text-center">
                     {[
-                      ['583', 'avg/month at 7K/year'],
-                      ['1,000', 'reports included'],
-                      ['Rs. 3.43', 'software cost/report'],
+                      ['Year 1', 'annual billing model'],
+                      ['Year 2+', 'moves to monthly plan'],
+                      ['Rs. 299', 'per user per month'],
                     ].map(([value, label], index) => (
                       <div key={label} className="rounded-md border border-slate-200 bg-white p-3" style={{ animationDelay: `${140 + index * 90}ms` }}>
                         <p className="font-display text-xl font-extrabold text-slate-950">{value}</p>
@@ -126,18 +185,19 @@ export default function Subscribe() {
           <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Subscription Plans</p>
-              <h2 className="font-display mt-2 text-3xl font-extrabold text-slate-950">Choose the plan by certificate volume.</h2>
+              <h2 className="font-display mt-2 text-3xl font-extrabold text-slate-950">Select your subscription phase.</h2>
             </div>
-            <p className="max-w-lg text-sm leading-6 text-slate-500">You can start with Pro for the first customer. Move to Business only when multiple users, branches, or premium support become important.</p>
+            <p className="max-w-lg text-sm leading-6 text-slate-500">Choose Year 1 for new onboarding, or Year 2 onward if you are continuing after the first year. Both use per-user pricing.</p>
           </div>
 
-          <div className="mt-7 grid gap-5 lg:grid-cols-3">
+          <div className="mt-7 grid gap-5 lg:grid-cols-2">
             {plans.map((plan, index) => {
               const Icon = plan.icon
+              const isSelected = selectedPlanCode === plan.code
               return (
                 <article
                   key={plan.name}
-                  className={`relative animate-rise-in rounded-lg border p-5 transition duration-200 hover:-translate-y-1 ${plan.tone}`}
+                  className={`relative animate-rise-in rounded-lg border p-5 transition duration-200 hover:-translate-y-1 ${plan.tone} ${isSelected ? 'ring-2 ring-blue-400' : ''}`}
                   style={{ animationDelay: `${index * 90}ms` }}
                 >
                   {plan.recommended && (
@@ -163,16 +223,130 @@ export default function Subscribe() {
                       </li>
                     ))}
                   </ul>
-                  <Link
-                    to="/login"
+                  <button
+                    type="button"
+                    onClick={() => selectPlan(plan.code)}
                     className={`mt-6 inline-flex w-full items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 ${plan.recommended ? 'text-white shadow-lg shadow-blue-600/25 hover:opacity-90 focus:ring-blue-400' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-400'}`}
                     style={plan.recommended ? { backgroundColor: '#2563eb' } : undefined}
                   >
-                    {plan.cta}
-                  </Link>
+                    {isSelected ? 'Selected Plan' : plan.cta}
+                  </button>
                 </article>
               )
             })}
+          </div>
+        </section>
+
+        <section id="access-request-form" className="mx-auto max-w-6xl px-5 pb-12">
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Account Access Request</p>
+                <h2 className="font-display mt-1 text-2xl font-extrabold text-slate-950">Send request to activate your subscription</h2>
+                <p className="mt-2 text-sm text-slate-500">Selected: <span className="font-semibold text-slate-800">{selectedPlan.name}</span> ({selectedPlan.price}{selectedPlan.period})</p>
+              </div>
+              <div className="rounded-md bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">Request emails are sent to support@logic-motive.com</div>
+            </div>
+
+            <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={submitRequest}>
+              <label className="text-sm font-medium text-slate-700">
+                Full Name *
+                <input
+                  type="text"
+                  name="fullName"
+                  value={form.fullName}
+                  onChange={onFieldChange}
+                  maxLength={80}
+                  required
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700">
+                Phone Number *
+                <input
+                  type="tel"
+                  name="phone"
+                  value={form.phone}
+                  onChange={onFieldChange}
+                  maxLength={20}
+                  required
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700">
+                Email
+                <input
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={onFieldChange}
+                  maxLength={120}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700">
+                Company / Firm Name
+                <input
+                  type="text"
+                  name="companyName"
+                  value={form.companyName}
+                  onChange={onFieldChange}
+                  maxLength={120}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700">
+                Number of Users
+                <input
+                  type="number"
+                  name="teamSize"
+                  value={form.teamSize}
+                  onChange={onFieldChange}
+                  min="1"
+                  max="5000"
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700">
+                City
+                <input
+                  type="text"
+                  name="city"
+                  value={form.city}
+                  onChange={onFieldChange}
+                  maxLength={80}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </label>
+
+              <label className="text-sm font-medium text-slate-700 md:col-span-2">
+                Additional Details
+                <textarea
+                  name="notes"
+                  value={form.notes}
+                  onChange={onFieldChange}
+                  maxLength={1000}
+                  rows={4}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                />
+              </label>
+
+              <div className="md:col-span-2">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-70"
+                  style={{ backgroundColor: '#2563eb' }}
+                >
+                  {submitting ? 'Sending Request...' : 'Send Account Access Request'}
+                </button>
+              </div>
+            </form>
           </div>
         </section>
 
@@ -191,10 +365,10 @@ export default function Subscribe() {
         <section className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700"><Headphones size={16} /> Recommended launch choice</p>
-            <h2 className="font-display mt-2 text-3xl font-extrabold text-slate-950">Start with Pro at Rs. 1,999/month.</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">For 5K-7K annual valuation reports, this keeps cost per certificate low and gives the wow features customers will notice.</p>
+            <h2 className="font-display mt-2 text-3xl font-extrabold text-slate-950">Start Year 1 at Rs. 10,000 per user/year.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">From Year 2 onward, continue at Rs. 299 per user/month. Use the form above to send your account access request.</p>
           </div>
-          <Link to="/login" className="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-400" style={{ backgroundColor: '#2563eb' }}>Open Demo</Link>
+          <a href="#access-request-form" className="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-400" style={{ backgroundColor: '#2563eb' }}>Request Access</a>
         </section>
       </main>
     </div>

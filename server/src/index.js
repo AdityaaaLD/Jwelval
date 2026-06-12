@@ -19,10 +19,11 @@ import profileRouter from './routes/profile.js'
 import presetsRouter from './routes/presets.js'
 import verifyRouter from './routes/verify.js'
 import authRouter from './routes/auth.js'
+import subscriptionsRouter from './routes/subscriptions.js'
 import ornamentsRouter from './routes/ornaments.js'
 import sellBillsRouter from './routes/sellBills.js'
 import { requireAuth } from './middleware/auth.js'
-import { authRateLimit, rateLimit } from './middleware/rateLimit.js'
+import { authRateLimit, rateLimit, subscriptionRateLimit } from './middleware/rateLimit.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -69,6 +70,7 @@ app.use(morgan(isProd ? 'combined' : 'dev'))
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'jewelval-server' }))
 app.use('/api/auth', authRateLimit, authRouter)
 app.use('/api/verify', verifyRouter)
+app.use('/api/subscriptions', subscriptionRateLimit, subscriptionsRouter)
 
 // Protected routes (auth required)
 app.use('/api/dashboard', rateLimit, requireAuth, dashboardRouter)

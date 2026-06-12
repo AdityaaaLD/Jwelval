@@ -35,6 +35,8 @@ const apiWindowMs = Number(process.env.API_RATE_LIMIT_WINDOW_MS || 60 * 1000)
 const apiMaxReqs = Number(process.env.API_RATE_LIMIT_MAX_REQS || 120)
 const authWindowMs = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000)
 const authMaxReqs = Number(process.env.AUTH_RATE_LIMIT_MAX_REQS || 45)
+const subscriptionWindowMs = Number(process.env.SUBSCRIPTION_RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000)
+const subscriptionMaxReqs = Number(process.env.SUBSCRIPTION_RATE_LIMIT_MAX_REQS || 20)
 
 export const rateLimit = createRateLimiter({
   windowMs: apiWindowMs,
@@ -48,4 +50,11 @@ export const authRateLimit = createRateLimiter({
   maxReqs: authMaxReqs,
   code: 'AUTH_RATE_LIMIT',
   message: 'Too many authentication attempts. Please try again later.',
+})
+
+export const subscriptionRateLimit = createRateLimiter({
+  windowMs: subscriptionWindowMs,
+  maxReqs: subscriptionMaxReqs,
+  code: 'SUBSCRIPTION_RATE_LIMIT',
+  message: 'Too many access requests. Please try again later.',
 })

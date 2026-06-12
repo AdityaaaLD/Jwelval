@@ -101,6 +101,11 @@ API_RATE_LIMIT_WINDOW_MS=60000
 API_RATE_LIMIT_MAX_REQS=120
 # Keep false in production unless you intentionally want stub mailer
 ALLOW_STUB_MAILER_IN_PROD=false
+
+# Subscription access request routing
+SUBSCRIPTION_SUPPORT_EMAIL=support@logic-motive.com
+SUBSCRIPTION_RATE_LIMIT_WINDOW_MS=900000
+SUBSCRIPTION_RATE_LIMIT_MAX_REQS=20
 ```
 
 Mailer behavior:
