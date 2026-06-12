@@ -11,6 +11,7 @@ const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10)
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5)
 const OTP_MAX_SENDS_PER_HOUR = Number(process.env.OTP_MAX_SENDS_PER_HOUR || 3)
 const ALLOWED_OTP_PURPOSES = new Set(['LOGIN', 'VERIFY_EMAIL', 'RESET_PASSWORD'])
+const REQUESTABLE_OTP_PURPOSES = new Set(['VERIFY_EMAIL', 'RESET_PASSWORD'])
 
 // Legacy SHA-256 hash for migrating old passwords
 const sha256 = (password) => crypto.createHash('sha256').update(password).digest('hex')
@@ -32,6 +33,15 @@ const buildSafeUser = (user) => ({
   status: user.status || 'ACTIVE',
   emailVerified: Boolean(user.email_verified),
 })
+
+function respondOtpSendFailure(res, error, context) {
+  console.error(`[auth] OTP send failed during ${context}:`, error)
+  const isRateLimited = error?.status === 429 || error?.code === 'OTP_RATE_LIMIT'
+  if (isRateLimited) {
+    return res.status(429).json({ error: 'OTP_RATE_LIMIT', message: 'Too many OTP requests. Please try again later.' })
+  }
+  return res.status(503).json({ error: 'OTP_SEND_FAILED', message: 'Unable to send OTP right now. Please try again.' })
+}
 
 function createSessionForUser(user, at = nowIso()) {
   const token = crypto.randomBytes(24).toString('hex')
@@ -239,7 +249,7 @@ router.post('/login', async (req, res) => {
   try {
     await sendOtpForPurpose(user, 'LOGIN')
   } catch (error) {
-    return res.status(error.status || 500).json({ error: error.code || 'OTP_SEND_FAILED', message: error.message })
+    return respondOtpSendFailure(res, error, 'login')
   }
 
   res.json({ otpRequired: true, purpose: 'LOGIN', email: user.email, message: 'OTP sent to your email.' })
@@ -248,16 +258,13 @@ router.post('/login', async (req, res) => {
 router.post('/request-otp', async (req, res) => {
   const email = normalizeEmail(req.body.email)
   const purpose = String(req.body.purpose || '')
-  if (!email || !validateOtpPurpose(purpose)) {
+  if (!email || !REQUESTABLE_OTP_PURPOSES.has(purpose)) {
     return res.status(400).json({ error: 'VALIDATION', message: 'Valid email and purpose are required.' })
   }
 
   const user = sqlite.prepare('SELECT id, email, status, email_verified FROM users WHERE email = ?').get(email)
   if (!user) {
-    if (purpose === 'RESET_PASSWORD') {
-      return res.json({ sent: true, message: 'If account exists, OTP has been sent.' })
-    }
-    return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'User not found.' })
+    return res.json({ sent: true, message: 'If account exists, OTP has been sent.' })
   }
 
   if (user.status !== 'ACTIVE') {
@@ -271,7 +278,7 @@ router.post('/request-otp', async (req, res) => {
     await sendOtpForPurpose(user, purpose)
     res.json({ sent: true, expiresInMinutes: OTP_TTL_MINUTES })
   } catch (error) {
-    res.status(error.status || 500).json({ error: error.code || 'OTP_SEND_FAILED', message: error.message })
+    respondOtpSendFailure(res, error, `request-otp:${purpose}`)
   }
 })
 
@@ -288,7 +295,7 @@ router.post('/verify-otp', (req, res) => {
     'SELECT id, name, email, role, plan, status, email_verified FROM users WHERE email = ?'
   ).get(email)
   if (!user) {
-    return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'User not found.' })
+    return res.status(400).json({ error: 'OTP_INVALID', message: 'Invalid OTP.' })
   }
 
   const verification = verifyOtp(user.id, purpose, otp)
@@ -456,6 +463,9 @@ router.post('/users/:id/approve', requireAuth, async (req, res) => {
     return res.status(403).json({ error: 'FORBIDDEN', message: 'Only administrators can approve users.' })
   }
   const id = parseInt(req.params.id, 10)
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'VALIDATION', message: 'Invalid user id.' })
+  }
   const user = sqlite.prepare('SELECT id, email, status, email_verified FROM users WHERE id = ?').get(id)
   if (!user) return res.status(404).json({ error: 'NOT_FOUND', message: 'User not found.' })
 
@@ -465,7 +475,7 @@ router.post('/users/:id/approve', requireAuth, async (req, res) => {
     try {
       await sendOtpForPurpose({ id: user.id, email: user.email }, 'VERIFY_EMAIL')
     } catch (error) {
-      return res.status(error.status || 500).json({ error: error.code || 'OTP_SEND_FAILED', message: error.message })
+      return respondOtpSendFailure(res, error, 'admin-approve')
     }
   }
 
@@ -477,6 +487,9 @@ router.post('/users/:id/reject', requireAuth, (req, res) => {
     return res.status(403).json({ error: 'FORBIDDEN', message: 'Only administrators can reject users.' })
   }
   const id = parseInt(req.params.id, 10)
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'VALIDATION', message: 'Invalid user id.' })
+  }
   const user = sqlite.prepare('SELECT id FROM users WHERE id = ?').get(id)
   if (!user) return res.status(404).json({ error: 'NOT_FOUND', message: 'User not found.' })
 
@@ -490,6 +503,9 @@ router.post('/users/:id/send-verification-otp', requireAuth, async (req, res) =>
     return res.status(403).json({ error: 'FORBIDDEN', message: 'Only administrators can send verification OTP.' })
   }
   const id = parseInt(req.params.id, 10)
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'VALIDATION', message: 'Invalid user id.' })
+  }
   const user = sqlite.prepare('SELECT id, email, status, email_verified FROM users WHERE id = ?').get(id)
   if (!user) return res.status(404).json({ error: 'NOT_FOUND', message: 'User not found.' })
   if (user.status !== 'ACTIVE') {
@@ -503,7 +519,7 @@ router.post('/users/:id/send-verification-otp', requireAuth, async (req, res) =>
     await sendOtpForPurpose(user, 'VERIFY_EMAIL')
     res.json({ ok: true, message: 'Verification OTP sent.' })
   } catch (error) {
-    res.status(error.status || 500).json({ error: error.code || 'OTP_SEND_FAILED', message: error.message })
+    respondOtpSendFailure(res, error, 'admin-send-verification-otp')
   }
 })
 
@@ -513,6 +529,9 @@ router.delete('/users/:id', requireAuth, (req, res) => {
     return res.status(403).json({ error: 'FORBIDDEN', message: 'Only administrators can delete users.' })
   }
   const id = parseInt(req.params.id, 10)
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'VALIDATION', message: 'Invalid user id.' })
+  }
   if (id === req.user.id) {
     return res.status(400).json({ error: 'CANNOT_DELETE_SELF', message: 'You cannot delete your own account.' })
   }

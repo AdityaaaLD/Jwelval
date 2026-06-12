@@ -3,6 +3,8 @@ const fromEmail = process.env.EMAIL_FROM || 'no-reply@example.com'
 const configuredProvider = String(process.env.MAIL_PROVIDER || 'auto').trim().toLowerCase()
 const hasSesCreds = Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY)
 const hasSendGridKey = Boolean(process.env.SENDGRID_API_KEY)
+const isProd = process.env.NODE_ENV === 'production'
+const allowStubInProd = String(process.env.ALLOW_STUB_MAILER_IN_PROD || '').trim() === 'true'
 
 let resolvedProvider = null
 let resolvedProviderName = null
@@ -14,8 +16,18 @@ function sendStubEmail({ to, subject, html, text }) {
   console.log('[mailer:stub]', {
     to,
     subject,
-    preview: text || stripHtml(html).slice(0, 160),
+    preview: '[redacted]',
+    bodyLength: (text || stripHtml(html) || '').length,
   })
+}
+
+function assertStubAllowed() {
+  if (isProd && !allowStubInProd) {
+    const err = new Error('Stub mailer is disabled in production. Configure MAIL_PROVIDER and provider credentials.')
+    err.code = 'MAILER_PROVIDER_REQUIRED'
+    err.status = 503
+    throw err
+  }
 }
 
 async function buildSesProvider() {
@@ -62,6 +74,7 @@ async function resolveProvider() {
   if (resolvedProvider) return { send: resolvedProvider, name: resolvedProviderName }
 
   if (configuredProvider === 'stub') {
+    assertStubAllowed()
     resolvedProvider = sendStubEmail
     resolvedProviderName = 'stub'
     return { send: resolvedProvider, name: resolvedProviderName }
@@ -105,6 +118,7 @@ async function resolveProvider() {
 
   resolvedProvider = sendStubEmail
   resolvedProviderName = 'stub'
+  assertStubAllowed()
   return { send: resolvedProvider, name: resolvedProviderName }
 }
 

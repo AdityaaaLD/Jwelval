@@ -9,7 +9,7 @@ import { api } from '../lib/api'
 export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { login, signup, setSession } = useAuth()
+  const { user, loading: authLoading, login, signup, setSession } = useAuth()
   const [mode, setMode] = useState('login') // 'login' | 'signup' | 'forgot' | 'verify'
   const [step, setStep] = useState('credentials') // 'credentials' | 'otp' | 'reset'
   const [signupOpen, setSignupOpen] = useState(false)
@@ -27,6 +27,12 @@ export default function Login() {
     }).catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [authLoading, user, navigate])
+
   const resetToLogin = () => {
     setMode('login')
     setStep('credentials')
@@ -41,6 +47,34 @@ export default function Login() {
     setStep('otp')
     setForm((prev) => ({ ...prev, otp: '' }))
     toast.success('OTP sent to your email.')
+  }
+
+  const resendOtp = async () => {
+    setLoading(true)
+    try {
+      if (otpPurpose === 'LOGIN') {
+        if (!form.password) {
+          toast.error('Enter your password to resend login OTP.')
+          setLoading(false)
+          return
+        }
+        const result = await login(form.email, form.password)
+        if (!result?.otpRequired) {
+          toast.error('Could not resend login OTP. Please try signing in again.')
+          setLoading(false)
+          return
+        }
+        toast.success('Login OTP resent to your email.')
+        setLoading(false)
+        return
+      }
+
+      await startOtpFlow(otpPurpose)
+      setLoading(false)
+    } catch (error) {
+      toast.error(error.message || 'Failed to resend OTP.')
+      setLoading(false)
+    }
   }
 
   const submit = async (event) => {
@@ -238,7 +272,7 @@ export default function Login() {
               <button
                 type="button"
                 className="btn-secondary mt-3 w-full"
-                onClick={() => startOtpFlow(otpPurpose)}
+                onClick={resendOtp}
                 disabled={loading}
               >
                 Resend OTP

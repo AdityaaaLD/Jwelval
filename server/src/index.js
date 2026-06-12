@@ -22,22 +22,52 @@ import authRouter from './routes/auth.js'
 import ornamentsRouter from './routes/ornaments.js'
 import sellBillsRouter from './routes/sellBills.js'
 import { requireAuth } from './middleware/auth.js'
-import { rateLimit } from './middleware/rateLimit.js'
+import { authRateLimit, rateLimit } from './middleware/rateLimit.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const app = express()
 const PORT = parseInt(process.env.PORT || '3001', 10)
 const isProd = process.env.NODE_ENV === 'production'
+const configuredOrigins = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((x) => x.trim())
+  .filter(Boolean)
+
+const devOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173']
+
+const corsOptions = {
+  credentials: true,
+  origin(origin, callback) {
+    if (!origin) return callback(null, true)
+    const allowed = isProd ? configuredOrigins : devOrigins
+    if (!allowed.length) {
+      return callback(null, false)
+    }
+    if (allowed.includes(origin)) return callback(null, true)
+    return callback(null, false)
+  },
+}
 
 if (isProd) app.set('trust proxy', 1)
-app.use(cors({ origin: isProd ? true : 'http://localhost:5173', credentials: true }))
+app.disable('x-powered-by')
+app.use(cors(corsOptions))
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  if (isProd && req.secure) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+  }
+  next()
+})
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb', extended: true }))
 app.use(morgan(isProd ? 'combined' : 'dev'))
 
 // Public routes (no auth required)
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'jewelval-server' }))
-app.use('/api/auth', authRouter)
+app.use('/api/auth', authRateLimit, authRouter)
 app.use('/api/verify', verifyRouter)
 
 // Protected routes (auth required)

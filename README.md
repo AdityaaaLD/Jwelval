@@ -92,13 +92,22 @@ SENDGRID_API_KEY=your_sendgrid_api_key
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_aws_key
 AWS_SECRET_ACCESS_KEY=your_aws_secret
+
+# Production security (recommended)
+CORS_ORIGINS=https://jwelval.com
+AUTH_RATE_LIMIT_WINDOW_MS=900000
+AUTH_RATE_LIMIT_MAX_REQS=45
+API_RATE_LIMIT_WINDOW_MS=60000
+API_RATE_LIMIT_MAX_REQS=120
+# Keep false in production unless you intentionally want stub mailer
+ALLOW_STUB_MAILER_IN_PROD=false
 ```
 
 Mailer behavior:
 - `MAIL_PROVIDER=sendgrid`: force SendGrid
 - `MAIL_PROVIDER=ses`: force AWS SES
 - `MAIL_PROVIDER=stub`: local console logging only
-- `MAIL_PROVIDER=auto`: tries SendGrid, then SES, then stub fallback
+- `MAIL_PROVIDER=auto`: tries SendGrid, then SES, then stub fallback (stub is blocked in production unless `ALLOW_STUB_MAILER_IN_PROD=true`)
 
 ## Demo Data
 

@@ -19,6 +19,8 @@ export default function ManageUsers() {
       .finally(() => setLoading(false))
   }
 
+  const pendingUsers = users.filter((u) => u.status === 'PENDING')
+
   useEffect(() => { loadUsers() }, [])
 
   const handleCreate = async (e) => {
@@ -98,6 +100,9 @@ export default function ManageUsers() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Manage Users</h1>
           <p className="text-sm text-slate-500 mt-1">Create and manage user accounts. Only you (admin) can add new users.</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Pending approvals: <span className="font-semibold text-amber-700">{pendingUsers.length}</span>. Approve/Reject actions appear only for users with <span className="font-semibold">PENDING</span> status.
+          </p>
         </div>
         <button
           onClick={() => setShowCreate(!showCreate)}
