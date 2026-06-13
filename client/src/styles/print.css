@@ -10,7 +10,7 @@
 .print-title, .print-summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; border: 1px solid #111827; background: #0b1f3a; color: #fff; padding: 7px 9px; font-size: 13px; line-height: 1.2; }
 .print-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0; }
 .print-table { width: 100%; margin: 8px 0; border-collapse: collapse; }
-.print-table th, .print-table td { border: 1px solid #111827; padding: 6px 7px; vertical-align: middle; line-height: 1.28; }
+.print-table th, .print-table td { border: 1px solid #111827; padding: 6px 7px; vertical-align: middle; line-height: 1.28; word-wrap: break-word; }
 .print-table th, .print-table tfoot td { background: #0b1f3a; color: #fff; font-weight: 700; }
 .print-table-info th { font-size: 8px; font-weight: 400; line-height: 1.2; padding: 4px 5px; background: #f8f8f0; color: #333; border: 1px solid #111827; }
 .print-table tbody tr { min-height: 24px; }
@@ -42,7 +42,7 @@
 .dc-borrower p { margin: 2px 0; }
 .dc-currency { text-align: right; margin: 4px 0 2px; font-weight: 700; font-size: 11px; }
 .dc-table { width: 100%; border-collapse: collapse; margin: 0 0 6px; }
-.dc-table th, .dc-table td { border: 1px solid #000; padding: 4px 5px; text-align: center; vertical-align: middle; font-size: 10px; line-height: 1.25; }
+.dc-table th, .dc-table td { border: 1px solid #000; padding: 4px 5px; text-align: center; vertical-align: middle; font-size: 10px; line-height: 1.25; word-wrap: break-word; }
 .dc-table th { font-weight: 700; background: #fff; color: #000; }
 .dc-table-info th { font-size: 7px; font-weight: 400; line-height: 1.15; padding: 3px 4px; background: #fefce8; color: #333; }
 .dc-table tfoot td { font-weight: 700; }
@@ -141,10 +141,168 @@
   .dc-doc-grid { grid-template-columns: 1fr; gap: 10px; }
   .fee-receipt { width: 100%; }
   .sb-business-name { font-size: 18px; }
+  
+  /* Mobile table fixes */
+  .print-table { font-size: 8px; table-layout: fixed; }
+  .print-table th, .print-table td { padding: 3px 2px; font-size: 7px; line-height: 1.2; }
+  .print-table-info th { font-size: 6px; padding: 2px; }
+  
+  /* Hide less important columns on mobile */
+  .print-table th:nth-child(3),
+  .print-table td:nth-child(3),
+  .print-table th:nth-child(5),
+  .print-table td:nth-child(5) { display: none; }
+  
+  /* Make description column wider */
+  .print-table th:nth-child(2),
+  .print-table td:nth-child(2) { 
+    width: 45%; 
+    word-break: break-word;
+    hyphens: auto;
+    white-space: normal;
+  }
+  
+  /* Adjust other columns */
+  .print-table th:nth-child(1),
+  .print-table td:nth-child(1) { width: 8%; }
+  .print-table th:nth-child(4),
+  .print-table td:nth-child(4) { width: 10%; }
+  .print-table th:nth-child(6),
+  .print-table td:nth-child(6) { width: 12%; }
+  .print-table th:nth-child(7),
+  .print-table td:nth-child(7) { width: 10%; }
+  .print-table th:nth-child(8),
+  .print-table td:nth-child(8) { width: 15%; }
+  
+  /* Fix footer total row */
+  .print-table tfoot td:nth-child(1) { text-align: left; }
+  
+  /* Compact other elements */
+  .print-title, .print-summary { font-size: 10px; padding: 4px 6px; }
+  .print-two-col { font-size: 8px; gap: 8px; }
+  .certificate-rules { font-size: 8px; }
+  .certificate-rules p { padding: 3px 5px; }
+  .verification-block { font-size: 8px; }
+  .verification-qr { width: 16mm; height: 16mm; }
+  
+  /* DIGITAL_CERT mobile adjustments */
+  .dc-table { font-size: 8px; table-layout: fixed; }
+  .dc-table th, .dc-table td { padding: 3px 2px; font-size: 7px; }
+  .dc-table-info th { font-size: 6px; padding: 2px; }
+  
+  /* Hide less important DC columns */
+  .dc-table th:nth-child(3),
+  .dc-table td:nth-child(3),
+  .dc-table th:nth-child(5),
+  .dc-table td:nth-child(5) { display: none; }
+  
+  /* DC column widths */
+  .dc-table th:nth-child(1),
+  .dc-table td:nth-child(1) { width: 8%; }
+  .dc-table th:nth-child(2),
+  .dc-table td:nth-child(2) { width: 45%; white-space: normal; }
+  .dc-table th:nth-child(4),
+  .dc-table td:nth-child(4) { width: 10%; }
+  .dc-table th:nth-child(6),
+  .dc-table td:nth-child(6) { width: 12%; }
+  .dc-table th:nth-child(7),
+  .dc-table td:nth-child(7) { width: 10%; }
+  .dc-table th:nth-child(8),
+  .dc-table td:nth-child(8) { width: 15%; }
+}
+
+/* Ultra-narrow mobile screens (< 400px) - use vertical table layout */
+@media screen and (max-width: 400px) {
+  .print-table thead tr:first-child { display: none; }
+  .print-table thead tr:nth-child(2) th { font-size: 8px; padding: 3px; }
+  
+  /* Stack table rows vertically */
+  .print-table tbody tr {
+    display: block;
+    margin-bottom: 8px;
+    border: 1px solid #111827;
+    padding: 4px;
+  }
+  
+  .print-table tbody td {
+    display: block;
+    border: none;
+    padding: 2px 0;
+    text-align: left !important;
+  }
+  
+  /* Add labels before each cell */
+  .print-table tbody td:nth-child(1):before { content: "Sr: "; font-weight: bold; }
+  .print-table tbody td:nth-child(2):before { content: "Item: "; font-weight: bold; }
+  .print-table tbody td:nth-child(4):before { content: "Qty: "; font-weight: bold; }
+  .print-table tbody td:nth-child(6):before { content: "Net Wt: "; font-weight: bold; }
+  .print-table tbody td:nth-child(7):before { content: "Purity: "; font-weight: bold; }
+  .print-table tbody td:nth-child(8):before { content: "Value: "; font-weight: bold; }
+  
+  /* Hide empty cells */
+  .print-table tbody td:nth-child(3),
+  .print-table tbody td:nth-child(5) { display: none !important; }
+  
+  /* Footer row styling */
+  .print-table tfoot tr {
+    display: block;
+    border: 2px solid #111827;
+    padding: 4px;
+    background: #0b1f3a;
+    color: #fff;
+  }
+  
+  .print-table tfoot td {
+    display: inline;
+    border: none;
+    padding: 0 4px;
+  }
+  
+  /* DC table vertical layout */
+  .dc-table tbody tr {
+    display: block;
+    margin-bottom: 8px;
+    border: 1px solid #000;
+    padding: 4px;
+  }
+  
+  .dc-table tbody td {
+    display: block;
+    border: none;
+    padding: 2px 0;
+    text-align: left !important;
+  }
+  
+  .dc-table tbody td:nth-child(1):before { content: "Sr: "; font-weight: bold; }
+  .dc-table tbody td:nth-child(2):before { content: "Item: "; font-weight: bold; }
+  .dc-table tbody td:nth-child(4):before { content: "Qty: "; font-weight: bold; }
+  .dc-table tbody td:nth-child(6):before { content: "Net Wt: "; font-weight: bold; }
+  .dc-table tbody td:nth-child(7):before { content: "Purity: "; font-weight: bold; }
+  .dc-table tbody td:nth-child(8):before { content: "Value: "; font-weight: bold; }
+  
+  .dc-table tfoot tr {
+    display: block;
+    border: 2px solid #000;
+    padding: 4px;
+  }
+  
+  .dc-table tfoot td {
+    display: inline;
+    border: none;
+    padding: 0 4px;
+  }
 }
 
 @media print {
   @page { size: A4; margin: 8mm; }
+  
+  /* Mobile print adjustments */
+  @media (max-width: 600px) {
+    @page { margin: 4mm; }
+    .print-page { font-size: 8px !important; }
+    .print-table { font-size: 7px !important; }
+    .print-table th, .print-table td { padding: 2px !important; }
+  }
 
   /* Reset fundamentals */
   html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; }
