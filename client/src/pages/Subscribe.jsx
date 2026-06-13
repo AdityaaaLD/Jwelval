@@ -128,7 +128,7 @@ export default function Subscribe() {
               <p className="inline-flex items-center gap-2 rounded-md border border-blue-300/30 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-100">
                 <Sparkles size={16} /> Built for bank gold-loan valuation agents
               </p>
-              <h1 className="font-display mt-5 max-w-3xl text-4xl font-extrabold leading-tight md:text-6xl">
+              <h1 className="font-display mt-5 max-w-3xl text-3xl font-extrabold leading-tight sm:text-4xl md:text-6xl">
                 Transparent pricing for real valuation teams.
               </h1>
               <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">
@@ -148,9 +148,9 @@ export default function Subscribe() {
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-sm font-semibold text-blue-700">Recommended</p>
-                      <h2 className="font-display text-3xl font-extrabold">Year 1 Subscription</h2>
+                      <h2 className="font-display text-2xl font-extrabold sm:text-3xl">Year 1 Subscription</h2>
                     </div>
-                    <div className="rounded-md bg-blue-600 px-3 py-2 text-sm font-bold text-white">Rs. 10,000/user/year</div>
+                    <div className="rounded-md bg-blue-600 px-2 py-1 text-xs font-bold text-white sm:px-3 sm:py-2 sm:text-sm">Rs. 10,000/user/year</div>
                   </div>
                   <div className="mt-5 grid grid-cols-3 gap-2 text-center">
                     {[
@@ -182,10 +182,10 @@ export default function Subscribe() {
         </section>
 
         <section id="plans" className="mx-auto max-w-6xl px-5 py-12">
-          <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Subscription Plans</p>
-              <h2 className="font-display mt-2 text-3xl font-extrabold text-slate-950">Select your subscription phase.</h2>
+              <h2 className="font-display mt-2 text-2xl font-extrabold text-slate-950 md:text-3xl">Select your subscription phase.</h2>
             </div>
             <p className="max-w-lg text-sm leading-6 text-slate-500">Choose Year 1 for new onboarding, or Year 2 onward if you are continuing after the first year. Both use per-user pricing.</p>
           </div>
@@ -208,10 +208,10 @@ export default function Subscribe() {
                   <div className="grid h-11 w-11 place-items-center rounded-md bg-blue-50 text-blue-700">
                     <Icon size={22} />
                   </div>
-                  <h3 className="font-display mt-5 text-2xl font-extrabold text-slate-950">{plan.name}</h3>
+                  <h3 className="font-display mt-5 text-xl font-extrabold text-slate-950 md:text-2xl">{plan.name}</h3>
                   <p className="mt-2 text-sm text-slate-500">{plan.bestFor}</p>
                   <div className="mt-5 flex items-end gap-1">
-                    <span className="font-display text-4xl font-extrabold text-slate-950">{plan.price}</span>
+                    <span className="font-display text-3xl font-extrabold text-slate-950 md:text-4xl">{plan.price}</span>
                     <span className="pb-1 text-sm font-semibold text-slate-500">{plan.period}</span>
                   </div>
                   <p className="mt-2 rounded-md bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">{plan.volume}</p>
@@ -239,13 +239,13 @@ export default function Subscribe() {
 
         <section id="access-request-form" className="mx-auto max-w-6xl px-5 pb-12">
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm md:p-8">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-wide text-blue-700">Account Access Request</p>
-                <h2 className="font-display mt-1 text-2xl font-extrabold text-slate-950">Send request to activate your subscription</h2>
+                <h2 className="font-display mt-1 text-xl font-extrabold text-slate-950 md:text-2xl">Send request to activate your subscription</h2>
                 <p className="mt-2 text-sm text-slate-500">Selected: <span className="font-semibold text-slate-800">{selectedPlan.name}</span> ({selectedPlan.price}{selectedPlan.period})</p>
               </div>
-              <div className="rounded-md bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800">Request emails are sent to support@logic-motive.com</div>
+              <div className="rounded-md bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 lg:text-center">Request emails are sent to support@logic-motive.com</div>
             </div>
 
             <form className="mt-6 grid gap-4 md:grid-cols-2" onSubmit={submitRequest}>
@@ -351,7 +351,7 @@ export default function Subscribe() {
         </section>
 
         <section className="border-y border-slate-200 bg-white">
-          <div className="mx-auto grid max-w-6xl gap-4 px-5 py-10 md:grid-cols-4">
+          <div className="mx-auto grid max-w-6xl gap-4 px-5 py-10 sm:grid-cols-2 lg:grid-cols-4">
             {highlights.map(([Icon, title, copy], index) => (
               <div key={title} className="animate-rise-in rounded-lg border border-slate-200 p-5" style={{ animationDelay: `${index * 80}ms` }}>
                 <Icon className="text-blue-700" size={24} />
@@ -362,13 +362,13 @@ export default function Subscribe() {
           </div>
         </section>
 
-        <section className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-10 md:flex-row md:items-center md:justify-between">
+        <section className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700"><Headphones size={16} /> Recommended launch choice</p>
-            <h2 className="font-display mt-2 text-3xl font-extrabold text-slate-950">Start Year 1 at Rs. 10,000 per user/year.</h2>
+            <h2 className="font-display mt-2 text-2xl font-extrabold text-slate-950 md:text-3xl">Start Year 1 at Rs. 10,000 per user/year.</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">From Year 2 onward, continue at Rs. 299 per user/month. Use the form above to send your account access request.</p>
           </div>
-          <a href="#access-request-form" className="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-400" style={{ backgroundColor: '#2563eb' }}>Request Access</a>
+          <a href="#access-request-form" className="inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-400 lg:shrink-0" style={{ backgroundColor: '#2563eb' }}>Request Access</a>
         </section>
       </main>
     </div>

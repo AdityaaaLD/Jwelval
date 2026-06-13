@@ -129,167 +129,81 @@
 
 /* Mobile: scale print pages to fit viewport */
 @media screen and (max-width: 840px) {
-  .print-preview-scroll { padding: 64px 8px 16px; }
-  .print-preview-center { width: 100%; }
-  .print-page, .sb-page { width: 100%; min-height: auto; padding: 4mm; font-size: 9px; box-shadow: 0 4px 20px rgba(0,0,0,.15); }
-  .print-letterhead, .bank-header { grid-template-columns: 20mm 1fr 28mm; gap: 6px; }
-  .print-letterhead h1, .bank-header h1 { font-size: 16px; }
-  .signature-grid { padding-top: 12mm; gap: 4px; }
-  .ornament-strip { grid-template-columns: repeat(3, 1fr); }
-  .dc-photos { flex-wrap: wrap; gap: 8px; }
-  .dc-photo-box img { width: 28mm; height: 28mm; }
-  .dc-doc-grid { grid-template-columns: 1fr; gap: 10px; }
-  .fee-receipt { width: 100%; }
-  .sb-business-name { font-size: 18px; }
-  
-  /* Mobile table fixes */
-  .print-table { font-size: 8px; table-layout: fixed; }
-  .print-table th, .print-table td { padding: 3px 2px; font-size: 7px; line-height: 1.2; }
-  .print-table-info th { font-size: 6px; padding: 2px; }
-  
-  /* Hide less important columns on mobile */
-  .print-table th:nth-child(3),
-  .print-table td:nth-child(3),
-  .print-table th:nth-child(5),
-  .print-table td:nth-child(5) { display: none; }
-  
-  /* Make description column wider */
-  .print-table th:nth-child(2),
-  .print-table td:nth-child(2) { 
-    width: 45%; 
-    word-break: break-word;
-    hyphens: auto;
-    white-space: normal;
+  .print-preview-scroll { 
+    padding: 64px 0 16px; 
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
-  /* Adjust other columns */
-  .print-table th:nth-child(1),
-  .print-table td:nth-child(1) { width: 8%; }
-  .print-table th:nth-child(4),
-  .print-table td:nth-child(4) { width: 10%; }
-  .print-table th:nth-child(6),
-  .print-table td:nth-child(6) { width: 12%; }
-  .print-table th:nth-child(7),
-  .print-table td:nth-child(7) { width: 10%; }
-  .print-table th:nth-child(8),
-  .print-table td:nth-child(8) { width: 15%; }
-  
-  /* Fix footer total row */
-  .print-table tfoot td:nth-child(1) { text-align: left; }
-  
-  /* Compact other elements */
-  .print-title, .print-summary { font-size: 10px; padding: 4px 6px; }
-  .print-two-col { font-size: 8px; gap: 8px; }
-  .certificate-rules { font-size: 8px; }
-  .certificate-rules p { padding: 3px 5px; }
-  .verification-block { font-size: 8px; }
-  .verification-qr { width: 16mm; height: 16mm; }
-  
-  /* DIGITAL_CERT mobile adjustments */
-  .dc-table { font-size: 8px; table-layout: fixed; }
-  .dc-table th, .dc-table td { padding: 3px 2px; font-size: 7px; }
-  .dc-table-info th { font-size: 6px; padding: 2px; }
-  
-  /* Hide less important DC columns */
-  .dc-table th:nth-child(3),
-  .dc-table td:nth-child(3),
-  .dc-table th:nth-child(5),
-  .dc-table td:nth-child(5) { display: none; }
-  
-  /* DC column widths */
-  .dc-table th:nth-child(1),
-  .dc-table td:nth-child(1) { width: 8%; }
-  .dc-table th:nth-child(2),
-  .dc-table td:nth-child(2) { width: 45%; white-space: normal; }
-  .dc-table th:nth-child(4),
-  .dc-table td:nth-child(4) { width: 10%; }
-  .dc-table th:nth-child(6),
-  .dc-table td:nth-child(6) { width: 12%; }
-  .dc-table th:nth-child(7),
-  .dc-table td:nth-child(7) { width: 10%; }
-  .dc-table th:nth-child(8),
-  .dc-table td:nth-child(8) { width: 15%; }
-}
-
-/* Ultra-narrow mobile screens (< 400px) - use vertical table layout */
-@media screen and (max-width: 400px) {
-  .print-table thead tr:first-child { display: none; }
-  .print-table thead tr:nth-child(2) th { font-size: 8px; padding: 3px; }
-  
-  /* Stack table rows vertically */
-  .print-table tbody tr {
-    display: block;
-    margin-bottom: 8px;
-    border: 1px solid #111827;
-    padding: 4px;
+  .print-preview-center { 
+    width: 210mm; /* A4 width */
+    margin: 0 auto;
+    transform-origin: top center;
+    transform: scale(var(--print-scale, 1));
+    transition: transform 0.2s ease;
   }
   
-  .print-table tbody td {
-    display: block;
-    border: none;
-    padding: 2px 0;
-    text-align: left !important;
+  /* Calculate scale based on viewport width */
+  @media (max-width: 768px) {
+    .print-preview-center {
+      --print-scale: 0.9;
+    }
   }
   
-  /* Add labels before each cell */
-  .print-table tbody td:nth-child(1):before { content: "Sr: "; font-weight: bold; }
-  .print-table tbody td:nth-child(2):before { content: "Item: "; font-weight: bold; }
-  .print-table tbody td:nth-child(4):before { content: "Qty: "; font-weight: bold; }
-  .print-table tbody td:nth-child(6):before { content: "Net Wt: "; font-weight: bold; }
-  .print-table tbody td:nth-child(7):before { content: "Purity: "; font-weight: bold; }
-  .print-table tbody td:nth-child(8):before { content: "Value: "; font-weight: bold; }
-  
-  /* Hide empty cells */
-  .print-table tbody td:nth-child(3),
-  .print-table tbody td:nth-child(5) { display: none !important; }
-  
-  /* Footer row styling */
-  .print-table tfoot tr {
-    display: block;
-    border: 2px solid #111827;
-    padding: 4px;
-    background: #0b1f3a;
-    color: #fff;
+  @media (max-width: 640px) {
+    .print-preview-center {
+      --print-scale: 0.75;
+    }
   }
   
-  .print-table tfoot td {
-    display: inline;
-    border: none;
-    padding: 0 4px;
+  @media (max-width: 480px) {
+    .print-preview-center {
+      --print-scale: 0.6;
+    }
   }
   
-  /* DC table vertical layout */
-  .dc-table tbody tr {
-    display: block;
-    margin-bottom: 8px;
-    border: 1px solid #000;
-    padding: 4px;
+  @media (max-width: 400px) {
+    .print-preview-center {
+      --print-scale: 0.5;
+    }
   }
   
-  .dc-table tbody td {
-    display: block;
-    border: none;
-    padding: 2px 0;
-    text-align: left !important;
+  @media (max-width: 360px) {
+    .print-preview-center {
+      --print-scale: 0.45;
+    }
   }
   
-  .dc-table tbody td:nth-child(1):before { content: "Sr: "; font-weight: bold; }
-  .dc-table tbody td:nth-child(2):before { content: "Item: "; font-weight: bold; }
-  .dc-table tbody td:nth-child(4):before { content: "Qty: "; font-weight: bold; }
-  .dc-table tbody td:nth-child(6):before { content: "Net Wt: "; font-weight: bold; }
-  .dc-table tbody td:nth-child(7):before { content: "Purity: "; font-weight: bold; }
-  .dc-table tbody td:nth-child(8):before { content: "Value: "; font-weight: bold; }
-  
-  .dc-table tfoot tr {
-    display: block;
-    border: 2px solid #000;
-    padding: 4px;
+  /* Keep original A4 dimensions for print pages */
+  .print-page, .sb-page, .digital-cert { 
+    width: 210mm; 
+    min-height: 297mm;
+    /* Remove responsive changes - keep original styles */
   }
   
-  .dc-table tfoot td {
-    display: inline;
-    border: none;
-    padding: 0 4px;
+  /* Add pinch-to-zoom support */
+  .print-preview-scroll {
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+  
+  /* Add visual indicator for scrollable area */
+  .print-preview-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .print-preview-scroll::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  .print-preview-scroll::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+  }
+  
+  .print-preview-scroll::-webkit-scrollbar-thumb:hover {
+    background: #555;
   }
 }
 
