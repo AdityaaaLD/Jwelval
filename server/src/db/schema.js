@@ -10,6 +10,8 @@ export const customers = sqliteTable('customers', {
   aadharNumber: text('aadhar_number'),
   aadharPhoto: text('aadhar_photo'),
   aadharPhotoBack: text('aadhar_photo_back'),
+  panPhoto: text('pan_photo'),
+  customerPhoto: text('customer_photo'),
   savingsAcNo: text('savings_ac_no'),
   bankName: text('bank_name'),
   branch: text('branch'),

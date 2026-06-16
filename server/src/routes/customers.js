@@ -49,7 +49,20 @@ router.post(
   async (req, res) => {
     const now = new Date().toISOString()
     const userId = req.user.id
-    const { name, mobile, alternateMobile, address, aadharNumber, aadharPhoto, aadharPhotoBack, savingsAcNo, bankName, branch } = req.body
+    const {
+      name,
+      mobile,
+      alternateMobile,
+      address,
+      aadharNumber,
+      aadharPhoto,
+      aadharPhotoBack,
+      panPhoto,
+      customerPhoto,
+      savingsAcNo,
+      bankName,
+      branch,
+    } = req.body
 
     const txn = sqlite.transaction(() => {
       const row = sqlite.prepare('SELECT COUNT(*) AS n FROM customers WHERE user_id = ?').get(userId)
@@ -60,10 +73,10 @@ router.post(
       const finalCode = exists ? `${code}-U${userId}` : code
       const insert = sqlite.prepare(`
         INSERT INTO customers (customer_code, name, address, mobile, alternate_mobile, aadhar_number, aadhar_photo,
-                               aadhar_photo_back, savings_ac_no, bank_name, branch, user_id, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                               aadhar_photo_back, pan_photo, customer_photo, savings_ac_no, bank_name, branch, user_id, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(finalCode, name, address || '', mobile || '', alternateMobile || '', aadharNumber || '', aadharPhoto || '',
-             aadharPhotoBack || '', savingsAcNo || '', bankName || '', branch || '', userId, now)
+             aadharPhotoBack || '', panPhoto || '', customerPhoto || '', savingsAcNo || '', bankName || '', branch || '', userId, now)
       return insert.lastInsertRowid
     })
 
@@ -89,7 +102,20 @@ router.put('/:id', body('name').isString().trim().notEmpty(), validate, async (r
       message: 'Customer has printed/locked valuations and cannot be edited.',
     })
   }
-  const { name, mobile, alternateMobile, address, aadharNumber, aadharPhoto, aadharPhotoBack, savingsAcNo, bankName, branch } = req.body
+  const {
+    name,
+    mobile,
+    alternateMobile,
+    address,
+    aadharNumber,
+    aadharPhoto,
+    aadharPhotoBack,
+    panPhoto,
+    customerPhoto,
+    savingsAcNo,
+    bankName,
+    branch,
+  } = req.body
   await db
     .update(customers)
     .set({
@@ -100,6 +126,8 @@ router.put('/:id', body('name').isString().trim().notEmpty(), validate, async (r
       aadharNumber: aadharNumber || '',
       aadharPhoto: aadharPhoto || '',
       aadharPhotoBack: aadharPhotoBack || '',
+      panPhoto: panPhoto || '',
+      customerPhoto: customerPhoto || '',
       savingsAcNo: savingsAcNo || '',
       bankName: bankName || '',
       branch: branch || '',

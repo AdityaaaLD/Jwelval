@@ -406,6 +406,11 @@ try { sqlite.exec(`ALTER TABLE valuations ADD COLUMN bank_recommended_value REAL
 try { sqlite.exec(`ALTER TABLE bank_presets ADD COLUMN certificate_rules TEXT`) } catch (e) { /* already exists */ }
 try { sqlite.exec(`ALTER TABLE valuations ADD COLUMN certificate_rules TEXT`) } catch (e) { /* already exists */ }
 
+// Add additional photo columns to customers table
+try { sqlite.exec(`ALTER TABLE customers ADD COLUMN aadhar_photo_back TEXT`) } catch (e) { /* already exists */ }
+try { sqlite.exec(`ALTER TABLE customers ADD COLUMN pan_photo TEXT`) } catch (e) { /* already exists */ }
+try { sqlite.exec(`ALTER TABLE customers ADD COLUMN customer_photo TEXT`) } catch (e) { /* already exists */ }
+
 // No demo user seeded — users must sign up.
 // Default data (ornaments, series, profile, presets) is seeded per-user on signup via seedDefaultsForUser in auth.js.
 

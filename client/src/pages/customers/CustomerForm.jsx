@@ -14,6 +14,8 @@ const emptyCustomer = {
   aadharNumber: '',
   aadharPhoto: '',
   aadharPhotoBack: '',
+  panPhoto: '',
+  customerPhoto: '',
   savingsAcNo: '',
   bankName: '',
   branch: '',
@@ -41,6 +43,8 @@ export default function CustomerForm() {
         aadharNumber: customer.aadharNumber || '',
         aadharPhoto: customer.aadharPhoto || '',
         aadharPhotoBack: customer.aadharPhotoBack || '',
+        panPhoto: customer.panPhoto || '',
+        customerPhoto: customer.customerPhoto || '',
         savingsAcNo: customer.savingsAcNo || '',
         bankName: customer.bankName || '',
         branch: customer.branch || '',
@@ -70,6 +74,12 @@ export default function CustomerForm() {
     } finally {
       setScanningFront(false)
     }
+  }
+
+  const uploadPhoto = async (field, file) => {
+    if (!file) return
+    const compressed = await compressImage(file)
+    setForm((current) => ({ ...current, [field]: compressed }))
   }
 
   const scanBack = async (file) => {
@@ -160,6 +170,37 @@ export default function CustomerForm() {
                   <pre className="mt-1 max-h-24 overflow-auto whitespace-pre-wrap rounded bg-white p-2">{ocrTextBack}</pre>
                 </details>
               )}
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-5 rounded-md border border-slate-200 bg-slate-50 p-4">
+          <div className="mb-3">
+            <h2 className="font-semibold text-slate-950">Additional Identity Photos</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Capture customer and PAN photos once here. These are auto-used in valuation forms when this customer is selected.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs font-semibold text-slate-700">Customer Photo</p>
+              <div className="grid h-36 place-items-center overflow-hidden rounded-md border border-slate-200 bg-white text-sm text-slate-500">
+                {form.customerPhoto ? <img src={form.customerPhoto} alt="Customer" className="h-full w-full object-cover" /> : <FileScan size={28} />}
+              </div>
+              <label className="btn-secondary mt-2 w-full">
+                <Upload size={16} /> Capture / Upload
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => uploadPhoto('customerPhoto', e.target.files?.[0])} />
+              </label>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-semibold text-slate-700">PAN Card Photo</p>
+              <div className="grid h-36 place-items-center overflow-hidden rounded-md border border-slate-200 bg-white text-sm text-slate-500">
+                {form.panPhoto ? <img src={form.panPhoto} alt="PAN" className="h-full w-full object-cover" /> : <FileScan size={28} />}
+              </div>
+              <label className="btn-secondary mt-2 w-full">
+                <Upload size={16} /> Capture / Upload
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => uploadPhoto('panPhoto', e.target.files?.[0])} />
+              </label>
             </div>
           </div>
         </section>

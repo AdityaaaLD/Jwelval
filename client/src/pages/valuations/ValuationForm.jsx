@@ -59,7 +59,36 @@ export default function ValuationForm() {
   const [valuation, setValuation] = useState(null)
   const [printOpen, setPrintOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [customerMediaLoading, setCustomerMediaLoading] = useState(false)
+  const customerDetailCacheRef = useRef({})
   const { form, dirty, reset, hydrate, setField, setItem, addItem, removeItem, markClean, payload } = useValuationStore()
+
+  const syncCustomerIdentityPhotos = async (customerId) => {
+    if (!customerId) {
+      setField('personPhoto', '')
+      setField('aadharPhotoDoc', '')
+      setField('panPhoto', '')
+      return
+    }
+
+    try {
+      setCustomerMediaLoading(true)
+      let customer = customerDetailCacheRef.current[customerId]
+      if (!customer) {
+        customer = await api.customers.get(customerId)
+        customerDetailCacheRef.current[customerId] = customer
+      }
+
+      setField('personPhoto', customer.customerPhoto || '')
+      setField('aadharPhotoDoc', customer.aadharPhoto || '')
+      setField('panPhoto', customer.panPhoto || '')
+      setField('acNo', customer.savingsAcNo || '')
+    } catch {
+      toast.error('Unable to load customer photos.')
+    } finally {
+      setCustomerMediaLoading(false)
+    }
+  }
 
   useEffect(() => {
     Promise.all([api.customers.list(), api.series.list(), api.presets.banks(), api.rates.get(), api.ornaments.list()]).then(([customerRows, seriesRows, presetRows, rate, ornRows]) => {
@@ -70,7 +99,10 @@ export default function ValuationForm() {
       if (!isEdit) {
         reset()
         const customerId = searchParams.get('customer_id')
-        if (customerId) setField('customerId', customerId)
+        if (customerId) {
+          setField('customerId', customerId)
+          syncCustomerIdentityPhotos(customerId)
+        }
         if (rate.goldRate22k) {
           setField('goldRate22k', rate.goldRate22k)
         }
@@ -191,6 +223,22 @@ export default function ValuationForm() {
     </div>
   )
 
+  const ReadOnlyPhoto = ({ field, label }) => (
+    <div>
+      <p className="label">{label}</p>
+      <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+        {form[field] ? (
+          <img src={form[field]} alt={label} className="h-40 w-full object-cover" />
+        ) : (
+          <div className="grid h-40 place-items-center text-sm text-slate-400">
+            <Camera size={24} />
+          </div>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-slate-500">Auto-filled from selected customer profile.</p>
+    </div>
+  )
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -224,8 +272,7 @@ export default function ValuationForm() {
             <select className="input" value={form.customerId} onChange={(e) => {
               const cId = e.target.value
               setField('customerId', cId)
-              const cust = customers.find((c) => String(c.id) === cId)
-              if (cust?.savingsAcNo) setField('acNo', cust.savingsAcNo)
+              syncCustomerIdentityPhotos(cId)
             }} disabled={disabled || isEdit}>
               <option value="">Choose customer</option>
               {customers.map((customer) => (
@@ -285,31 +332,14 @@ export default function ValuationForm() {
 
       <section className="card p-5">
         <div className="mb-4">
-          <h2 className="font-semibold text-slate-950">Photos</h2>
-          <p className="text-sm text-slate-500">Capture borrower and jewellery photos directly from the device camera.</p>
+          <h2 className="font-semibold text-slate-950">Identity Photos</h2>
+          <p className="text-sm text-slate-500">These photos are fetched from customer profile and used in certificate print layouts.</p>
+          {customerMediaLoading && <p className="mt-1 text-xs text-slate-500">Loading customer photos...</p>}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <PhotoCapture field="personPhoto" label="Borrower Photo" />
-          <PhotoCapture field="jewelleryPhoto" label="Jewellery Photo" />
-          <PhotoCapture field="aadharPhotoDoc" label="Aadhar Card (for back page)" />
-          <PhotoCapture field="panPhoto" label="PAN Card (for back page)" />
-        </div>
-        <div className="mt-4">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="label mb-0">Additional Ornament Photos</p>
-            <label className={`btn-secondary ${disabled ? 'pointer-events-none opacity-50' : ''}`}>
-              <Camera size={16} /> Add Photo
-              <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={disabled} onChange={(e) => addOrnamentPhoto(e.target.files?.[0])} />
-            </label>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-6">
-            {(form.ornamentPhotos || []).map((photo, index) => (
-              <div key={index} className="relative overflow-hidden rounded-md border border-slate-200">
-                <img src={photo} alt={`Ornament ${index + 1}`} className="h-24 w-full object-cover" />
-                {!disabled && <button type="button" className="absolute right-1 top-1 rounded bg-white/90 p-1" onClick={() => setField('ornamentPhotos', form.ornamentPhotos.filter((_, i) => i !== index))}><Trash2 size={14} /></button>}
-              </div>
-            ))}
-          </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <ReadOnlyPhoto field="personPhoto" label="Borrower Photo" />
+          <ReadOnlyPhoto field="aadharPhotoDoc" label="Aadhar Card" />
+          <ReadOnlyPhoto field="panPhoto" label="PAN Card" />
         </div>
       </section>
 
@@ -490,6 +520,35 @@ export default function ValuationForm() {
             <label className="label">Valuation Fee</label>
             <input type="number" className="input" value={form.valuationFee} onChange={(e) => setField('valuationFee', e.target.value)} disabled={disabled} />
             <p className="mt-1 text-xs text-slate-500">Fee charged by appraiser.</p>
+          </div>
+        </div>
+      </section>
+
+
+
+      <section className="card p-5">
+        <div className="mb-4">
+          <h2 className="font-semibold text-slate-950">Jewellery Photos</h2>
+          <p className="text-sm text-slate-500">Capture jewellery images for valuation records.</p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <PhotoCapture field="jewelleryPhoto" label="Jewellery Photo" />
+        </div>
+        <div className="mt-4">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="label mb-0">Additional Ornament Photos</p>
+            <label className={`btn-secondary ${disabled ? 'pointer-events-none opacity-50' : ''}`}>
+              <Camera size={16} /> Add Photo
+              <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={disabled} onChange={(e) => addOrnamentPhoto(e.target.files?.[0])} />
+            </label>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-6">
+            {(form.ornamentPhotos || []).map((photo, index) => (
+              <div key={index} className="relative overflow-hidden rounded-md border border-slate-200">
+                <img src={photo} alt={`Ornament ${index + 1}`} className="h-24 w-full object-cover" />
+                {!disabled && <button type="button" className="absolute right-1 top-1 rounded bg-white/90 p-1" onClick={() => setField('ornamentPhotos', form.ornamentPhotos.filter((_, i) => i !== index))}><Trash2 size={14} /></button>}
+              </div>
+            ))}
           </div>
         </div>
       </section>
