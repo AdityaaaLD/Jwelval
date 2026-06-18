@@ -9,6 +9,9 @@ const aadhaarPattern = /\b([0-9OQDIGSlB]{4}[\s-]?[0-9OQDIGSlB]{4}[\s-]?[0-9OQDIG
 
 const IGNORE = /^(government|india|uidai|unique|identification|authority|aadhaar|vid|dob|year|male|female|address|mobile|www|help|enrol|भारत|सरकार|पुरुष|महिला|जन्म|तारीख|पत्ता|मोबाइल|संपर्क)/i
 const HEADER_WORDS = /(government|india|uidai|unique|identification|authority|aadhaar|भारत|सरकार)/i
+const DEVANAGARI = /[\u0900-\u097F]/
+const ADDRESS_LABEL = /^address\s*:?\s*/i
+const FOOTER_LINE = /^(www\.|help@|uidai\.gov\.in|P\.O\.|1947|e-?mail|download)/i
 
 const DIGIT_SUBS = {
   O: '0',
@@ -146,11 +149,21 @@ function parseFrontText(text) {
 
 function cleanAddressLine(line) {
   return line
-    .replace(/^address\s*:?/i, '')
+    .replace(ADDRESS_LABEL, '')
     .replace(/^पत्ता\s*:?/i, '')
     .replace(/\s*,\s*/g, ', ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+function isEnglishAddressLine(line) {
+  if (!line) return false
+  if (DEVANAGARI.test(line)) return false
+  if (FOOTER_LINE.test(line)) return false
+  if (/^unique identification/i.test(line)) return false
+  if (/^\d{4}\s\d{4}\s\d{4}$/.test(line)) return false
+  if (/^[1-9]\d{5}$/.test(line)) return true
+  return /[A-Za-z]/.test(line)
 }
 
 function parseBackText(text) {
@@ -158,19 +171,21 @@ function parseBackText(text) {
   const joined = lines.join('\n')
   const warnings = []
 
-  const start = lines.findIndex((l) => /^address\s*:?/i.test(l) || /^पत्ता\s*:?/i.test(l) || /^address$/i.test(l))
-  const startIndex = start >= 0 ? start : lines.findIndex((l) => /^(S\/O|D\/O|W\/O|C\/O|H\.No|Flat|House|Near)/i.test(l))
+  const englishLabelIdx = lines.findIndex((l) => ADDRESS_LABEL.test(l))
+  const englishStartIdx = lines.findIndex((l) => isEnglishAddressLine(l) && /^(S\/O|D\/O|W\/O|C\/O|H\.?\s*No|Flat|House|Plot|Near|Society|Village|Ward|Road|Street|Lane|Nagar|City|State|Pin|Pincode)/i.test(l))
+  const startIndex = englishLabelIdx >= 0 ? englishLabelIdx : englishStartIdx
   const addressLines = []
 
   if (startIndex >= 0) {
-    for (let i = startIndex; i < lines.length && i < startIndex + 10; i += 1) {
+    for (let i = startIndex; i < lines.length && i < startIndex + 12; i += 1) {
       const line = lines[i]
       if (!line) continue
       if (findAadhaarNumber(line).aadharNumber && i > startIndex) break
-      if (/^(www\.|help@|P\.O\.|1947|uidai\.gov\.in)/i.test(line)) break
+      if (FOOTER_LINE.test(line)) break
       if (/^unique identification/i.test(line)) break
       const cleaned = cleanAddressLine(line)
       if (!cleaned) continue
+      if (!isEnglishAddressLine(cleaned)) continue
       addressLines.push(cleaned)
     }
   }

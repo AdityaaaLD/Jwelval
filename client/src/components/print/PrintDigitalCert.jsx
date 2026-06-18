@@ -69,14 +69,13 @@ export default function PrintDigitalCert({ valuation }) {
           <p><b>Bank: {customer.bankName || 'Bank of Maharashtra'}, Branch: {valuation.branch || customer.branch || ''}</b></p>
         </div>
 
-        <p className="dc-currency">(Rs. in Actual)</p>
-
-        {valuation.loanType && (
-          <div className="dc-row-box">
-            <span><b>Loan Type:</b> {valuation.loanType}</span>
-            {valuation.rateOfInterest != null && <span style={{ marginLeft: '24px' }}><b>Rate of Interest:</b> {valuation.rateOfInterest}%</span>}
+        <div className="dc-row-box dc-loan-meta-row">
+          <div className="dc-loan-meta-left">
+            {valuation.loanType && <span><b>Loan Type:</b> {valuation.loanType}</span>}
+            {valuation.rateOfInterest != null && <span className="dc-loan-rate"><b>Rate of Interest:</b> {valuation.rateOfInterest}%</span>}
           </div>
-        )}
+          <span className="dc-currency-inline">(Rs. in Actual)</span>
+        </div>
 
         <table className="dc-table">
           <thead>

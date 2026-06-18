@@ -40,7 +40,10 @@
 .dc-parties { display: grid; grid-template-columns: 1fr 1fr; }
 .dc-parties p { margin: 1px 0; }
 .dc-borrower p { margin: 2px 0; }
-.dc-currency { text-align: right; margin: 1px 0 0; font-weight: 700; font-size: 11px; }
+.dc-loan-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dc-loan-meta-left { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.dc-loan-rate { margin-left: 0; }
+.dc-currency-inline { font-weight: 700; white-space: nowrap; }
 .dc-table { width: 100%; border-collapse: collapse; margin: 0; }
 .dc-table th, .dc-table td { border: 1px solid #000; padding: 4px 5px; text-align: center; vertical-align: middle; font-size: 10px; line-height: 1.25; word-wrap: break-word; }
 .dc-table th { font-weight: 700; background: #fff; color: #000; }
