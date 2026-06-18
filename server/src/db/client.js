@@ -21,4 +21,14 @@ sqlite.pragma('busy_timeout = 5000')
 sqlite.pragma('foreign_keys = ON')
 
 export const db = drizzle(sqlite, { schema })
+
+export function verifyDatabaseConnection() {
+  sqlite.prepare('SELECT 1 AS ok').get()
+  return true
+}
+
+export function closeDatabaseConnection() {
+  sqlite.close()
+}
+
 export { sqlite, dbPath }

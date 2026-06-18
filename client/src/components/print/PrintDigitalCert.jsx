@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { num } from '../../lib/format'
 import { api } from '../../lib/api'
-import { CertificateRules, SignatureGrid, VerificationBlock } from './PrintHelpers'
+import { CertificateRules, SignatureGrid, VerificationBlock, resolveReportDateTime } from './PrintHelpers'
 
 export default function PrintDigitalCert({ valuation }) {
   const customer = valuation.customer || {}
@@ -16,9 +16,16 @@ export default function PrintDigitalCert({ valuation }) {
     value: acc.value + (Number(item.approxValueInr) || 0),
   }), { units: 0, gross: 0, net: 0, value: 0 })
 
-  const dateStr = valuation.valuationDate
-    ? new Date(valuation.valuationDate + 'T00:00:00').toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
-    : ''
+  const reportDateTime = resolveReportDateTime(valuation)
+  const dateStr = reportDateTime.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  })
 
   return (
     <div>

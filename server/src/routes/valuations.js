@@ -16,6 +16,36 @@ const validate = (req, res, next) => {
 
 const isLocked = (status) => status === 'PRINTED' || status === 'LOCKED'
 
+function buildCustomerSnapshot(customerRow = {}) {
+  return {
+    id: customerRow.id,
+    customerCode: customerRow.customerCode || customerRow.customer_code || '',
+    name: customerRow.name || '',
+    mobile: customerRow.mobile || '',
+    alternateMobile: customerRow.alternateMobile || customerRow.alternate_mobile || '',
+    address: customerRow.address || '',
+    aadharNumber: customerRow.aadharNumber || customerRow.aadhar_number || '',
+    savingsAcNo: customerRow.savingsAcNo || customerRow.savings_ac_no || '',
+    bankName: customerRow.bankName || customerRow.bank_name || '',
+    branch: customerRow.branch || '',
+    aadharPhoto: customerRow.aadharPhoto || customerRow.aadhar_photo || '',
+    aadharPhotoBack: customerRow.aadharPhotoBack || customerRow.aadhar_photo_back || '',
+    panPhoto: customerRow.panPhoto || customerRow.pan_photo || '',
+    customerPhoto: customerRow.customerPhoto || customerRow.customer_photo || '',
+  }
+}
+
+function parseCustomerSnapshot(raw) {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 async function hydrate(valuationRow) {
   const items = await db
     .select()
@@ -25,7 +55,11 @@ async function hydrate(valuationRow) {
     .select()
     .from(payments)
     .where(eq(payments.valuationId, valuationRow.id))
-  const [customer] = await db.select().from(customers).where(eq(customers.id, valuationRow.customerId))
+  const snapshotCustomer = parseCustomerSnapshot(valuationRow.customerSnapshot)
+  const [liveCustomer] = snapshotCustomer
+    ? [null]
+    : await db.select().from(customers).where(eq(customers.id, valuationRow.customerId))
+  const customer = snapshotCustomer || liveCustomer || null
   const [series] = await db.select().from(valuationSeries).where(eq(valuationSeries.id, valuationRow.seriesId))
   let ornamentPhotos = []
   try { ornamentPhotos = JSON.parse(valuationRow.ornamentPhotos || '[]') } catch {}
@@ -54,6 +88,7 @@ router.get('/', async (req, res) => {
       marketValue: valuations.marketValue,
       valuationFee: valuations.valuationFee,
       status: valuations.status,
+      customerSnapshot: valuations.customerSnapshot,
     })
     .from(valuations)
     .where(where)
@@ -63,13 +98,15 @@ router.get('/', async (req, res) => {
     ? sqlite.prepare(`SELECT id, customer_code, name, mobile FROM customers WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids)
     : []
   const byId = Object.fromEntries(custs.map((c) => [c.id, c]))
-  res.json(
-    rows.map((v) => ({
-      ...v,
-      customerName: byId[v.customerId]?.name || '',
-      customerCode: byId[v.customerId]?.customer_code || '',
-    }))
-  )
+  res.json(rows.map((v) => {
+    const snapshot = parseCustomerSnapshot(v.customerSnapshot)
+    const { customerSnapshot, ...rest } = v
+    return {
+      ...rest,
+      customerName: snapshot?.name || byId[v.customerId]?.name || '',
+      customerCode: snapshot?.customerCode || byId[v.customerId]?.customer_code || '',
+    }
+  }))
 })
 
 router.get('/:id', async (req, res) => {
@@ -114,6 +151,14 @@ router.post(
     } = req.body
 
     const userId = req.user.id
+    const [customerRow] = await db
+      .select()
+      .from(customers)
+      .where(and(eq(customers.id, Number(customerId)), eq(customers.userId, userId)))
+    if (!customerRow) {
+      return res.status(400).json({ error: 'CUSTOMER_NOT_FOUND', message: 'Selected customer was not found.' })
+    }
+
     const reserved = reserveNextValuationNumber(seriesId)
 
     // Resolve certificate rules from bank preset if not provided directly
@@ -166,6 +211,7 @@ router.post(
         ornamentPhotos: JSON.stringify(ornamentPhotos || []),
         aadharPhotoDoc: aadharPhotoDoc || '',
         panPhoto: panPhoto || '',
+        customerSnapshot: JSON.stringify(buildCustomerSnapshot(customerRow)),
         certificateRules: finalCertificateRules,
         status: 'DRAFT',
         userId,
@@ -272,14 +318,27 @@ router.post('/:id/duplicate', async (req, res) => {
   const full = await hydrate(source)
   const derived = full.items.map((it) => deriveItem(it, full.goldRate22k))
   const totals = totalsFromItems(derived)
+  const targetCustomerId = Number(req.body.customerId || full.customerId)
+  let targetSnapshot = parseCustomerSnapshot(source.customerSnapshot)
+  if (!targetSnapshot || Number(targetCustomerId) !== Number(full.customerId)) {
+    const [targetCustomer] = await db
+      .select()
+      .from(customers)
+      .where(and(eq(customers.id, Number(targetCustomerId)), eq(customers.userId, userId)))
+    if (!targetCustomer) {
+      return res.status(400).json({ error: 'CUSTOMER_NOT_FOUND', message: 'Selected customer was not found.' })
+    }
+    targetSnapshot = buildCustomerSnapshot(targetCustomer)
+  }
+
   const reserved = reserveNextValuationNumber(req.body.seriesId || full.seriesId)
   const now = new Date().toISOString()
   const [created] = await db.insert(valuations).values({
     valuationNumber: reserved.number,
     seriesId: req.body.seriesId || full.seriesId,
-    customerId: req.body.customerId || full.customerId,
+    customerId: targetCustomerId,
     formatType: reserved.formatType,
-    valuationDate: new Date().toISOString().slice(0, 10),
+    valuationDate: full.valuationDate || new Date().toISOString().slice(0, 10),
     acNo: full.acNo || '',
     branch: full.branch || '',
     branchCode: full.branchCode || '',
@@ -293,9 +352,12 @@ router.post('/:id/duplicate', async (req, res) => {
     rateOfInterest: full.rateOfInterest != null ? Number(full.rateOfInterest) : null,
     loanType: full.loanType || '',
     certificateRules: full.certificateRules || '',
-    personPhoto: '',
-    jewelleryPhoto: '',
-    ornamentPhotos: '[]',
+    personPhoto: full.personPhoto || '',
+    jewelleryPhoto: full.jewelleryPhoto || '',
+    ornamentPhotos: JSON.stringify(full.ornamentPhotos || []),
+    aadharPhotoDoc: full.aadharPhotoDoc || '',
+    panPhoto: full.panPhoto || '',
+    customerSnapshot: JSON.stringify(targetSnapshot),
     status: 'DRAFT',
     userId,
     createdAt: now,

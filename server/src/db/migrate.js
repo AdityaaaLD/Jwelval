@@ -140,8 +140,20 @@ sqlite.exec(`
     UNIQUE(user_id, purpose, created_at)
   );
 
+  CREATE TABLE IF NOT EXISTS otp_request_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    ip TEXT NOT NULL,
+    purpose TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    outcome TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_otp_user_purpose ON otp_tokens(user_id, purpose);
   CREATE INDEX IF NOT EXISTS idx_otp_expires ON otp_tokens(expires_at);
+  CREATE INDEX IF NOT EXISTS idx_otp_user_purpose_active ON otp_tokens(user_id, purpose, consumed_at, created_at);
+  CREATE INDEX IF NOT EXISTS idx_otp_audit_email_time ON otp_request_audit(email, created_at);
+  CREATE INDEX IF NOT EXISTS idx_otp_audit_ip_time ON otp_request_audit(ip, created_at);
 
   CREATE INDEX IF NOT EXISTS idx_val_customer ON valuations(customer_id);
   CREATE INDEX IF NOT EXISTS idx_val_series ON valuations(series_id);
@@ -219,6 +231,7 @@ for (const stmt of [
   'ALTER TABLE valuation_items ADD COLUMN digital_id TEXT',
   'ALTER TABLE valuations ADD COLUMN aadhar_photo_doc TEXT',
   'ALTER TABLE valuations ADD COLUMN pan_photo TEXT',
+  'ALTER TABLE valuations ADD COLUMN customer_snapshot TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN empanelment_id TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN gstn TEXT',
   'ALTER TABLE bank_presets ADD COLUMN branch_code TEXT',
@@ -250,6 +263,7 @@ for (const stmt of [
   try { sqlite.exec(stmt) } catch (error) {
     if (!String(error.message).includes('duplicate column name')) throw error
   }
+}
 
 // Backfill payments.user_id from valuations
 try {
@@ -262,7 +276,6 @@ try {
     `)
   }
 } catch (e) { console.log('[migrate] payments backfill skipped:', e.message) }
-}
 
 // Recreate daily_rates to support multi-user (rate_date is no longer sole PK)
 try {
@@ -410,6 +423,60 @@ try { sqlite.exec(`ALTER TABLE valuations ADD COLUMN certificate_rules TEXT`) } 
 try { sqlite.exec(`ALTER TABLE customers ADD COLUMN aadhar_photo_back TEXT`) } catch (e) { /* already exists */ }
 try { sqlite.exec(`ALTER TABLE customers ADD COLUMN pan_photo TEXT`) } catch (e) { /* already exists */ }
 try { sqlite.exec(`ALTER TABLE customers ADD COLUMN customer_photo TEXT`) } catch (e) { /* already exists */ }
+
+// Snapshot customer details on valuations so historical valuations remain unchanged after customer edits.
+try { sqlite.exec(`ALTER TABLE valuations ADD COLUMN customer_snapshot TEXT`) } catch (e) { /* already exists */ }
+try {
+  const needsSnapshot = sqlite.prepare(`
+    SELECT
+      v.id AS valuation_id,
+      c.id AS customer_id,
+      c.customer_code,
+      c.name,
+      c.mobile,
+      c.alternate_mobile,
+      c.address,
+      c.aadhar_number,
+      c.savings_ac_no,
+      c.bank_name,
+      c.branch,
+      c.aadhar_photo,
+      c.aadhar_photo_back,
+      c.pan_photo,
+      c.customer_photo
+    FROM valuations v
+    JOIN customers c ON c.id = v.customer_id
+    WHERE v.customer_snapshot IS NULL OR v.customer_snapshot = ''
+  `).all()
+
+  if (needsSnapshot.length) {
+    const updateSnapshot = sqlite.prepare('UPDATE valuations SET customer_snapshot = ? WHERE id = ?')
+    const tx = sqlite.transaction((rows) => {
+      for (const row of rows) {
+        const snapshot = {
+          id: row.customer_id,
+          customerCode: row.customer_code || '',
+          name: row.name || '',
+          mobile: row.mobile || '',
+          alternateMobile: row.alternate_mobile || '',
+          address: row.address || '',
+          aadharNumber: row.aadhar_number || '',
+          savingsAcNo: row.savings_ac_no || '',
+          bankName: row.bank_name || '',
+          branch: row.branch || '',
+          aadharPhoto: row.aadhar_photo || '',
+          aadharPhotoBack: row.aadhar_photo_back || '',
+          panPhoto: row.pan_photo || '',
+          customerPhoto: row.customer_photo || '',
+        }
+        updateSnapshot.run(JSON.stringify(snapshot), row.valuation_id)
+      }
+    })
+    tx(needsSnapshot)
+  }
+} catch (e) {
+  console.log('[migrate] valuation customer_snapshot backfill skipped:', e.message)
+}
 
 // No demo user seeded — users must sign up.
 // Default data (ornaments, series, profile, presets) is seeded per-user on signup via seedDefaultsForUser in auth.js.

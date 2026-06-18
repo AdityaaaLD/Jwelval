@@ -2,6 +2,25 @@ import { inr, num } from '../../lib/format'
 import QrImage from '../QrImage'
 import { verificationUrl } from '../../lib/qr'
 
+function parseDateLike(value) {
+  if (!value) return null
+  const raw = String(value).trim()
+  if (!raw) return null
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? `${raw}T12:00:00` : raw
+  const out = new Date(normalized)
+  return Number.isNaN(out.getTime()) ? null : out
+}
+
+export function resolveReportDateTime(valuation) {
+  return (
+    parseDateLike(valuation?.printedAt)
+    || parseDateLike(valuation?.updatedAt)
+    || parseDateLike(valuation?.createdAt)
+    || parseDateLike(valuation?.valuationDate)
+    || new Date()
+  )
+}
+
 export function PhotoBox({ src, label }) {
   return <div className="print-photo">{src ? <img src={src} alt={label} /> : <span>{label}</span>}</div>
 }
@@ -66,12 +85,12 @@ export function SignatureGrid({ labels }) {
 
 export function VerificationBlock({ valuation, profile }) {
   if (!valuation?.valuationNumber) return null
-  const printedAt = valuation.printedAt ? new Date(valuation.printedAt) : new Date()
-  const dateStr = printedAt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-  const timeStr = printedAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+  const reportDateTime = resolveReportDateTime(valuation)
+  const dateStr = reportDateTime.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+  const timeStr = reportDateTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
   const valuerName = profile?.appraiser_name || profile?.appraiserName || ''
   return (
-    <div className="verification-block">
+    <div className="verification-block print-avoid-break">
       <QrImage text={verificationUrl(valuation.valuationNumber)} className="verification-qr" />
       <div>
         <b>Scan to verify certificate</b>

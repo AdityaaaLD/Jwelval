@@ -58,6 +58,7 @@ export const valuations = sqliteTable('valuations', {
   branchCode: text('branch_code'),
   aadharPhotoDoc: text('aadhar_photo_doc'),
   panPhoto: text('pan_photo'),
+  customerSnapshot: text('customer_snapshot'),
   certificateRules: text('certificate_rules'),
   status: text('status').notNull().default('DRAFT'), // DRAFT | PRINTED | LOCKED
   printedAt: text('printed_at'),

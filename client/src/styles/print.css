@@ -35,13 +35,13 @@
 .dc-header-box { border: 1px solid #000; padding: 6px 10px; text-align: center; }
 .dc-header-line { margin: 1px 0; font-size: 11px; }
 .dc-header-line:first-child { font-size: 13px; }
-.dc-row-box { border: 1px solid #000; border-top: 0; padding: 3px 10px; font-size: 11px; }
+.dc-row-box { border: 1px solid #000; border-top: 0; padding: 3px 10px; font-size: 11px; margin: 0; }
 .dc-row-split { display: flex; justify-content: space-between; }
 .dc-parties { display: grid; grid-template-columns: 1fr 1fr; }
 .dc-parties p { margin: 1px 0; }
 .dc-borrower p { margin: 2px 0; }
-.dc-currency { text-align: right; margin: 4px 0 2px; font-weight: 700; font-size: 11px; }
-.dc-table { width: 100%; border-collapse: collapse; margin: 0 0 6px; }
+.dc-currency { text-align: right; margin: 1px 0 0; font-weight: 700; font-size: 11px; }
+.dc-table { width: 100%; border-collapse: collapse; margin: 0; }
 .dc-table th, .dc-table td { border: 1px solid #000; padding: 4px 5px; text-align: center; vertical-align: middle; font-size: 10px; line-height: 1.25; word-wrap: break-word; }
 .dc-table th { font-weight: 700; background: #fff; color: #000; }
 .dc-table-info th { font-size: 7px; font-weight: 400; line-height: 1.15; padding: 3px 4px; background: #fefce8; color: #333; }
@@ -237,7 +237,33 @@
   .print-page:last-child { page-break-after: auto; }
   .fee-receipt { box-shadow: none; }
   .print-page-break { page-break-after: always; }
-  .print-avoid-break { page-break-inside: avoid; }
+  .print-avoid-break,
+  .verification-block,
+  .signature-grid,
+  .dc-photos,
+  .dc-photo-box,
+  .dc-row-box,
+  .dc-table,
+  .dc-table thead,
+  .dc-table tbody,
+  .dc-table tfoot,
+  .dc-table tr,
+  .certificate-rules,
+  .ornament-strip,
+  .ornament-strip img,
+  .print-photo,
+  .print-table,
+  .print-table thead,
+  .print-table tbody,
+  .print-table tfoot,
+  .print-table tr,
+  .sb-table,
+  .sb-table thead,
+  .sb-table tbody,
+  .sb-table tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
   .sb-page { width: auto; min-height: auto; padding: 0; box-shadow: none; page-break-after: auto; }
   .sb-table tbody tr:hover { background: none; }
 }

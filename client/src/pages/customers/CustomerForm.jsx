@@ -32,6 +32,16 @@ export default function CustomerForm() {
   const [ocrTextFront, setOcrTextFront] = useState('')
   const [ocrTextBack, setOcrTextBack] = useState('')
 
+  const showOcrWarnings = (parsed) => {
+    const warnings = parsed?.warnings || []
+    for (const warning of warnings) {
+      toast.error(warning)
+    }
+    if (parsed?.ocrConfidence && parsed.ocrConfidence < 65) {
+      toast.error('OCR confidence is low. Please verify all extracted fields carefully.')
+    }
+  }
+
   useEffect(() => {
     if (!isEdit) return
     api.customers.get(id).then((customer) => {
@@ -62,13 +72,14 @@ export default function CustomerForm() {
     try {
       const parsed = await scanAadhaarImage(compressed, 'front')
       setOcrTextFront(parsed.rawText)
+      showOcrWarnings(parsed)
       setForm((current) => ({
         ...current,
         name: parsed.name || current.name,
-        aadharNumber: parsed.aadharNumber || current.aadharNumber,
+        aadharNumber: parsed.aadharValid ? (parsed.aadharNumber || current.aadharNumber) : current.aadharNumber,
         mobile: parsed.mobile || current.mobile,
       }))
-      toast.success('Front side scanned. Please verify fields.')
+      toast.success(parsed.aadharValid ? 'Front side scanned. Please verify fields.' : 'Front side scanned with warnings. Aadhaar not auto-filled.')
     } catch (error) {
       toast.error('Could not read front side details.')
     } finally {
@@ -90,6 +101,7 @@ export default function CustomerForm() {
     try {
       const parsed = await scanAadhaarImage(compressed, 'back')
       setOcrTextBack(parsed.rawText)
+      showOcrWarnings(parsed)
       setForm((current) => ({
         ...current,
         address: parsed.address || current.address,

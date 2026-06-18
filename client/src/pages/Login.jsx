@@ -17,8 +17,16 @@ export default function Login() {
   const [otpPurpose, setOtpPurpose] = useState('LOGIN')
   const [resetToken, setResetToken] = useState('')
   const [loading, setLoading] = useState(false)
+  const [otpRequestInFlight, setOtpRequestInFlight] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
   const [splash, setSplash] = useState(false)
   const from = location.state?.from || '/dashboard'
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown((v) => Math.max(0, v - 1)), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
 
   useEffect(() => {
     api.auth.signupStatus().then((res) => {
@@ -42,38 +50,55 @@ export default function Login() {
   }
 
   const startOtpFlow = async (purpose) => {
-    await api.auth.requestOtp({ email: form.email, purpose })
-    setOtpPurpose(purpose)
-    setStep('otp')
-    setForm((prev) => ({ ...prev, otp: '' }))
-    toast.success('OTP sent to your email.')
+    if (otpRequestInFlight) return
+    setOtpRequestInFlight(true)
+    try {
+      await api.auth.requestOtp({ email: form.email, purpose })
+      setOtpPurpose(purpose)
+      setStep('otp')
+      setResendCooldown(60)
+      setForm((prev) => ({ ...prev, otp: '' }))
+      toast.success('OTP sent to your email.')
+    } finally {
+      setOtpRequestInFlight(false)
+    }
   }
 
   const resendOtp = async () => {
+    if (resendCooldown > 0 || otpRequestInFlight) return
     setLoading(true)
+    setOtpRequestInFlight(true)
     try {
       if (otpPurpose === 'LOGIN') {
         if (!form.password) {
           toast.error('Enter your password to resend login OTP.')
           setLoading(false)
+          setOtpRequestInFlight(false)
           return
         }
         const result = await login(form.email, form.password)
         if (!result?.otpRequired) {
           toast.error('Could not resend login OTP. Please try signing in again.')
           setLoading(false)
+          setOtpRequestInFlight(false)
           return
         }
+        setResendCooldown(60)
         toast.success('Login OTP resent to your email.')
         setLoading(false)
+        setOtpRequestInFlight(false)
         return
       }
 
       await startOtpFlow(otpPurpose)
       setLoading(false)
+      setOtpRequestInFlight(false)
     } catch (error) {
+      const retryAfter = Number(error?.payload?.retryAfterSeconds || 0)
+      if (retryAfter > 0) setResendCooldown(retryAfter)
       toast.error(error.message || 'Failed to resend OTP.')
       setLoading(false)
+      setOtpRequestInFlight(false)
     }
   }
 
@@ -81,6 +106,10 @@ export default function Login() {
     event.preventDefault()
     setLoading(true)
     try {
+      if (otpRequestInFlight) {
+        setLoading(false)
+        return
+      }
       if (mode === 'signup') {
         if (!form.name.trim()) { toast.error('Name is required.'); setLoading(false); return }
         if (form.password.length < 6) { toast.error('Password must be at least 6 characters.'); setLoading(false); return }
@@ -104,6 +133,7 @@ export default function Login() {
           if (result?.otpRequired) {
             setOtpPurpose('LOGIN')
             setStep('otp')
+            setResendCooldown(60)
             setForm((prev) => ({ ...prev, otp: '' }))
             toast.success('OTP sent to your email.')
             setLoading(false)
@@ -273,9 +303,9 @@ export default function Login() {
                 type="button"
                 className="btn-secondary mt-3 w-full"
                 onClick={resendOtp}
-                disabled={loading}
+                disabled={loading || otpRequestInFlight || resendCooldown > 0}
               >
-                Resend OTP
+                {resendCooldown > 0 ? `Resend OTP in ${resendCooldown}s` : 'Resend OTP'}
               </button>
             </>
           )}
@@ -287,7 +317,7 @@ export default function Login() {
             </>
           )}
 
-          <button className="btn-primary mt-6 w-full py-3" disabled={loading}>
+          <button className="btn-primary mt-6 w-full py-3" disabled={loading || otpRequestInFlight}>
             {loading
               ? 'Please wait...'
               : mode === 'signup'

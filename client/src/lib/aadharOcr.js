@@ -1,126 +1,209 @@
-const clean = (text) => text
+const cleanLines = (text) => text
   .replace(/[|]/g, ' ')
   .replace(/[^\S\r\n]+/g, ' ')
   .split(/\r?\n/)
   .map((line) => line.trim())
   .filter(Boolean)
 
-// Matches 12 digit Aadhaar with optional spaces/dashes: 9250 4796 0707
-const aadhaarPattern = /\b(\d{4}[\s-]?\d{4}[\s-]?\d{4})\b/
+const aadhaarPattern = /\b([0-9OQDIGSlB]{4}[\s-]?[0-9OQDIGSlB]{4}[\s-]?[0-9OQDIGSlB]{4})\b/i
 
-// Words to ignore when searching for name
-const IGNORE = /^(government|india|uidai|unique|identification|authority|aadhaar|vid|dob|year|male|female|address|mobile|www|help|enrol|भारत|सरकार|पुरुष|महिला|जन्म|तारीख|पत्ता|मोबाइल)/i
+const IGNORE = /^(government|india|uidai|unique|identification|authority|aadhaar|vid|dob|year|male|female|address|mobile|www|help|enrol|भारत|सरकार|पुरुष|महिला|जन्म|तारीख|पत्ता|मोबाइल|संपर्क)/i
+const HEADER_WORDS = /(government|india|uidai|unique|identification|authority|aadhaar|भारत|सरकार)/i
 
-const HEADER_WORDS = /(government|india|uidai|unique|identification|authority|aadhaar)/i
+const DIGIT_SUBS = {
+  O: '0',
+  Q: '0',
+  D: '0',
+  I: '1',
+  L: '1',
+  l: '1',
+  S: '5',
+  s: '5',
+  B: '8',
+  G: '6',
+}
 
-/**
- * Parse Aadhaar FRONT side — extracts name, aadhaar number, DOB, gender, mobile
- */
+const normalizeDigits = (value = '') => value
+  .split('')
+  .map((ch) => DIGIT_SUBS[ch] || ch)
+  .join('')
+  .replace(/\D/g, '')
+
+const d = [
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
+  [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
+  [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
+  [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
+  [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
+  [6, 5, 9, 8, 7, 1, 0, 4, 3, 2],
+  [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
+  [8, 7, 6, 5, 9, 3, 2, 1, 0, 4],
+  [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
+]
+
+const p = [
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
+  [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
+  [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
+  [9, 4, 5, 3, 1, 2, 6, 8, 7, 0],
+  [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
+  [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
+  [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
+]
+
+function isValidVerhoeff(value) {
+  if (!/^\d{12}$/.test(value)) return false
+  let c = 0
+  const arr = value.split('').reverse().map(Number)
+  for (let i = 0; i < arr.length; i += 1) {
+    c = d[c][p[i % 8][arr[i]]]
+  }
+  return c === 0
+}
+
+function findAadhaarNumber(joined) {
+  const candidates = []
+  const chunks = joined.match(/[0-9OQDIGSlB\s-]{12,20}/gi) || []
+  for (const chunk of chunks) {
+    const digits = normalizeDigits(chunk)
+    if (digits.length === 12) candidates.push(digits)
+    if (digits.length > 12) {
+      for (let i = 0; i <= digits.length - 12; i += 1) {
+        candidates.push(digits.slice(i, i + 12))
+      }
+    }
+  }
+
+  const direct = joined.match(aadhaarPattern)
+  if (direct) candidates.unshift(normalizeDigits(direct[1]))
+
+  const unique = [...new Set(candidates.filter((v) => v.length === 12))]
+  const valid = unique.find(isValidVerhoeff)
+  return {
+    aadharNumber: valid || unique[0] || '',
+    aadharValid: Boolean(valid),
+  }
+}
+
+function normalizeName(name = '') {
+  return name
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
+function extractName(lines, stopAt = Number.MAX_SAFE_INTEGER) {
+  for (let i = 0; i < lines.length && i < stopAt; i += 1) {
+    const line = lines[i]
+    if (HEADER_WORDS.test(line) || IGNORE.test(line)) continue
+    if (/\d/.test(line)) continue
+    if (!/^[A-Za-z][A-Za-z .']{4,}$/.test(line)) continue
+    const words = line.trim().split(/\s+/)
+    if (words.length < 2 || words.length > 5) continue
+    return normalizeName(line)
+  }
+  return ''
+}
+
 function parseFrontText(text) {
-  const lines = clean(text)
+  const lines = cleanLines(text)
   const joined = lines.join('\n')
+  const warnings = []
 
-  // Aadhaar number — look for 4-4-4 digit pattern
-  const aadhaarMatch = joined.match(aadhaarPattern)
-  const aadharNumber = aadhaarMatch ? aadhaarMatch[1].replace(/\D/g, '') : ''
+  const { aadharNumber, aadharValid } = findAadhaarNumber(joined)
+  if (aadharNumber && !aadharValid) warnings.push('Aadhaar checksum validation failed. Verify manually.')
 
-  // DOB — look for DD/MM/YYYY pattern near "DOB" or "Birth"
-  const dobMatch = joined.match(/(?:DOB|Birth|जन्म)[:\s]*(\d{2}[\/\-]\d{2}[\/\-]\d{4})/i)
+  const dobMatch = joined.match(/(?:DOB|Birth|जन्म|जन्म तारीख)[:\s]*(\d{2}[\/\-]\d{2}[\/\-]\d{4})/i)
     || joined.match(/\b(\d{2}[\/\-]\d{2}[\/\-]\d{4})\b/)
   const dob = dobMatch ? dobMatch[1] : ''
 
-  // Gender
-  const genderMatch = joined.match(/\b(MALE|FEMALE|पुरुष|महिला|Transgender)\b/i)
+  const genderMatch = joined.match(/\b(MALE|FEMALE|पुरुष|महिला|TRANSGENDER)\b/i)
   const gender = genderMatch ? genderMatch[1].toUpperCase() : ''
 
-  // Mobile — look for "Mobile No:" followed by 10 digits
-  const mobileMatch = joined.match(/Mobile\s*(?:No)?[:\s]*(\d{10})/i)
-  const mobile = mobileMatch ? mobileMatch[1] : ''
-
-  // Name — find the first English-only line that:
-  //   - Has 2+ words, all alphabetic
-  //   - Is NOT a header line (Government, India, etc.)
-  //   - Appears before the DOB/aadhaar lines
-  let name = ''
-  for (const line of lines) {
-    if (HEADER_WORDS.test(line)) continue
-    if (IGNORE.test(line)) continue
-    if (/\d/.test(line)) continue
-    // Must be purely English alphabetic words (2+ words, min 5 chars)
-    if (/^[A-Za-z][A-Za-z .']{4,}$/.test(line)) {
-      const words = line.trim().split(/\s+/)
-      if (words.length >= 2) {
-        name = line.trim()
+  let mobile = ''
+  const taggedMobile = joined.match(/Mobile\s*(?:No)?[:\s]*([0-9OQDIGSlB\s-]{10,14})/i)
+  if (taggedMobile) mobile = normalizeDigits(taggedMobile[1]).slice(0, 10)
+  if (!mobile) {
+    const allTen = joined.match(/[6-9][0-9OQDIGSlB\s-]{9,12}/g) || []
+    for (const token of allTen) {
+      const digits = normalizeDigits(token)
+      if (/^[6-9]\d{9}$/.test(digits)) {
+        mobile = digits
         break
       }
     }
   }
 
-  return { name, aadharNumber, dob, gender, mobile, rawText: joined }
+  const stopIdx = lines.findIndex((line) => /dob|जन्म|male|female|पुरुष|महिला/i.test(line))
+  const name = extractName(lines, stopIdx >= 0 ? stopIdx + 1 : 8)
+
+  return { name, aadharNumber, aadharValid, dob, gender, mobile, rawText: joined, warnings }
 }
 
-/**
- * Parse Aadhaar BACK side — extracts address
- */
+function cleanAddressLine(line) {
+  return line
+    .replace(/^address\s*:?/i, '')
+    .replace(/^पत्ता\s*:?/i, '')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function parseBackText(text) {
-  const lines = clean(text)
+  const lines = cleanLines(text)
   const joined = lines.join('\n')
+  const warnings = []
 
-  // Try to find "Address :" label first (English)
-  const addrIdx = lines.findIndex((l) => /^address\s*:/i.test(l))
-  if (addrIdx >= 0) {
-    // Collect address lines until we hit the aadhaar number or end
-    const addrLines = []
-    for (let i = addrIdx; i < lines.length && i < addrIdx + 8; i++) {
+  const start = lines.findIndex((l) => /^address\s*:?/i.test(l) || /^पत्ता\s*:?/i.test(l) || /^address$/i.test(l))
+  const startIndex = start >= 0 ? start : lines.findIndex((l) => /^(S\/O|D\/O|W\/O|C\/O|H\.No|Flat|House|Near)/i.test(l))
+  const addressLines = []
+
+  if (startIndex >= 0) {
+    for (let i = startIndex; i < lines.length && i < startIndex + 10; i += 1) {
       const line = lines[i]
-      // Stop at aadhaar number line
-      if (aadhaarPattern.test(line) && i > addrIdx) break
-      // Stop at footer lines
-      if (/^(www\.|help@|P\.O\.|1947)/i.test(line)) break
-      addrLines.push(line)
-    }
-    const address = addrLines.join(', ')
-      .replace(/^address\s*:\s*/i, '')
-      .replace(/\s*,\s*/g, ', ')
-      .replace(/,\s*$/, '')
-      .trim()
-    return { address, rawText: joined }
-  }
-
-  // Fallback: try Hindi "पत्ता:" label
-  const hindiIdx = lines.findIndex((l) => /^पत्ता\s*:/i.test(l) || /^पत्ता/i.test(l))
-  if (hindiIdx >= 0) {
-    // Skip Hindi text and look for the English address block below
-    const engAddrIdx = lines.findIndex((l, i) => i > hindiIdx && /^(S\/O|D\/O|W\/O|C\/O|H\.No|Flat|House|Near)/i.test(l))
-    if (engAddrIdx >= 0) {
-      const addrLines = []
-      for (let i = engAddrIdx; i < lines.length && i < engAddrIdx + 6; i++) {
-        if (aadhaarPattern.test(lines[i])) break
-        if (/^(www\.|help@|P\.O\.|1947)/i.test(lines[i])) break
-        addrLines.push(lines[i])
-      }
-      return { address: addrLines.join(', ').replace(/,\s*$/, '').trim(), rawText: joined }
+      if (!line) continue
+      if (findAadhaarNumber(line).aadharNumber && i > startIndex) break
+      if (/^(www\.|help@|P\.O\.|1947|uidai\.gov\.in)/i.test(line)) break
+      if (/^unique identification/i.test(line)) break
+      const cleaned = cleanAddressLine(line)
+      if (!cleaned) continue
+      addressLines.push(cleaned)
     }
   }
 
-  return { address: '', rawText: joined }
+  let address = addressLines.join(', ')
+    .replace(/,\s*,/g, ', ')
+    .replace(/,\s*$/, '')
+    .trim()
+
+  if (!address) warnings.push('Address could not be extracted confidently. Verify manually.')
+
+  return { address, rawText: joined, warnings }
 }
 
-/**
- * Scan a single Aadhaar image (front or back) and return parsed fields.
- * side = 'front' | 'back'
- */
 export async function scanAadhaarImage(image, side = 'front') {
   const { createWorker } = await import('tesseract.js')
-  // Use both English and Hindi for better recognition
-  const worker = await createWorker('eng')
+  let worker
+  try {
+    worker = await createWorker('eng+hin')
+  } catch {
+    worker = await createWorker('eng')
+  }
+
   try {
     const { data } = await worker.recognize(image)
-    const text = data.text || ''
-    if (side === 'back') {
-      return parseBackText(text)
+    const text = data?.text || ''
+    const ocrConfidence = Number(data?.confidence || 0)
+    const parsed = side === 'back' ? parseBackText(text) : parseFrontText(text)
+    return {
+      ...parsed,
+      ocrConfidence,
+      warnings: parsed.warnings || [],
     }
-    return parseFrontText(text)
   } finally {
     await worker.terminate()
   }

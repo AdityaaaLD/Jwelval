@@ -59,6 +59,7 @@ export default function ValuationForm() {
   const [valuation, setValuation] = useState(null)
   const [printOpen, setPrintOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [customerMediaLoading, setCustomerMediaLoading] = useState(false)
   const customerDetailCacheRef = useRef({})
   const { form, dirty, reset, hydrate, setField, setItem, addItem, removeItem, markClean, payload } = useValuationStore()
@@ -554,6 +555,28 @@ export default function ValuationForm() {
       </section>
 
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
+        {valuation?.status === 'DRAFT' && (
+          <button
+            type="button"
+            className="btn-secondary text-red-600"
+            disabled={deleting}
+            onClick={async () => {
+              if (!window.confirm('Delete this draft valuation permanently?')) return
+              setDeleting(true)
+              try {
+                await api.valuations.remove(valuation.id)
+                toast.success('Draft valuation deleted.')
+                navigate('/valuations')
+              } catch (err) {
+                toast.error(err.message || 'Failed to delete draft.')
+              } finally {
+                setDeleting(false)
+              }
+            }}
+          >
+            <Trash2 size={16} /> {deleting ? 'Deleting...' : 'Delete Draft'}
+          </button>
+        )}
         {valuation && <button type="button" className="btn-secondary" onClick={async () => {
           try {
             const copy = await api.valuations.duplicate(valuation.id)

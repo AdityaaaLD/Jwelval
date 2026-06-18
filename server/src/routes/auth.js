@@ -4,12 +4,18 @@ import bcrypt from 'bcryptjs'
 import { sqlite } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.js'
 import { sendEmail } from '../mailer.js'
+import { logEvent, logErrorEvent } from '../lib/logger.js'
 
 const router = Router()
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
-const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10)
+const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 5)
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5)
 const OTP_MAX_SENDS_PER_HOUR = Number(process.env.OTP_MAX_SENDS_PER_HOUR || 3)
+const OTP_RESEND_COOLDOWN_SECONDS = Number(process.env.OTP_RESEND_COOLDOWN_SECONDS || 60)
+const OTP_EMAIL_MAX_10_MIN = Number(process.env.OTP_EMAIL_MAX_10_MIN || 3)
+const OTP_EMAIL_MAX_DAY = Number(process.env.OTP_EMAIL_MAX_DAY || 10)
+const OTP_IP_MAX_HOUR = Number(process.env.OTP_IP_MAX_HOUR || 10)
+const OTP_VERIFY_IP_MAX_HOUR = Number(process.env.OTP_VERIFY_IP_MAX_HOUR || 60)
 const ALLOWED_OTP_PURPOSES = new Set(['LOGIN', 'VERIFY_EMAIL', 'RESET_PASSWORD'])
 const REQUESTABLE_OTP_PURPOSES = new Set(['VERIFY_EMAIL', 'RESET_PASSWORD'])
 
@@ -18,11 +24,98 @@ const sha256 = (password) => crypto.createHash('sha256').update(password).digest
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
 const nowIso = () => new Date().toISOString()
+const getClientIp = (req) => {
+  const forwarded = req.headers['x-forwarded-for']
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim()
+  }
+  return req.ip || req.socket?.remoteAddress || 'unknown'
+}
+
+function countOtpVerifyAttemptsByIp(ip, sinceIso) {
+  return sqlite.prepare(
+    "SELECT COUNT(*) AS n FROM otp_request_audit WHERE ip = ? AND created_at >= ? AND outcome IN ('VERIFY_FAILED','VERIFY_SUCCESS')"
+  ).get(ip, sinceIso).n
+}
+
+function ensureOtpVerifyRateLimit(ip) {
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const attempts = countOtpVerifyAttemptsByIp(ip, oneHourAgo)
+  if (attempts >= OTP_VERIFY_IP_MAX_HOUR) {
+    const error = new Error('Too many OTP verification attempts. Please try later.')
+    error.status = 429
+    error.code = 'OTP_RATE_LIMIT'
+    error.retryAfterSeconds = 60 * 10
+    throw error
+  }
+}
+
 const maskEmail = (email) => {
   const [name, domain] = String(email || '').split('@')
   if (!name || !domain) return email
   if (name.length <= 2) return `${name[0] || ''}***@${domain}`
   return `${name.slice(0, 2)}***@${domain}`
+}
+
+function countOtpRequestsByEmail(email, sinceIso) {
+  return sqlite.prepare(
+    "SELECT COUNT(*) AS n FROM otp_request_audit WHERE email = ? AND created_at >= ? AND outcome IN ('SENT','REUSED')"
+  ).get(email, sinceIso).n
+}
+
+function countOtpRequestsByIp(ip, sinceIso) {
+  return sqlite.prepare(
+    "SELECT COUNT(*) AS n FROM otp_request_audit WHERE ip = ? AND created_at >= ? AND outcome IN ('SENT','REUSED')"
+  ).get(ip, sinceIso).n
+}
+
+function auditOtpRequest(email, ip, purpose, outcome, at = nowIso()) {
+  sqlite.prepare(
+    'INSERT INTO otp_request_audit (email, ip, purpose, created_at, outcome) VALUES (?, ?, ?, ?, ?)'
+  ).run(email, ip, purpose, at, outcome)
+}
+
+function ensureOtpRequestLimits({ email, ip, purpose }) {
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+  const email10Min = countOtpRequestsByEmail(email, tenMinutesAgo)
+  if (email10Min >= OTP_EMAIL_MAX_10_MIN) {
+    const error = new Error('Too many OTP requests for this email. Please try later.')
+    error.status = 429
+    error.code = 'OTP_RATE_LIMIT'
+    error.retryAfterSeconds = OTP_RESEND_COOLDOWN_SECONDS
+    throw error
+  }
+
+  const emailDay = countOtpRequestsByEmail(email, oneDayAgo)
+  if (emailDay >= OTP_EMAIL_MAX_DAY) {
+    const error = new Error('Daily OTP limit reached for this email. Try again tomorrow.')
+    error.status = 429
+    error.code = 'OTP_RATE_LIMIT'
+    error.retryAfterSeconds = 60 * 60
+    throw error
+  }
+
+  const ipHour = countOtpRequestsByIp(ip, oneHourAgo)
+  if (ipHour >= OTP_IP_MAX_HOUR) {
+    const error = new Error('Too many OTP requests from your network. Please try later.')
+    error.status = 429
+    error.code = 'OTP_RATE_LIMIT'
+    error.retryAfterSeconds = 60 * 10
+    throw error
+  }
+}
+
+function getActiveOtpToken(userId, purpose) {
+  return sqlite.prepare(
+    `SELECT id, created_at, expires_at, attempts, max_attempts
+     FROM otp_tokens
+     WHERE user_id = ? AND purpose = ? AND consumed_at IS NULL AND expires_at > ?
+     ORDER BY created_at DESC
+     LIMIT 1`
+  ).get(userId, purpose, nowIso())
 }
 const buildSafeUser = (user) => ({
   id: user.id,
@@ -35,10 +128,16 @@ const buildSafeUser = (user) => ({
 })
 
 function respondOtpSendFailure(res, error, context) {
-  console.error(`[auth] OTP send failed during ${context}:`, error)
+  logErrorEvent('OTP_FAILED', error, { context })
   const isRateLimited = error?.status === 429 || error?.code === 'OTP_RATE_LIMIT'
   if (isRateLimited) {
-    return res.status(429).json({ error: 'OTP_RATE_LIMIT', message: 'Too many OTP requests. Please try again later.' })
+    const retryAfterSeconds = Number(error?.retryAfterSeconds || 0)
+    if (retryAfterSeconds > 0) res.setHeader('Retry-After', String(retryAfterSeconds))
+    return res.status(429).json({
+      error: 'OTP_RATE_LIMIT',
+      message: error?.message || 'Too many OTP requests. Please try again later.',
+      retryAfterSeconds: retryAfterSeconds > 0 ? retryAfterSeconds : undefined,
+    })
   }
   return res.status(503).json({ error: 'OTP_SEND_FAILED', message: 'Unable to send OTP right now. Please try again.' })
 }
@@ -77,16 +176,41 @@ function ensureOtpRateLimit(userId, purpose) {
   }
 }
 
-async function sendOtpForPurpose(user, purpose) {
+async function sendOtpForPurpose(user, purpose, context = {}) {
+  const clientIp = context.ip || 'unknown'
   ensureOtpRateLimit(user.id, purpose)
+  ensureOtpRequestLimits({ email: user.email, ip: clientIp, purpose })
+
+  const active = getActiveOtpToken(user.id, purpose)
+  if (active) {
+    const ageSeconds = Math.floor((Date.now() - new Date(active.created_at).getTime()) / 1000)
+    if (ageSeconds < OTP_RESEND_COOLDOWN_SECONDS) {
+      const retryAfterSeconds = OTP_RESEND_COOLDOWN_SECONDS - ageSeconds
+      auditOtpRequest(user.email, clientIp, purpose, 'REUSED')
+      logEvent('OTP_RATE_LIMITED', { reason: 'cooldown', purpose, email: maskEmail(user.email), retryAfterSeconds })
+      const cooldownError = new Error(`OTP already sent. Please wait ${retryAfterSeconds}s before requesting again.`)
+      cooldownError.status = 429
+      cooldownError.code = 'OTP_RATE_LIMIT'
+      cooldownError.retryAfterSeconds = retryAfterSeconds
+      throw cooldownError
+    }
+  }
 
   const otp = generateOtp()
   const createdAt = nowIso()
   const expiresAt = new Date(Date.now() + OTP_TTL_MINUTES * 60 * 1000).toISOString()
 
-  sqlite.prepare(
-    'INSERT INTO otp_tokens (user_id, purpose, otp_hash, expires_at, attempts, max_attempts, created_at, consumed_at) VALUES (?, ?, ?, ?, 0, ?, ?, NULL)'
-  ).run(user.id, purpose, hashOtp(otp), expiresAt, OTP_MAX_ATTEMPTS, createdAt)
+  sqlite.transaction(() => {
+    sqlite.prepare(
+      'UPDATE otp_tokens SET consumed_at = ? WHERE user_id = ? AND purpose = ? AND consumed_at IS NULL'
+    ).run(createdAt, user.id, purpose)
+
+    sqlite.prepare(
+      'INSERT INTO otp_tokens (user_id, purpose, otp_hash, expires_at, attempts, max_attempts, created_at, consumed_at) VALUES (?, ?, ?, ?, 0, ?, ?, NULL)'
+    ).run(user.id, purpose, hashOtp(otp), expiresAt, OTP_MAX_ATTEMPTS, createdAt)
+  })()
+
+  logEvent('OTP_GENERATED', { purpose, userId: user.id, email: maskEmail(user.email) })
 
   const subject = purpose === 'RESET_PASSWORD'
     ? 'JewelVal password reset OTP'
@@ -94,6 +218,7 @@ async function sendOtpForPurpose(user, purpose) {
   const text = `Your JewelVal OTP is ${otp}. It will expire in ${OTP_TTL_MINUTES} minutes. If you did not request this, you can ignore this email.`
 
   await sendEmail({ to: user.email, subject, text })
+  auditOtpRequest(user.email, clientIp, purpose, 'SENT', createdAt)
 }
 
 function verifyOtp(userId, purpose, otp) {
@@ -106,23 +231,28 @@ function verifyOtp(userId, purpose, otp) {
   ).get(userId, purpose)
 
   if (!token) {
+    logEvent('OTP_FAILED', { userId, purpose, reason: 'not_found' }, 'warn')
     return { ok: false, code: 'OTP_NOT_FOUND', message: 'No active OTP found. Please request a new OTP.' }
   }
   if (token.attempts >= token.max_attempts) {
+    logEvent('OTP_RATE_LIMITED', { userId, purpose, reason: 'max_attempts' }, 'warn')
     return { ok: false, code: 'OTP_TOO_MANY_ATTEMPTS', message: 'Too many incorrect attempts. Request a new OTP.' }
   }
   if (new Date(token.expires_at).getTime() < Date.now()) {
     sqlite.prepare('UPDATE otp_tokens SET consumed_at = ? WHERE id = ?').run(nowIso(), token.id)
+    logEvent('OTP_EXPIRED', { userId, purpose })
     return { ok: false, code: 'OTP_EXPIRED', message: 'OTP expired. Please request a new OTP.' }
   }
 
   const matched = token.otp_hash === hashOtp(otp)
   if (!matched) {
     sqlite.prepare('UPDATE otp_tokens SET attempts = attempts + 1 WHERE id = ?').run(token.id)
+    logEvent('OTP_FAILED', { userId, purpose, reason: 'invalid' }, 'warn')
     return { ok: false, code: 'OTP_INVALID', message: 'Invalid OTP.' }
   }
 
   sqlite.prepare('UPDATE otp_tokens SET consumed_at = ? WHERE id = ?').run(nowIso(), token.id)
+  logEvent('OTP_VERIFIED', { userId, purpose })
   return { ok: true }
 }
 
@@ -208,6 +338,8 @@ router.get('/signup-status', (_req, res) => {
 router.post('/login', async (req, res) => {
   const email = normalizeEmail(req.body.email)
   const { password } = req.body
+  const clientIp = getClientIp(req)
+  logEvent('OTP_REQUESTED', { purpose: 'LOGIN', email: maskEmail(email), ip: clientIp })
   const user = sqlite.prepare(
     'SELECT id, name, email, role, plan, password_hash, status, email_verified FROM users WHERE email = ?'
   ).get(email)
@@ -247,7 +379,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    await sendOtpForPurpose(user, 'LOGIN')
+    await sendOtpForPurpose(user, 'LOGIN', { ip: clientIp })
   } catch (error) {
     return respondOtpSendFailure(res, error, 'login')
   }
@@ -258,6 +390,8 @@ router.post('/login', async (req, res) => {
 router.post('/request-otp', async (req, res) => {
   const email = normalizeEmail(req.body.email)
   const purpose = String(req.body.purpose || '')
+  const clientIp = getClientIp(req)
+  logEvent('OTP_REQUESTED', { purpose, email: maskEmail(email), ip: clientIp })
   if (!email || !REQUESTABLE_OTP_PURPOSES.has(purpose)) {
     return res.status(400).json({ error: 'VALIDATION', message: 'Valid email and purpose are required.' })
   }
@@ -267,15 +401,12 @@ router.post('/request-otp', async (req, res) => {
     return res.json({ sent: true, message: 'If account exists, OTP has been sent.' })
   }
 
-  if (user.status !== 'ACTIVE') {
-    return res.status(403).json({ error: 'ACCOUNT_NOT_ACTIVE', message: 'Account is not active.' })
-  }
-  if (purpose === 'VERIFY_EMAIL' && user.email_verified) {
-    return res.json({ sent: false, message: 'Email is already verified.' })
+  if (user.status !== 'ACTIVE' || (purpose === 'VERIFY_EMAIL' && user.email_verified)) {
+    return res.json({ sent: true, message: 'If account exists, OTP has been sent.' })
   }
 
   try {
-    await sendOtpForPurpose(user, purpose)
+    await sendOtpForPurpose(user, purpose, { ip: clientIp })
     res.json({ sent: true, expiresInMinutes: OTP_TTL_MINUTES })
   } catch (error) {
     respondOtpSendFailure(res, error, `request-otp:${purpose}`)
@@ -286,22 +417,33 @@ router.post('/verify-otp', (req, res) => {
   const email = normalizeEmail(req.body.email)
   const purpose = String(req.body.purpose || '')
   const otp = String(req.body.otp || '').trim()
+  const clientIp = getClientIp(req)
 
   if (!email || !validateOtpPurpose(purpose) || otp.length !== 6) {
     return res.status(400).json({ error: 'VALIDATION', message: 'Email, purpose and 6-digit OTP are required.' })
+  }
+
+  try {
+    ensureOtpVerifyRateLimit(clientIp)
+  } catch (error) {
+    return respondOtpSendFailure(res, error, 'verify-otp')
   }
 
   const user = sqlite.prepare(
     'SELECT id, name, email, role, plan, status, email_verified FROM users WHERE email = ?'
   ).get(email)
   if (!user) {
+    auditOtpRequest(email, clientIp, purpose, 'VERIFY_FAILED')
     return res.status(400).json({ error: 'OTP_INVALID', message: 'Invalid OTP.' })
   }
 
   const verification = verifyOtp(user.id, purpose, otp)
   if (!verification.ok) {
+    auditOtpRequest(email, clientIp, purpose, 'VERIFY_FAILED')
     return res.status(400).json({ error: verification.code, message: verification.message })
   }
+
+  auditOtpRequest(email, clientIp, purpose, 'VERIFY_SUCCESS')
 
   if (purpose === 'VERIFY_EMAIL') {
     sqlite.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(user.id)
@@ -333,10 +475,7 @@ router.post('/reset-password', async (req, res) => {
   }
 
   const user = sqlite.prepare('SELECT id FROM users WHERE email = ?').get(email)
-  if (!user) {
-    return res.status(404).json({ error: 'USER_NOT_FOUND', message: 'User not found.' })
-  }
-  if (!verifyResetToken(user.id, resetToken)) {
+  if (!user || !verifyResetToken(user.id, resetToken)) {
     return res.status(400).json({ error: 'INVALID_RESET_TOKEN', message: 'Reset token is invalid or expired.' })
   }
 
@@ -473,7 +612,7 @@ router.post('/users/:id/approve', requireAuth, async (req, res) => {
 
   if (!user.email_verified) {
     try {
-      await sendOtpForPurpose({ id: user.id, email: user.email }, 'VERIFY_EMAIL')
+      await sendOtpForPurpose({ id: user.id, email: user.email }, 'VERIFY_EMAIL', { ip: getClientIp(req) })
     } catch (error) {
       return respondOtpSendFailure(res, error, 'admin-approve')
     }
@@ -516,7 +655,7 @@ router.post('/users/:id/send-verification-otp', requireAuth, async (req, res) =>
   }
 
   try {
-    await sendOtpForPurpose(user, 'VERIFY_EMAIL')
+    await sendOtpForPurpose(user, 'VERIFY_EMAIL', { ip: getClientIp(req) })
     res.json({ ok: true, message: 'Verification OTP sent.' })
   } catch (error) {
     respondOtpSendFailure(res, error, 'admin-send-verification-otp')

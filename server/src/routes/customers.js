@@ -93,15 +93,6 @@ router.put('/:id', body('name').isString().trim().notEmpty(), validate, async (r
   const [own] = await db.select().from(customers).where(and(eq(customers.id, id), eq(customers.userId, userId)))
   if (!own) return res.status(404).json({ error: 'Not found' })
 
-  const locked = sqlite.prepare(
-    `SELECT COUNT(*) AS n FROM valuations WHERE customer_id = ? AND user_id = ? AND status IN ('PRINTED','LOCKED')`
-  ).get(id, userId)
-  if (locked.n > 0) {
-    return res.status(403).json({
-      error: 'CUSTOMER_LOCKED',
-      message: 'Customer has printed/locked valuations and cannot be edited.',
-    })
-  }
   const {
     name,
     mobile,
