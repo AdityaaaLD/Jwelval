@@ -10,8 +10,10 @@ const aadhaarPattern = /\b([0-9OQDIGSlB]{4}[\s-]?[0-9OQDIGSlB]{4}[\s-]?[0-9OQDIG
 const IGNORE = /^(government|india|uidai|unique|identification|authority|aadhaar|vid|dob|year|male|female|address|mobile|www|help|enrol|भारत|सरकार|पुरुष|महिला|जन्म|तारीख|पत्ता|मोबाइल|संपर्क)/i
 const HEADER_WORDS = /(government|india|uidai|unique|identification|authority|aadhaar|भारत|सरकार)/i
 const DEVANAGARI = /[\u0900-\u097F]/
-const ADDRESS_LABEL = /^address\s*:?\s*/i
+const ADDRESS_LABEL = /^(address|addres|adress|addr(?:ess)?)\s*[:\-]?\s*/i
 const FOOTER_LINE = /^(www\.|help@|uidai\.gov\.in|P\.O\.|1947|e-?mail|download)/i
+const PIN_TOKEN = /([1-9]\d{2}\s?\d{3}|[1-9]\d{5})\b/
+const ADDRESS_START_TOKEN = /^(?:[SDWC]\s*\/?\s*O|H\.?\s*No|Flat|House|Plot|Near|Society|Village|Ward|Road|Street|Lane|Nagar|Town|Taluka|Tehsil|Dist(?:rict)?|City|State|Pin(?:code)?)\b/i
 
 const DIGIT_SUBS = {
   O: '0',
@@ -166,27 +168,81 @@ function isEnglishAddressLine(line) {
   return /[A-Za-z]/.test(line)
 }
 
+function normalizeAddressLine(line) {
+  return line
+    .replace(/[|]/g, ' ')
+    .replace(/\s*[-–—]\s*/g, ' - ')
+    .replace(/\s*,\s*/g, ', ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function findPinInLine(line) {
+  if (!line) return ''
+  const m = normalizeAddressLine(line).match(PIN_TOKEN)
+  if (!m) return ''
+  const pin = m[1].replace(/\s+/g, '')
+  return /^[1-9]\d{5}$/.test(pin) ? pin : ''
+}
+
+function looksLikeAddressStartLine(line) {
+  if (!line) return false
+  const normalized = normalizeAddressLine(line)
+  return ADDRESS_START_TOKEN.test(normalized)
+}
+
 function parseBackText(text) {
   const lines = cleanLines(text)
   const joined = lines.join('\n')
   const warnings = []
 
-  const englishLabelIdx = lines.findIndex((l) => ADDRESS_LABEL.test(l))
-  const englishStartIdx = lines.findIndex((l) => isEnglishAddressLine(l) && /^(S\/O|D\/O|W\/O|C\/O|H\.?\s*No|Flat|House|Plot|Near|Society|Village|Ward|Road|Street|Lane|Nagar|City|State|Pin|Pincode)/i.test(l))
-  const startIndex = englishLabelIdx >= 0 ? englishLabelIdx : englishStartIdx
+  const englishLabelIdx = lines.findIndex((l) => ADDRESS_LABEL.test(normalizeAddressLine(l)))
+  const englishStartIdx = lines.findIndex((l) => isEnglishAddressLine(l) && looksLikeAddressStartLine(l))
+  const startIndex = englishLabelIdx >= 0 ? englishLabelIdx + 1 : englishStartIdx
   const addressLines = []
+  let pinFound = ''
+
+  if (englishLabelIdx >= 0) {
+    const inline = cleanAddressLine(normalizeAddressLine(lines[englishLabelIdx]))
+    if (inline && isEnglishAddressLine(inline) && looksLikeAddressStartLine(inline)) {
+      addressLines.push(inline)
+      const pin = findPinInLine(inline)
+      if (pin) pinFound = pin
+    }
+  }
 
   if (startIndex >= 0) {
-    for (let i = startIndex; i < lines.length && i < startIndex + 12; i += 1) {
+    for (let i = startIndex; i < lines.length && i < startIndex + 14; i += 1) {
       const line = lines[i]
       if (!line) continue
       if (findAadhaarNumber(line).aadharNumber && i > startIndex) break
       if (FOOTER_LINE.test(line)) break
       if (/^unique identification/i.test(line)) break
-      const cleaned = cleanAddressLine(line)
+      const cleaned = cleanAddressLine(normalizeAddressLine(line))
       if (!cleaned) continue
       if (!isEnglishAddressLine(cleaned)) continue
+      if (!addressLines.length && !looksLikeAddressStartLine(cleaned)) continue
       addressLines.push(cleaned)
+      const pin = findPinInLine(cleaned)
+      if (pin) {
+        pinFound = pin
+        break
+      }
+    }
+  }
+
+  if (addressLines.length && !pinFound && startIndex >= 0) {
+    const tailStart = Math.min(lines.length, startIndex + 14)
+    for (let i = tailStart; i < lines.length && i < tailStart + 4; i += 1) {
+      const cleaned = cleanAddressLine(normalizeAddressLine(lines[i] || ''))
+      if (!cleaned) continue
+      if (!isEnglishAddressLine(cleaned)) continue
+      const pin = findPinInLine(cleaned)
+      if (pin) {
+        pinFound = pin
+        if (!addressLines.includes(cleaned)) addressLines.push(cleaned)
+        break
+      }
     }
   }
 
@@ -195,7 +251,12 @@ function parseBackText(text) {
     .replace(/,\s*$/, '')
     .trim()
 
+  if (address && pinFound && !new RegExp(`${pinFound}$`).test(address)) {
+    address = `${address}, ${pinFound}`
+  }
+
   if (!address) warnings.push('Address could not be extracted confidently. Verify manually.')
+  if (address && !pinFound) warnings.push('Address extracted but PIN was not confidently detected. Verify manually.')
 
   return { address, rawText: joined, warnings }
 }
