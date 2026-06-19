@@ -13,7 +13,7 @@ const DEVANAGARI = /[\u0900-\u097F]/
 const ADDRESS_LABEL = /^(address|addres|adress|addr(?:ess)?)\s*[:\-]?\s*/i
 const FOOTER_LINE = /^(www\.|help@|uidai\.gov\.in|P\.O\.|1947|e-?mail|download)/i
 const PIN_TOKEN = /([1-9]\d{2}\s?\d{3}|[1-9]\d{5})\b/
-const ADDRESS_START_TOKEN = /^(?:[SDWC]\s*\/?\s*O|H\.?\s*No|Flat|House|Plot|Near|Society|Village|Ward|Road|Street|Lane|Nagar|Town|Taluka|Tehsil|Dist(?:rict)?|City|State|Pin(?:code)?)\b/i
+const ADDRESS_START_TOKEN = /^(?:(?:[SDWC]|[5$])\s*\/?\s*[O0]|H\.?\s*No|Flat|House|Plot|Near|Society|Village|Ward|Road|Street|Lane|Nagar|Town|Taluka|Tehsil|Dist(?:rict)?|City|State|Pin(?:code)?)\b/i
 
 const DIGIT_SUBS = {
   O: '0',
@@ -153,6 +153,11 @@ function cleanAddressLine(line) {
   return line
     .replace(ADDRESS_LABEL, '')
     .replace(/^पत्ता\s*:?/i, '')
+    .replace(/[{}\[\]<>]/g, ' ')
+    .replace(/^[`'"“”‘’.,:;\-\s]+/, '')
+    .replace(/^(?:[5$]|S)\s*[\/\\|]\s*0\b/i, 'S/O')
+    .replace(/^([DWC])\s*[\/\\|]\s*0\b/i, '$1/O')
+    .replace(/^(S|D|W|C)\s*[|!lI1]\s*[O0]\b/i, '$1/O')
     .replace(/\s*,\s*/g, ', ')
     .replace(/\s+/g, ' ')
     .trim()
@@ -199,6 +204,7 @@ function parseBackText(text) {
   const englishLabelIdx = lines.findIndex((l) => ADDRESS_LABEL.test(normalizeAddressLine(l)))
   const englishStartIdx = lines.findIndex((l) => isEnglishAddressLine(l) && looksLikeAddressStartLine(l))
   const startIndex = englishLabelIdx >= 0 ? englishLabelIdx + 1 : englishStartIdx
+  const anchoredByLabel = englishLabelIdx >= 0
   const addressLines = []
   let pinFound = ''
 
@@ -221,7 +227,7 @@ function parseBackText(text) {
       const cleaned = cleanAddressLine(normalizeAddressLine(line))
       if (!cleaned) continue
       if (!isEnglishAddressLine(cleaned)) continue
-      if (!addressLines.length && !looksLikeAddressStartLine(cleaned)) continue
+      if (!addressLines.length && !anchoredByLabel && !looksLikeAddressStartLine(cleaned)) continue
       addressLines.push(cleaned)
       const pin = findPinInLine(cleaned)
       if (pin) {
