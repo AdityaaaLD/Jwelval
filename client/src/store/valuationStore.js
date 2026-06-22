@@ -13,7 +13,7 @@ export const REMARK_OPTIONS = [
 const blankItem = () => ({
   description: '',
   noOfUnits: 1,
-  purityCarat: 22,
+  purityCarat: '',
   purityPercent: 91.67,
   grossWeightGm: '',
   netWeightGm: '',
@@ -53,17 +53,17 @@ const round = (value, digits = 2) => +value.toFixed(digits)
 export const deriveItem = (item, goldRate22k) => {
   const netWeightGm = n(item.netWeightGm)
   const hasPurityCarat = item.purityCarat !== '' && item.purityCarat !== null && item.purityCarat !== undefined
-  const purityCarat = hasPurityCarat ? n(item.purityCarat) : 22
-  const purityPercent = round((purityCarat / 24) * 100, 2)
+  const purityCaratForCalc = hasPurityCarat ? n(item.purityCarat) : 22
+  const purityPercent = round((purityCaratForCalc / 24) * 100, 2)
   const net24kGoldGm = round(netWeightGm * (purityPercent / 100), 4)
   const net22kGoldGm = round(net24kGoldGm * (24 / 22), 4)
   // Value scaled by entered karat against 22K rate
-  const approxValueInr = round(n(goldRate22k) * (purityCarat / 22) * netWeightGm, 2)
+  const approxValueInr = round(n(goldRate22k) * (purityCaratForCalc / 22) * netWeightGm, 2)
   return {
     ...item,
     noOfUnits: parseInt(item.noOfUnits, 10) || 1,
     purityPercent,
-    purityCarat: hasPurityCarat ? item.purityCarat : 22,
+    purityCarat: hasPurityCarat ? item.purityCarat : '',
     grossWeightGm: item.grossWeightGm,
     netWeightGm: item.netWeightGm,
     net24kGoldGm,
@@ -119,7 +119,7 @@ export const useValuationStore = create((set, get) => ({
       items: (valuation.items?.length ? valuation.items : [blankItem()]).map((item) => ({
         description: item.description || '',
         noOfUnits: item.noOfUnits || 1,
-        purityCarat: item.purityCarat || 22,
+        purityCarat: item.purityCarat ?? '',
         purityPercent: item.purityPercent || 91.67,
         grossWeightGm: item.grossWeightGm || '',
         netWeightGm: item.netWeightGm || '',
