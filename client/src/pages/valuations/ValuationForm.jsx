@@ -383,7 +383,7 @@ export default function ValuationForm() {
                 </div>
                 <div>
                   <label className="text-xs text-slate-500">Karat</label>
-                  <input type="number" className="input" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} min="1" max="24" step="0.1" placeholder="22" />
+                  <input type="number" className="input" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} step="0.1" placeholder="22" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -463,8 +463,6 @@ export default function ValuationForm() {
                       value={item.purityCarat}
                       onChange={(e) => setItem(index, 'purityCarat', e.target.value)}
                       disabled={disabled}
-                      min="1"
-                      max="24"
                       step="0.1"
                       placeholder="22"
                     />
