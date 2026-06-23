@@ -14,12 +14,14 @@ export function deriveItem(item, goldRate22k) {
   const netWeightGm = num(item.netWeightGm)
   const noOfUnits = Number.isInteger(item.noOfUnits) ? item.noOfUnits : parseInt(item.noOfUnits, 10) || 1
 
-  const purityCarat = num(item.purityCarat) || 22
-  const purityPercent = +((purityCarat / 24) * 100).toFixed(2)
+  const purityCaratForCalc = 22
+  const purityCarat = item.purityCarat === '' || item.purityCarat === null || item.purityCarat === undefined
+    ? 22
+    : num(item.purityCarat)
+  const purityPercent = +((purityCaratForCalc / 24) * 100).toFixed(2)
   const net24kGoldGm = +(netWeightGm * (purityPercent / 100)).toFixed(4)
   const net22kGoldGm = +(net24kGoldGm * (24 / 22)).toFixed(4)
-  // Value scaled by karat vs 22K rate
-  const approxValueInr = +(num(goldRate22k) * (purityCarat / 22) * netWeightGm).toFixed(2)
+  const approxValueInr = +(num(goldRate22k) * netWeightGm).toFixed(2)
 
   return {
     description: item.description || '',
