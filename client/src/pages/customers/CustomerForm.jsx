@@ -153,8 +153,8 @@ export default function CustomerForm() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <p className="text-xs font-semibold text-slate-700 mb-1">Front Side</p>
-              <div className="grid h-36 place-items-center overflow-hidden rounded-md border border-gold-200 bg-white text-sm text-slate-500">
-                {form.aadharPhoto ? <img src={form.aadharPhoto} alt="Aadhaar front" className="h-full w-full object-cover" /> : <FileScan size={28} />}
+              <div className="grid h-44 place-items-center overflow-hidden rounded-md border border-gold-200 bg-white text-sm text-slate-500">
+                {form.aadharPhoto ? <img src={form.aadharPhoto} alt="Aadhaar front" className="h-full w-full object-contain p-1" /> : <FileScan size={28} />}
               </div>
               <label className="btn-secondary mt-2 w-full">
                 <Upload size={16} /> {scanningFront ? 'Scanning...' : 'Scan Front'}
@@ -169,8 +169,8 @@ export default function CustomerForm() {
             </div>
             <div>
               <p className="text-xs font-semibold text-slate-700 mb-1">Back Side</p>
-              <div className="grid h-36 place-items-center overflow-hidden rounded-md border border-gold-200 bg-white text-sm text-slate-500">
-                {form.aadharPhotoBack ? <img src={form.aadharPhotoBack} alt="Aadhaar back" className="h-full w-full object-cover" /> : <FileScan size={28} />}
+              <div className="grid h-44 place-items-center overflow-hidden rounded-md border border-gold-200 bg-white text-sm text-slate-500">
+                {form.aadharPhotoBack ? <img src={form.aadharPhotoBack} alt="Aadhaar back" className="h-full w-full object-contain p-1" /> : <FileScan size={28} />}
               </div>
               <label className="btn-secondary mt-2 w-full">
                 <Upload size={16} /> {scanningBack ? 'Scanning...' : 'Scan Back'}
@@ -196,8 +196,8 @@ export default function CustomerForm() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <p className="mb-1 text-xs font-semibold text-slate-700">Customer Photo</p>
-              <div className="grid h-36 place-items-center overflow-hidden rounded-md border border-slate-200 bg-white text-sm text-slate-500">
-                {form.customerPhoto ? <img src={form.customerPhoto} alt="Customer" className="h-full w-full object-cover" /> : <FileScan size={28} />}
+              <div className="grid h-44 place-items-center overflow-hidden rounded-md border border-slate-200 bg-white text-sm text-slate-500">
+                {form.customerPhoto ? <img src={form.customerPhoto} alt="Customer" className="h-full w-full object-contain p-1" /> : <FileScan size={28} />}
               </div>
               <label className="btn-secondary mt-2 w-full">
                 <Upload size={16} /> Capture / Upload
@@ -206,8 +206,8 @@ export default function CustomerForm() {
             </div>
             <div>
               <p className="mb-1 text-xs font-semibold text-slate-700">PAN Card Photo</p>
-              <div className="grid h-36 place-items-center overflow-hidden rounded-md border border-slate-200 bg-white text-sm text-slate-500">
-                {form.panPhoto ? <img src={form.panPhoto} alt="PAN" className="h-full w-full object-cover" /> : <FileScan size={28} />}
+              <div className="grid h-44 place-items-center overflow-hidden rounded-md border border-slate-200 bg-white text-sm text-slate-500">
+                {form.panPhoto ? <img src={form.panPhoto} alt="PAN" className="h-full w-full object-contain p-1" /> : <FileScan size={28} />}
               </div>
               <label className="btn-secondary mt-2 w-full">
                 <Upload size={16} /> Capture / Upload

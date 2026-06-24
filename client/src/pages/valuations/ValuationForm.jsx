@@ -203,9 +203,9 @@ export default function ValuationForm() {
       <p className="label">{label}</p>
       <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-50">
         {form[field] ? (
-          <img src={form[field]} alt={label} className="h-40 w-full object-cover" />
+          <img src={form[field]} alt={label} className="h-44 w-full object-contain p-1" />
         ) : (
-          <div className="grid h-40 place-items-center text-sm text-slate-400">
+          <div className="grid h-44 place-items-center text-sm text-slate-400">
             <Camera size={24} />
           </div>
         )}
@@ -229,9 +229,9 @@ export default function ValuationForm() {
       <p className="label">{label}</p>
       <div className="overflow-hidden rounded-md border border-slate-200 bg-slate-50">
         {form[field] ? (
-          <img src={form[field]} alt={label} className="h-40 w-full object-cover" />
+          <img src={form[field]} alt={label} className="h-44 w-full object-contain p-1" />
         ) : (
-          <div className="grid h-40 place-items-center text-sm text-slate-400">
+          <div className="grid h-44 place-items-center text-sm text-slate-400">
             <Camera size={24} />
           </div>
         )}
@@ -543,8 +543,8 @@ export default function ValuationForm() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-6">
             {(form.ornamentPhotos || []).map((photo, index) => (
-              <div key={index} className="relative overflow-hidden rounded-md border border-slate-200">
-                <img src={photo} alt={`Ornament ${index + 1}`} className="h-24 w-full object-cover" />
+              <div key={index} className="relative overflow-hidden rounded-md border border-slate-200 bg-slate-50">
+                <img src={photo} alt={`Ornament ${index + 1}`} className="h-24 w-full object-contain p-1" />
                 {!disabled && <button type="button" className="absolute right-1 top-1 rounded bg-white/90 p-1" onClick={() => setField('ornamentPhotos', form.ornamentPhotos.filter((_, i) => i !== index))}><Trash2 size={14} /></button>}
               </div>
             ))}
