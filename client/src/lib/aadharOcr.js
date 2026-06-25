@@ -1,3 +1,5 @@
+import { api } from './api'
+
 const cleanLines = (text) => text
   .replace(/[|]/g, ' ')
   .replace(/[^\S\r\n]+/g, ' ')
@@ -268,25 +270,18 @@ function parseBackText(text) {
 }
 
 export async function scanAadhaarImage(image, side = 'front') {
-  const { createWorker } = await import('tesseract.js')
-  let worker
-  try {
-    worker = await createWorker('eng+hin')
-  } catch {
-    worker = await createWorker('eng')
-  }
+  const response = await api.ocr.scanAadhaar({ image, side })
+  const text = response?.rawText || ''
+  const ocrConfidence = Number(response?.ocrConfidence || 0)
+  const parsed = side === 'back' ? parseBackText(text) : parseFrontText(text)
+  const warnings = [
+    ...(Array.isArray(response?.warnings) ? response.warnings : []),
+    ...(Array.isArray(parsed?.warnings) ? parsed.warnings : []),
+  ]
 
-  try {
-    const { data } = await worker.recognize(image)
-    const text = data?.text || ''
-    const ocrConfidence = Number(data?.confidence || 0)
-    const parsed = side === 'back' ? parseBackText(text) : parseFrontText(text)
-    return {
-      ...parsed,
-      ocrConfidence,
-      warnings: parsed.warnings || [],
-    }
-  } finally {
-    await worker.terminate()
+  return {
+    ...parsed,
+    ocrConfidence,
+    warnings: [...new Set(warnings)],
   }
 }

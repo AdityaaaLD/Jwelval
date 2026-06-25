@@ -93,6 +93,10 @@ export const api = {
   },
   verify: (number) => request(`/verify/${encodeURIComponent(number)}`),
 
+  ocr: {
+    scanAadhaar: (data) => request('/ocr/aadhaar', { method: 'POST', body: data }),
+  },
+
   customers: {
     list:   ()        => request('/customers'),
     get:    (id)      => request(`/customers/${id}`),

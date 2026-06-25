@@ -13,6 +13,7 @@ server/data/*.db-shm
 server/db/*.db
 server/db/*.db-wal
 server/db/*.db-shm
+server/secrets/
 
 # workspace nested lock files (root lock file is authoritative)
 client/package-lock.json

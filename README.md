@@ -88,6 +88,11 @@ EMAIL_FROM=no-reply@jwelval.com
 # SendGrid (use now)
 SENDGRID_API_KEY=your_sendgrid_api_key
 
+# Google Vision OCR (choose one method)
+# GOOGLE_APPLICATION_CREDENTIALS=./server/secrets/google-vision-service-account.json
+# GOOGLE_VISION_CREDENTIALS_JSON={"type":"service_account",...}
+# GOOGLE_VISION_CREDENTIALS_BASE64=eyJ0eXBlIjoic2VydmljZV9hY2NvdW50IiwuLi59
+
 # AWS SES (switch later by changing MAIL_PROVIDER=ses)
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_aws_key
@@ -113,6 +118,12 @@ Mailer behavior:
 - `MAIL_PROVIDER=ses`: force AWS SES
 - `MAIL_PROVIDER=stub`: local console logging only
 - `MAIL_PROVIDER=auto`: tries SendGrid, then SES, then stub fallback (stub is blocked in production unless `ALLOW_STUB_MAILER_IN_PROD=true`)
+
+OCR behavior:
+- Aadhaar OCR now runs through backend endpoint `POST /api/ocr/aadhaar`
+- OCR provider is Google Vision `documentTextDetection`
+- Field extraction/parsing remains in `client/src/lib/aadharOcr.js`
+- Use `server/.env.vision.example` as key setup reference
 
 ## Demo Data
 

@@ -22,6 +22,7 @@ import authRouter from './routes/auth.js'
 import subscriptionsRouter from './routes/subscriptions.js'
 import ornamentsRouter from './routes/ornaments.js'
 import sellBillsRouter from './routes/sellBills.js'
+import ocrRouter from './routes/ocr.js'
 import { requireAuth } from './middleware/auth.js'
 import { authRateLimit, rateLimit, subscriptionRateLimit } from './middleware/rateLimit.js'
 import { getMailerHealth, validateMailerConfiguration } from './mailer.js'
@@ -139,6 +140,7 @@ app.use('/api/profile', rateLimit, requireAuth, profileRouter)
 app.use('/api/presets', rateLimit, requireAuth, presetsRouter)
 app.use('/api/ornaments', rateLimit, requireAuth, ornamentsRouter)
 app.use('/api/sell-bills', rateLimit, requireAuth, sellBillsRouter)
+app.use('/api/ocr', rateLimit, requireAuth, ocrRouter)
 
 if (isProd) {
   const distPath = resolve(here, '../../client/dist')
