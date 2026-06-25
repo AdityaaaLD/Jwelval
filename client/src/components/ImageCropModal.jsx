@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, RotateCcw, RotateCw, X } from 'lucide-react'
 
 const ASPECT_OPTIONS = [
   { label: 'Document (4:3)', value: 4 / 3 },
@@ -23,6 +23,7 @@ export default function ImageCropModal({
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 })
   const [aspect, setAspect] = useState(4 / 3)
   const [zoom, setZoom] = useState(1)
+  const [rotation, setRotation] = useState(0)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [dragging, setDragging] = useState(false)
   const [applying, setApplying] = useState(false)
@@ -31,6 +32,7 @@ export default function ImageCropModal({
     if (!open) return
     setAspect(4 / 3)
     setZoom(1)
+    setRotation(0)
     setOffset({ x: 0, y: 0 })
   }, [open, src])
 
@@ -55,8 +57,12 @@ export default function ImageCropModal({
 
   const baseScale = useMemo(() => {
     if (!naturalSize.width || !naturalSize.height || !frameSize.width || !frameSize.height) return 1
-    return Math.max(frameSize.width / naturalSize.width, frameSize.height / naturalSize.height)
-  }, [naturalSize, frameSize])
+    const quarterTurns = ((rotation % 360) + 360) % 360 / 90
+    const isSwap = quarterTurns % 2 === 1
+    const sourceWidth = isSwap ? naturalSize.height : naturalSize.width
+    const sourceHeight = isSwap ? naturalSize.width : naturalSize.height
+    return Math.max(frameSize.width / sourceWidth, frameSize.height / sourceHeight)
+  }, [naturalSize, frameSize, rotation])
 
   const displaySize = useMemo(() => {
     const width = naturalSize.width * baseScale * zoom
@@ -64,10 +70,19 @@ export default function ImageCropModal({
     return { width, height }
   }, [naturalSize, baseScale, zoom])
 
+  const rotatedBounds = useMemo(() => {
+    const quarterTurns = ((rotation % 360) + 360) % 360 / 90
+    const isSwap = quarterTurns % 2 === 1
+    return {
+      width: isSwap ? displaySize.height : displaySize.width,
+      height: isSwap ? displaySize.width : displaySize.height,
+    }
+  }, [displaySize, rotation])
+
   const maxOffset = useMemo(() => ({
-    x: Math.max(0, (displaySize.width - frameSize.width) / 2),
-    y: Math.max(0, (displaySize.height - frameSize.height) / 2),
-  }), [displaySize, frameSize])
+    x: Math.max(0, (rotatedBounds.width - frameSize.width) / 2),
+    y: Math.max(0, (rotatedBounds.height - frameSize.height) / 2),
+  }), [rotatedBounds, frameSize])
 
   useEffect(() => {
     setOffset((prev) => ({
@@ -95,10 +110,14 @@ export default function ImageCropModal({
       const frameToCanvas = canvasWidth / frameSize.width
       const drawWidth = displaySize.width * frameToCanvas
       const drawHeight = displaySize.height * frameToCanvas
-      const drawX = (canvasWidth - drawWidth) / 2 + (offset.x * frameToCanvas)
-      const drawY = (canvasHeight - drawHeight) / 2 + (offset.y * frameToCanvas)
+      const centerX = canvasWidth / 2 + (offset.x * frameToCanvas)
+      const centerY = canvasHeight / 2 + (offset.y * frameToCanvas)
 
-      ctx.drawImage(imageRef.current, drawX, drawY, drawWidth, drawHeight)
+      ctx.save()
+      ctx.translate(centerX, centerY)
+      ctx.rotate((rotation * Math.PI) / 180)
+      ctx.drawImage(imageRef.current, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
+      ctx.restore()
       const out = canvas.toDataURL('image/jpeg', 0.9)
       await onApply(out)
     } finally {
@@ -168,7 +187,7 @@ export default function ImageCropModal({
                 style={{
                   width: `${displaySize.width}px`,
                   height: `${displaySize.height}px`,
-                  transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
+                  transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px)) rotate(${rotation}deg)`,
                   touchAction: 'none',
                 }}
                 draggable={false}
@@ -177,6 +196,17 @@ export default function ImageCropModal({
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label">Rotate</label>
+              <div className="flex gap-2">
+                <button type="button" className="btn-secondary flex-1" onClick={() => setRotation((r) => (r + 270) % 360)} disabled={applying}>
+                  <RotateCcw size={16} /> Left
+                </button>
+                <button type="button" className="btn-secondary flex-1" onClick={() => setRotation((r) => (r + 90) % 360)} disabled={applying}>
+                  <RotateCw size={16} /> Right
+                </button>
+              </div>
+            </div>
             <div>
               <label className="label">Frame</label>
               <select className="input" value={String(aspect)} onChange={(e) => setAspect(Number(e.target.value))} disabled={applying}>
