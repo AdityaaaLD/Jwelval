@@ -4,7 +4,8 @@ import toast from 'react-hot-toast'
 import { ArrowLeft, FileScan, Save, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { scanAadhaarImage } from '../../lib/aadharOcr'
-import { compressImage } from '../../lib/imageCompress'
+import ImageCropModal from '../../components/ImageCropModal'
+import { compressDataUrl } from '../../lib/imageCompress'
 
 const emptyCustomer = {
   name: '',
@@ -31,6 +32,7 @@ export default function CustomerForm() {
   const [scanningBack, setScanningBack] = useState(false)
   const [ocrTextFront, setOcrTextFront] = useState('')
   const [ocrTextBack, setOcrTextBack] = useState('')
+  const [cropSession, setCropSession] = useState(null)
 
   const showOcrWarnings = (parsed) => {
     const warnings = parsed?.warnings || []
@@ -64,9 +66,32 @@ export default function CustomerForm() {
 
   const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
 
-  const scanFront = async (file) => {
+  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error('Failed to read image file'))
+    reader.readAsDataURL(file)
+  })
+
+  const openCropper = async (file, title, onApply) => {
     if (!file) return
-    const compressed = await compressImage(file)
+    try {
+      const src = await readFileAsDataUrl(file)
+      setCropSession({ src, title, onApply })
+    } catch {
+      toast.error('Unable to open image editor.')
+    }
+  }
+
+  const handleCropApply = async (croppedDataUrl) => {
+    const current = cropSession
+    setCropSession(null)
+    if (!current?.onApply) return
+    await current.onApply(croppedDataUrl)
+  }
+
+  const scanFront = async (sourceDataUrl) => {
+    const compressed = await compressDataUrl(sourceDataUrl, { maxWidth: 1400, maxHeight: 1000, quality: 0.82 })
     setForm((current) => ({ ...current, aadharPhoto: compressed }))
     setScanningFront(true)
     try {
@@ -87,15 +112,13 @@ export default function CustomerForm() {
     }
   }
 
-  const uploadPhoto = async (field, file) => {
-    if (!file) return
-    const compressed = await compressImage(file)
+  const uploadPhoto = async (field, sourceDataUrl) => {
+    const compressed = await compressDataUrl(sourceDataUrl, { maxWidth: 1200, maxHeight: 1200, quality: 0.8 })
     setForm((current) => ({ ...current, [field]: compressed }))
   }
 
-  const scanBack = async (file) => {
-    if (!file) return
-    const compressed = await compressImage(file)
+  const scanBack = async (sourceDataUrl) => {
+    const compressed = await compressDataUrl(sourceDataUrl, { maxWidth: 1400, maxHeight: 1000, quality: 0.82 })
     setForm((current) => ({ ...current, aadharPhotoBack: compressed }))
     setScanningBack(true)
     try {
@@ -158,7 +181,7 @@ export default function CustomerForm() {
               </div>
               <label className="btn-secondary mt-2 w-full">
                 <Upload size={16} /> {scanningFront ? 'Scanning...' : 'Scan Front'}
-                <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={scanningFront} onChange={(e) => scanFront(e.target.files?.[0])} />
+                <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={scanningFront} onChange={(e) => openCropper(e.target.files?.[0], 'Crop Aadhaar Front', scanFront)} />
               </label>
               {ocrTextFront && (
                 <details className="mt-2 text-xs text-slate-500">
@@ -174,7 +197,7 @@ export default function CustomerForm() {
               </div>
               <label className="btn-secondary mt-2 w-full">
                 <Upload size={16} /> {scanningBack ? 'Scanning...' : 'Scan Back'}
-                <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={scanningBack} onChange={(e) => scanBack(e.target.files?.[0])} />
+                <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={scanningBack} onChange={(e) => openCropper(e.target.files?.[0], 'Crop Aadhaar Back', scanBack)} />
               </label>
               {ocrTextBack && (
                 <details className="mt-2 text-xs text-slate-500">
@@ -201,7 +224,7 @@ export default function CustomerForm() {
               </div>
               <label className="btn-secondary mt-2 w-full">
                 <Upload size={16} /> Capture / Upload
-                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => uploadPhoto('customerPhoto', e.target.files?.[0])} />
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => openCropper(e.target.files?.[0], 'Crop Customer Photo', (dataUrl) => uploadPhoto('customerPhoto', dataUrl))} />
               </label>
             </div>
             <div>
@@ -211,7 +234,7 @@ export default function CustomerForm() {
               </div>
               <label className="btn-secondary mt-2 w-full">
                 <Upload size={16} /> Capture / Upload
-                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => uploadPhoto('panPhoto', e.target.files?.[0])} />
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => openCropper(e.target.files?.[0], 'Crop PAN Photo', (dataUrl) => uploadPhoto('panPhoto', dataUrl))} />
               </label>
             </div>
           </div>
@@ -257,6 +280,14 @@ export default function CustomerForm() {
           </button>
         </div>
       </form>
+
+      <ImageCropModal
+        open={Boolean(cropSession)}
+        title={cropSession?.title || 'Adjust Image'}
+        src={cropSession?.src || ''}
+        onCancel={() => setCropSession(null)}
+        onApply={handleCropApply}
+      />
     </div>
   )
 }

@@ -4,9 +4,10 @@ import toast from 'react-hot-toast'
 import { ArrowLeft, Camera, Copy, Eye, Plus, Printer, Receipt, Save, Trash2, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { inr, num } from '../../lib/format'
-import { compressImage } from '../../lib/imageCompress'
+import { compressDataUrl } from '../../lib/imageCompress'
 import { useValuationStore, REMARK_OPTIONS } from '../../store/valuationStore'
 import PrintModal from '../../components/print/PrintModal'
+import ImageCropModal from '../../components/ImageCropModal'
 
 const lockedStatus = (status) => status === 'PRINTED' || status === 'LOCKED'
 
@@ -61,6 +62,7 @@ export default function ValuationForm() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [customerMediaLoading, setCustomerMediaLoading] = useState(false)
+  const [cropSession, setCropSession] = useState(null)
   const customerDetailCacheRef = useRef({})
   const { form, dirty, reset, hydrate, setField, setItem, addItem, removeItem, markClean, payload } = useValuationStore()
 
@@ -167,15 +169,37 @@ export default function ValuationForm() {
     }
   }
 
-  const loadPhoto = async (field, file) => {
+  const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = () => reject(new Error('Failed to read image file'))
+    reader.readAsDataURL(file)
+  })
+
+  const openCropper = async (file, title, onApply) => {
     if (!file) return
-    const compressed = await compressImage(file)
+    try {
+      const src = await readFileAsDataUrl(file)
+      setCropSession({ src, title, onApply })
+    } catch {
+      toast.error('Unable to open image editor.')
+    }
+  }
+
+  const handleCropApply = async (croppedDataUrl) => {
+    const current = cropSession
+    setCropSession(null)
+    if (!current?.onApply) return
+    await current.onApply(croppedDataUrl)
+  }
+
+  const loadPhoto = async (field, sourceDataUrl) => {
+    const compressed = await compressDataUrl(sourceDataUrl, { maxWidth: 1200, maxHeight: 1200, quality: 0.8 })
     setField(field, compressed)
   }
 
-  const addOrnamentPhoto = async (file) => {
-    if (!file) return
-    const compressed = await compressImage(file)
+  const addOrnamentPhoto = async (sourceDataUrl) => {
+    const compressed = await compressDataUrl(sourceDataUrl, { maxWidth: 1200, maxHeight: 1200, quality: 0.8 })
     setField('ornamentPhotos', [...(form.ornamentPhotos || []), compressed])
   }
 
@@ -218,7 +242,7 @@ export default function ValuationForm() {
           capture="environment"
           className="sr-only"
           disabled={disabled}
-          onChange={(e) => loadPhoto(field, e.target.files?.[0])}
+          onChange={(e) => openCropper(e.target.files?.[0], `Crop ${label}`, (dataUrl) => loadPhoto(field, dataUrl))}
         />
       </label>
     </div>
@@ -538,7 +562,7 @@ export default function ValuationForm() {
             <p className="label mb-0">Additional Ornament Photos</p>
             <label className={`btn-secondary ${disabled ? 'pointer-events-none opacity-50' : ''}`}>
               <Camera size={16} /> Add Photo
-              <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={disabled} onChange={(e) => addOrnamentPhoto(e.target.files?.[0])} />
+              <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={disabled} onChange={(e) => openCropper(e.target.files?.[0], 'Crop Ornament Photo', addOrnamentPhoto)} />
             </label>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 md:grid-cols-6">
@@ -607,6 +631,14 @@ export default function ValuationForm() {
           }}
         />
       )}
+
+      <ImageCropModal
+        open={Boolean(cropSession)}
+        title={cropSession?.title || 'Adjust Image'}
+        src={cropSession?.src || ''}
+        onCancel={() => setCropSession(null)}
+        onApply={handleCropApply}
+      />
     </div>
   )
 }
