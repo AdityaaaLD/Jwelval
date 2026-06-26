@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { num } from '../../lib/format'
 import { api } from '../../lib/api'
-import { CertificateRules, SignatureGrid, VerificationBlock, resolveReportDateTime } from './PrintHelpers'
+import { CertificateRules, SignatureGrid, resolveReportDateTime } from './PrintHelpers'
+import QrImage from '../QrImage'
+import { verificationUrl } from '../../lib/qr'
 
 export default function PrintDigitalCert({ valuation }) {
   const customer = valuation.customer || {}
@@ -32,6 +34,10 @@ export default function PrintDigitalCert({ valuation }) {
       {/* PAGE 1 — Certificate */}
       <article className="print-page digital-cert">
         <header className="dc-header-box">
+          <div className="dc-header-qr-badge">
+            <QrImage text={verificationUrl(valuation.valuationNumber)} className="dc-header-qr-image" />
+            <p>Scan &amp; Verify</p>
+          </div>
           <p className="dc-header-line" style={{ fontSize: '18px', letterSpacing: '1px' }}><b>{(profile?.business_name || 'JEWELLERS').toUpperCase()}</b></p>
           <p className="dc-header-line">Proprietor, {profile?.appraiser_name || ''}, {profile?.qualification || 'Government Approved Gold Appaisal'}</p>
           {profile?.organization && <p className="dc-header-line">({profile.organization})</p>}
@@ -49,16 +55,34 @@ export default function PrintDigitalCert({ valuation }) {
           <span>Date: {dateStr}</span>
         </div>
 
-        <div className="dc-row-box dc-parties">
-          <div>
+        <div className="dc-row-box dc-parties dc-parties-with-photos">
+          <div className="dc-party-from">
             <p><b>From,</b></p>
             <p>{profile?.appraiser_name || ''}</p>
             {profile?.empanelment_id && <p>Empanelment ID: {profile.empanelment_id}</p>}
           </div>
-          <div>
-            <p><b>To,</b></p>
-            <p>Branch Manager,</p>
-            <p>{valuation.branch}{valuation.branchCode ? ` (Br. Code: ${valuation.branchCode})` : ''}</p>
+          <div className="dc-party-to-photos">
+            <div className="dc-party-to">
+              <p><b>To,</b></p>
+              <p>Branch Manager,</p>
+              <p>{valuation.branch}{valuation.branchCode ? ` (Br. Code: ${valuation.branchCode})` : ''}</p>
+            </div>
+            {(valuation.personPhoto || valuation.jewelleryPhoto) && (
+              <div className="dc-inline-photos">
+                {valuation.personPhoto && (
+                  <div className="dc-photo-box dc-inline-photo-box">
+                    <img src={valuation.personPhoto} alt="Borrower" />
+                    <p>Borrower Photo</p>
+                  </div>
+                )}
+                {valuation.jewelleryPhoto && (
+                  <div className="dc-photo-box dc-inline-photo-box">
+                    <img src={valuation.jewelleryPhoto} alt="Jewellery" />
+                    <p>Jewellery Photo</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -129,27 +153,7 @@ export default function PrintDigitalCert({ valuation }) {
 
         <CertificateRules valuation={valuation} className="dc-cert-text" />
 
-        {/* Photos section — above signature */}
-        {(valuation.personPhoto || valuation.jewelleryPhoto) && (
-          <div className="dc-photos">
-            {valuation.personPhoto && (
-              <div className="dc-photo-box">
-                <img src={valuation.personPhoto} alt="Borrower" />
-                <p>Borrower Photo</p>
-              </div>
-            )}
-            {valuation.jewelleryPhoto && (
-              <div className="dc-photo-box">
-                <img src={valuation.jewelleryPhoto} alt="Jewellery" />
-                <p>Jewellery Photo</p>
-              </div>
-            )}
-          </div>
-        )}
-
         <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
-
-        <VerificationBlock valuation={valuation} profile={profile} />
       </article>
 
       {/* PAGE 2 — Aadhar & PAN (back of the certificate) */}
