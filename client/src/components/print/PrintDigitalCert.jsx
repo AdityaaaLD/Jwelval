@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { num } from '../../lib/format'
+import { inr, num } from '../../lib/format'
 import { api } from '../../lib/api'
 import { CertificateRules, SignatureGrid, resolveReportDateTime } from './PrintHelpers'
 import QrImage from '../QrImage'
@@ -99,6 +99,9 @@ export default function PrintDigitalCert({ valuation }) {
           <div className="dc-loan-meta-left">
             {valuation.loanType && <span><b>Loan Type:</b> {valuation.loanType}</span>}
             {valuation.rateOfInterest != null && <span className="dc-loan-rate"><b>Rate of Interest:</b> {valuation.rateOfInterest}%</span>}
+            {valuation.bankRecommendedValue != null && (
+              <span className="dc-recommended-loan"><b>Bank Recommended Loan Amount:</b> {inr(valuation.bankRecommendedValue)}</span>
+            )}
           </div>
           <span className="dc-currency-inline">(Rs. in Actual)</span>
         </div>

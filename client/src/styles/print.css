@@ -32,11 +32,11 @@
 
 /* DIGITAL_CERT format — matches client screenshot exactly */
 .print-page.digital-cert { padding: 6mm 6.5mm; }
-.digital-cert { font-size: 10.4px; line-height: 1.28; }
+.digital-cert { font-size: 11.1px; line-height: 1.32; }
 .dc-header-box { position: relative; border: 1px solid #000; padding: 4px 60px 4px 8px; text-align: center; }
-.dc-header-line { margin: 1px 0; font-size: 10.3px; }
-.dc-header-line:first-child { font-size: 13px; }
-.dc-row-box { border: 1px solid #000; border-top: 0; padding: 2px 7px; font-size: 10.2px; margin: 0; }
+.dc-header-line { margin: 1px 0; font-size: 11px; }
+.dc-header-line:first-child { font-size: 14px; }
+.dc-row-box { border: 1px solid #000; border-top: 0; padding: 3px 7px; font-size: 10.8px; margin: 0; }
 .dc-row-split { display: flex; justify-content: space-between; }
 .dc-parties { display: grid; grid-template-columns: 36% 64%; }
 .dc-parties p { margin: 1px 0; }
@@ -46,27 +46,27 @@
 .dc-loan-rate { margin-left: 0; }
 .dc-currency-inline { font-weight: 700; white-space: nowrap; }
 .dc-table { width: 100%; border-collapse: collapse; margin: 0; }
-.dc-table th, .dc-table td { border: 1px solid #000; padding: 2px 3px; text-align: center; vertical-align: middle; font-size: 9.4px; line-height: 1.17; word-wrap: break-word; }
+.dc-table th, .dc-table td { border: 1px solid #000; padding: 2px 3px; text-align: center; vertical-align: middle; font-size: 9.7px; line-height: 1.2; word-wrap: break-word; }
 .dc-table th { font-weight: 700; background: #fff; color: #000; }
-.dc-table-info th { font-size: 6.5px; font-weight: 400; line-height: 1.07; padding: 2px 3px; background: #fefce8; color: #333; }
+.dc-table-info th { font-size: 6.7px; font-weight: 400; line-height: 1.1; padding: 2px 3px; background: #fefce8; color: #333; }
 .dc-table tfoot td { font-weight: 700; }
 .dc-td-left { text-align: left !important; }
-.dc-cert-text { margin: 5px 0 2px; font-size: 9.8px; line-height: 1.28; }
+.dc-cert-text { margin: 5px 0 2px; font-size: 10.2px; line-height: 1.32; }
 .dc-cert-text p { margin: 0; }
 .dc-photo-box { border: 1px solid #000; padding: 2px; text-align: center; background: #fff; }
-.dc-photo-box img { width: 29mm; height: 25mm; object-fit: cover; display: block; }
-.dc-photo-box p { margin: 2px 0 0; font-size: 7.6px; font-weight: 600; line-height: 1.1; }
+.dc-photo-box img { width: 34mm; height: 29mm; object-fit: cover; display: block; }
+.dc-photo-box p { margin: 2px 0 0; font-size: 8.1px; font-weight: 600; line-height: 1.15; }
 .dc-parties-with-photos { align-items: stretch; }
 .dc-party-from { padding-right: 5px; border-right: 1px solid #000; }
-.dc-party-to-photos { display: flex; align-items: stretch; justify-content: space-between; gap: 6px; padding-left: 6px; }
+.dc-party-to-photos { display: flex; align-items: stretch; justify-content: space-between; gap: 8px; padding-left: 8px; }
 .dc-party-to { flex: 1; }
-.dc-inline-photos { display: flex; align-items: flex-end; justify-content: flex-end; gap: 4px; }
+.dc-inline-photos { display: flex; align-items: flex-end; justify-content: flex-end; gap: 6px; }
 .dc-inline-photo-box { flex: 0 0 auto; }
 .dc-signature { margin-top: 12px; }
 .dc-signature p { margin: 0; }
 .dc-sign-space { height: 18mm; }
 .digital-cert .signature-grid { margin-top: 2px; padding-top: 6mm; gap: 6px; }
-.digital-cert .signature-box { min-height: 12mm; font-size: 9.4px; padding-top: 2px; }
+.digital-cert .signature-box { min-height: 12mm; font-size: 9.8px; padding-top: 2px; }
 
 .dc-header-qr-badge {
   position: absolute;
