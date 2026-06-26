@@ -8,6 +8,8 @@ import { verificationUrl } from '../../lib/qr'
 export default function PrintDigitalCert({ valuation }) {
   const customer = valuation.customer || {}
   const items = valuation.items || []
+  const aadharFrontDoc = valuation.aadharPhotoDoc || customer.aadharPhoto || ''
+  const aadharBackDoc = customer.aadharPhotoBack || ''
   const [profile, setProfile] = useState(null)
   useEffect(() => { api.profile.get().then(setProfile).catch(() => {}) }, [])
 
@@ -157,15 +159,28 @@ export default function PrintDigitalCert({ valuation }) {
       </article>
 
       {/* PAGE 2 — Aadhar & PAN (back of the certificate) */}
-      {(valuation.aadharPhotoDoc || valuation.panPhoto) && (
+      {(aadharFrontDoc || aadharBackDoc || valuation.panPhoto) && (
         <article className="print-page digital-cert dc-page2">
           <h2 className="dc-page2-title">KYC Documents — {customer.name || 'Borrower'}</h2>
           <p className="dc-page2-ref">Ref: Certificate No. {valuation.valuationNumber} | Date: {dateStr}</p>
           <div className="dc-doc-grid">
-            {valuation.aadharPhotoDoc && (
+            {(aadharFrontDoc || aadharBackDoc) && (
               <div className="dc-doc-box">
                 <p className="dc-doc-label">Aadhar Card</p>
-                <img src={valuation.aadharPhotoDoc} alt="Aadhar Card" />
+                <div className="dc-doc-stack">
+                  {aadharFrontDoc && (
+                    <div className="dc-doc-stack-item">
+                      <p className="dc-doc-sub-label">Front Side</p>
+                      <img src={aadharFrontDoc} alt="Aadhar Card Front" />
+                    </div>
+                  )}
+                  {aadharBackDoc && (
+                    <div className="dc-doc-stack-item">
+                      <p className="dc-doc-sub-label">Back Side</p>
+                      <img src={aadharBackDoc} alt="Aadhar Card Back" />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             {valuation.panPhoto && (
