@@ -41,6 +41,7 @@
 .dc-parties { display: grid; grid-template-columns: 36% 64%; }
 .dc-parties p { margin: 1px 0; }
 .dc-borrower p { margin: 1px 0; }
+.dc-borrower-sep { margin: 0 6px; font-weight: 600; }
 .dc-loan-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dc-loan-meta-left { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
 .dc-loan-rate { margin-left: 0; }
@@ -65,6 +66,7 @@
 .dc-signature { margin-top: 12px; }
 .dc-signature p { margin: 0; }
 .dc-sign-space { height: 18mm; }
+.dc-signature-footer { margin-top: auto; padding-top: 4mm; }
 .digital-cert .signature-grid { margin-top: 2px; padding-top: 6mm; gap: 6px; }
 .digital-cert .signature-box { min-height: 12mm; font-size: 9.8px; padding-top: 2px; }
 

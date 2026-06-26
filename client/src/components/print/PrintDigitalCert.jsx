@@ -89,10 +89,11 @@ export default function PrintDigitalCert({ valuation }) {
         </div>
 
         <div className="dc-row-box dc-borrower">
-          <p><b>Borrower Name: {customer.name}</b></p>
-          <p><b>Borrower Mob. No: {customer.mobile}</b></p>
-          {(valuation.acNo || customer.savingsAcNo) && <p><b>A/C No: {valuation.acNo || customer.savingsAcNo}</b></p>}
-          <p><b>Bank: {customer.bankName || 'Bank of Maharashtra'}, Branch: {valuation.branch || customer.branch || ''}</b></p>
+          <p><b>Borrower Name:</b> {customer.name} <span className="dc-borrower-sep">|</span> <b>Borrower Mob. No:</b> {customer.mobile || '-'}</p>
+          <p>
+            {(valuation.acNo || customer.savingsAcNo) && <><b>A/C No:</b> {valuation.acNo || customer.savingsAcNo} <span className="dc-borrower-sep">|</span> </>}
+            <b>Bank:</b> {customer.bankName || 'Bank of Maharashtra'}, <b>Branch:</b> {valuation.branch || customer.branch || ''}
+          </p>
         </div>
 
         <div className="dc-row-box dc-loan-meta-row">
@@ -157,8 +158,9 @@ export default function PrintDigitalCert({ valuation }) {
         </table>
 
         <CertificateRules valuation={valuation} className="dc-cert-text" />
-
-        <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
+        <div className="dc-signature-footer">
+          <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
+        </div>
       </article>
 
       {/* PAGE 2 — Aadhar & PAN (back of the certificate) */}
