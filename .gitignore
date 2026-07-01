@@ -13,10 +13,15 @@ server/data/*.db-shm
 server/db/*.db
 server/db/*.db-wal
 server/db/*.db-shm
+server/server/
 server/secrets/
 
 # workspace nested lock files (root lock file is authoritative)
 client/package-lock.json
+server/package-lock.json
+
+# test/validation script artifacts
+server/scripts/artifacts/
 
 # temp files
 tmp_pdf_review/

@@ -610,6 +610,13 @@ router.post('/users/:id/approve', requireAuth, async (req, res) => {
 
   sqlite.prepare('UPDATE users SET status = ?, approved_by = ?, approved_at = ? WHERE id = ?').run('ACTIVE', req.user.id, nowIso(), id)
 
+  // Ensure default profile/ornaments/series exist for this user (public signups aren't
+  // seeded until approval; this also self-heals any account seeded before this fix).
+  const hasProfile = sqlite.prepare('SELECT id FROM appraiser_profile WHERE user_id = ?').get(id)
+  if (!hasProfile) {
+    seedDefaultsForUser(id, nowIso())
+  }
+
   if (!user.email_verified) {
     try {
       await sendOtpForPurpose({ id: user.id, email: user.email }, 'VERIFY_EMAIL', { ip: getClientIp(req) })
