@@ -490,16 +490,14 @@ try {
   sqlite.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_ornament_master_user_name ON ornament_master(user_id, name)')
 } catch (e) { console.log('[migrate] ornament_master unique index skipped:', e.message) }
 
-// Backfill: seed the default ornament list for any ACTIVE user who currently has zero
-// ornament_master rows (covers accounts approved before default seeding was wired up
-// into the admin approval flow).
+// Backfill: ensure every ACTIVE user has the full default ornament list. This only
+// inserts missing defaults and preserves user-specific additions/edits.
 try {
-  const usersMissingOrnaments = sqlite.prepare(`
+  const activeUsers = sqlite.prepare(`
     SELECT u.id FROM users u
     WHERE u.status = 'ACTIVE'
-      AND NOT EXISTS (SELECT 1 FROM ornament_master om WHERE om.user_id = u.id)
   `).all()
-  if (usersMissingOrnaments.length) {
+  if (activeUsers.length) {
     const insertOrn = sqlite.prepare('INSERT OR IGNORE INTO ornament_master (name, user_id, created_at) VALUES (?, ?, ?)')
     const now = new Date().toISOString()
     const tx = sqlite.transaction((users) => {
@@ -507,8 +505,8 @@ try {
         for (const name of DEFAULT_ORNAMENTS) insertOrn.run(name, u.id, now)
       }
     })
-    tx(usersMissingOrnaments)
-    console.log(`[migrate] seeded default ornaments for ${usersMissingOrnaments.length} user(s)`)
+    tx(activeUsers)
+    console.log(`[migrate] ensured default ornaments for ${activeUsers.length} active user(s)`)
   }
 } catch (e) { console.log('[migrate] ornament_master backfill skipped:', e.message) }
 

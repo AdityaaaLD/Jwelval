@@ -6,20 +6,16 @@ const router = Router()
 
 router.get('/', (req, res) => {
   const userId = req.user.id
-  let rows = sqlite.prepare('SELECT id, name, created_at AS createdAt FROM ornament_master WHERE user_id = ? ORDER BY name').all(userId)
+  // Ensure the baseline defaults exist for this user on every fetch. This is
+  // idempotent and keeps each list isolated (rows scoped by user_id).
+  const now = new Date().toISOString()
+  const insertOrn = sqlite.prepare('INSERT OR IGNORE INTO ornament_master (name, user_id, created_at) VALUES (?, ?, ?)')
+  const tx = sqlite.transaction(() => {
+    for (const name of DEFAULT_ORNAMENTS) insertOrn.run(name, userId, now)
+  })
+  tx()
 
-  // Self-heal: every user should start with the basic ornament list. If this user
-  // somehow has none (e.g. account created before default seeding existed), seed it
-  // now. Each user's list stays independent afterwards (scoped by user_id).
-  if (rows.length === 0) {
-    const now = new Date().toISOString()
-    const insertOrn = sqlite.prepare('INSERT OR IGNORE INTO ornament_master (name, user_id, created_at) VALUES (?, ?, ?)')
-    const tx = sqlite.transaction(() => {
-      for (const name of DEFAULT_ORNAMENTS) insertOrn.run(name, userId, now)
-    })
-    tx()
-    rows = sqlite.prepare('SELECT id, name, created_at AS createdAt FROM ornament_master WHERE user_id = ? ORDER BY name').all(userId)
-  }
+  const rows = sqlite.prepare('SELECT id, name, created_at AS createdAt FROM ornament_master WHERE user_id = ? ORDER BY name').all(userId)
 
   res.json(rows)
 })
