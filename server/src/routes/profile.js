@@ -3,9 +3,28 @@ import { sqlite } from '../db/client.js'
 
 const router = Router()
 
+const DEFAULT_PROFILE = {
+  appraiserName: 'Gold Appraiser',
+  businessName: 'JewelVal Appraiser',
+}
+
+function ensureProfileRow(userId) {
+  const existing = sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId)
+  if (existing) return existing
+
+  const now = new Date().toISOString()
+  sqlite.prepare(
+    `INSERT INTO appraiser_profile (user_id, appraiser_name, business_name, mobile, email, upi_id, logo_photo, address,
+      empanelment_id, gstn, proprietor_name, qualification, organization, cert_number, updated_at)
+     VALUES (?, ?, ?, '', '', '', '', '', '', '', '', '', '', '', ?)`
+  ).run(userId, DEFAULT_PROFILE.appraiserName, DEFAULT_PROFILE.businessName, now)
+
+  return sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId)
+}
+
 router.get('/', (req, res) => {
   const userId = req.user.id
-  res.json(sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId) || {})
+  res.json(ensureProfileRow(userId) || {})
 })
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -14,12 +33,16 @@ const UPI_RE = /^[\w.+-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$/
 
 function validateProfilePayload(body) {
   const errors = {}
+  const mobileRaw = String(body.mobile || '').trim()
+  let mobile = mobileRaw.replace(/\D/g, '')
+  if (mobile.length === 12 && mobile.startsWith('91')) mobile = mobile.slice(2)
+
   const clean = {
     appraiserName: String(body.appraiserName || '').trim(),
     businessName: String(body.businessName || '').trim(),
-    mobile: String(body.mobile || '').trim(),
-    email: String(body.email || '').trim(),
-    upiId: String(body.upiId || '').trim(),
+    mobile,
+    email: String(body.email || '').trim().toLowerCase(),
+    upiId: String(body.upiId || '').trim().toLowerCase(),
     logoPhoto: typeof body.logoPhoto === 'string' ? body.logoPhoto : '',
     address: String(body.address || '').trim(),
     empanelmentId: String(body.empanelmentId || '').trim(),
@@ -62,20 +85,20 @@ function validateProfilePayload(body) {
 }
 
 router.put('/', (req, res) => {
-  const userId = req.user.id
-  if (!req.body || typeof req.body !== 'object') {
-    return res.status(400).json({ error: 'VALIDATION', message: 'Invalid request body.' })
-  }
+  try {
+    const userId = req.user.id
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({ error: 'VALIDATION', message: 'Invalid request body.' })
+    }
 
-  const { clean, errors } = validateProfilePayload(req.body)
-  if (Object.keys(errors).length) {
-    return res.status(400).json({ error: 'VALIDATION', message: 'Please fix the highlighted fields.', fields: errors })
-  }
+    const { clean, errors } = validateProfilePayload(req.body)
+    if (Object.keys(errors).length) {
+      return res.status(400).json({ error: 'VALIDATION', message: 'Please fix the highlighted fields.', fields: errors })
+    }
 
-  const now = new Date().toISOString()
-  const existing = sqlite.prepare('SELECT id FROM appraiser_profile WHERE user_id = ?').get(userId)
+    const now = new Date().toISOString()
+    ensureProfileRow(userId)
 
-  if (existing) {
     sqlite.prepare(`
       UPDATE appraiser_profile
       SET appraiser_name = ?, business_name = ?, mobile = ?, email = ?, upi_id = ?, logo_photo = ?, address = ?,
@@ -85,25 +108,16 @@ router.put('/', (req, res) => {
       clean.appraiserName, clean.businessName, clean.mobile, clean.email, clean.upiId, clean.logoPhoto, clean.address,
       clean.empanelmentId, clean.gstn, clean.proprietorName, clean.qualification, clean.organization, clean.certNumber, now, userId
     )
-  } else {
-    // Self-heal accounts that never received a default profile row (e.g. legacy
-    // approvals created before profile seeding was fixed).
-    sqlite.prepare(`
-      INSERT INTO appraiser_profile
-        (user_id, appraiser_name, business_name, mobile, email, upi_id, logo_photo, address,
-         empanelment_id, gstn, proprietor_name, qualification, organization, cert_number, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      userId, clean.appraiserName, clean.businessName, clean.mobile, clean.email, clean.upiId, clean.logoPhoto, clean.address,
-      clean.empanelmentId, clean.gstn, clean.proprietorName, clean.qualification, clean.organization, clean.certNumber, now
-    )
-  }
 
-  const updated = sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId)
-  if (!updated) {
+    const updated = sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId)
+    if (!updated) {
+      return res.status(500).json({ error: 'PROFILE_SAVE_FAILED', message: 'Profile could not be saved. Please try again.' })
+    }
+    res.json(updated)
+  } catch (error) {
+    console.error('[profile] save failed:', error)
     return res.status(500).json({ error: 'PROFILE_SAVE_FAILED', message: 'Profile could not be saved. Please try again.' })
   }
-  res.json(updated)
 })
 
 export default router

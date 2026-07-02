@@ -11,11 +11,18 @@ const UPI_RE = /^[\w.+-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$/
 
 const EMPTY_FORM = { appraiserName: '', businessName: '', mobile: '', email: '', upiId: '', address: '', empanelmentId: '', gstn: '', qualification: '', organization: '', certNumber: '' }
 
+function normalizeMobile(input) {
+  let digits = String(input || '').replace(/\D/g, '')
+  if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2)
+  return digits
+}
+
 function validate(form) {
   const errors = {}
   if (!form.appraiserName.trim()) errors.appraiserName = 'Appraiser / proprietor name is required.'
   if (!form.businessName.trim()) errors.businessName = 'Business name is required.'
-  if (form.mobile.trim() && !MOBILE_RE.test(form.mobile.trim())) errors.mobile = 'Enter a valid 10-digit mobile number.'
+  const normalizedMobile = normalizeMobile(form.mobile)
+  if (normalizedMobile && !MOBILE_RE.test(normalizedMobile)) errors.mobile = 'Enter a valid 10-digit mobile number.'
   if (form.email.trim() && !EMAIL_RE.test(form.email.trim())) errors.email = 'Enter a valid email address.'
   if (form.upiId.trim() && !UPI_RE.test(form.upiId.trim())) errors.upiId = 'Enter a valid UPI ID (e.g. name@bank).'
   return errors
@@ -59,15 +66,22 @@ export default function AppraiserProfile() {
   }
 
   const save = async () => {
-    const localErrors = validate(form)
+    const normalizedForm = {
+      ...form,
+      mobile: normalizeMobile(form.mobile),
+      email: String(form.email || '').trim().toLowerCase(),
+      upiId: String(form.upiId || '').trim().toLowerCase(),
+    }
+    const localErrors = validate(normalizedForm)
     if (Object.keys(localErrors).length) {
       setErrors(localErrors)
       toast.error('Please fix the highlighted fields.')
       return
     }
+    setForm((prev) => ({ ...prev, ...normalizedForm }))
     setSaving(true)
     try {
-      await api.profile.update(form)
+      await api.profile.update(normalizedForm)
       setErrors({})
       toast.success('Profile saved.')
     } catch (err) {
