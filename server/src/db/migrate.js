@@ -1,4 +1,5 @@
 import { sqlite } from './client.js'
+import { DEFAULT_ORNAMENTS } from '../lib/defaultOrnaments.js'
 
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS customers (
@@ -477,6 +478,39 @@ try {
 } catch (e) {
   console.log('[migrate] valuation customer_snapshot backfill skipped:', e.message)
 }
+
+// Ensure ornament_master enforces one row per (user, name) so that seeding stays
+// idempotent (INSERT OR IGNORE in seedDefaultsForUser relies on this constraint).
+try {
+  // Drop any pre-existing duplicate (user_id, name) rows first, keeping the earliest one.
+  sqlite.exec(`
+    DELETE FROM ornament_master
+    WHERE id NOT IN (SELECT MIN(id) FROM ornament_master GROUP BY user_id, name)
+  `)
+  sqlite.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_ornament_master_user_name ON ornament_master(user_id, name)')
+} catch (e) { console.log('[migrate] ornament_master unique index skipped:', e.message) }
+
+// Backfill: seed the default ornament list for any ACTIVE user who currently has zero
+// ornament_master rows (covers accounts approved before default seeding was wired up
+// into the admin approval flow).
+try {
+  const usersMissingOrnaments = sqlite.prepare(`
+    SELECT u.id FROM users u
+    WHERE u.status = 'ACTIVE'
+      AND NOT EXISTS (SELECT 1 FROM ornament_master om WHERE om.user_id = u.id)
+  `).all()
+  if (usersMissingOrnaments.length) {
+    const insertOrn = sqlite.prepare('INSERT OR IGNORE INTO ornament_master (name, user_id, created_at) VALUES (?, ?, ?)')
+    const now = new Date().toISOString()
+    const tx = sqlite.transaction((users) => {
+      for (const u of users) {
+        for (const name of DEFAULT_ORNAMENTS) insertOrn.run(name, u.id, now)
+      }
+    })
+    tx(usersMissingOrnaments)
+    console.log(`[migrate] seeded default ornaments for ${usersMissingOrnaments.length} user(s)`)
+  }
+} catch (e) { console.log('[migrate] ornament_master backfill skipped:', e.message) }
 
 // No demo user seeded — users must sign up.
 // Default data (ornaments, series, profile, presets) is seeded per-user on signup via seedDefaultsForUser in auth.js.

@@ -5,6 +5,7 @@ import { sqlite } from '../db/client.js'
 import { requireAuth } from '../middleware/auth.js'
 import { sendEmail } from '../mailer.js'
 import { logEvent, logErrorEvent } from '../lib/logger.js'
+import { DEFAULT_ORNAMENTS } from '../lib/defaultOrnaments.js'
 
 const router = Router()
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -517,15 +518,10 @@ router.post('/logout', (req, res) => {
 })
 
 function seedDefaultsForUser(userId, now) {
-  // Default ornament master entries
-  const defaultOrnaments = [
-    'Mangalsutra', 'Bangles', 'Chain', 'Earring', 'Ring', 'Necklace',
-    'Pendant', 'Bracelet', 'Anklet', 'Nose Pin', 'Waist Belt',
-    'Toe Ring', 'Jhumka', 'Haar', 'Thali', 'Vanki', 'Kangan',
-    'Bajuband', 'Coin', 'Bar', 'Biscuit',
-  ]
+  // Default ornament master entries — each user gets their own independent copy of this
+  // base list; editing it afterwards never affects other users (rows scoped by user_id).
   const insertOrn = sqlite.prepare('INSERT OR IGNORE INTO ornament_master (name, user_id, created_at) VALUES (?, ?, ?)')
-  for (const name of defaultOrnaments) insertOrn.run(name, userId, now)
+  for (const name of DEFAULT_ORNAMENTS) insertOrn.run(name, userId, now)
 
   // Default appraiser profile
   sqlite.prepare(

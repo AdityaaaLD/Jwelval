@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Pencil, Plus, Trash2, Check, X } from 'lucide-react'
+import { Pencil, Plus, Trash2, Check, X, Loader2 } from 'lucide-react'
 import { api } from '../../lib/api'
 
 export default function OrnamentMaster() {
@@ -9,30 +9,43 @@ export default function OrnamentMaster() {
   const [editId, setEditId] = useState(null)
   const [editName, setEditName] = useState('')
 
-  const load = () => api.ornaments.list().then(setRows)
+  const [loading, setLoading] = useState(true)
+  const load = () => api.ornaments.list().then(setRows).catch((err) => toast.error(err?.message || 'Failed to load ornaments.')).finally(() => setLoading(false))
   useEffect(() => { load() }, [])
 
   const add = async () => {
     if (!newName.trim()) return toast.error('Enter ornament name.')
-    await api.ornaments.create({ name: newName.trim() })
-    setNewName('')
-    toast.success('Ornament added.')
-    load()
+    try {
+      await api.ornaments.create({ name: newName.trim() })
+      setNewName('')
+      toast.success('Ornament added.')
+      load()
+    } catch (err) {
+      toast.error(err?.message || 'Failed to add ornament.')
+    }
   }
 
   const save = async (id) => {
-    if (!editName.trim()) return
-    await api.ornaments.update(id, { name: editName.trim() })
-    setEditId(null)
-    toast.success('Updated.')
-    load()
+    if (!editName.trim()) return toast.error('Enter ornament name.')
+    try {
+      await api.ornaments.update(id, { name: editName.trim() })
+      setEditId(null)
+      toast.success('Updated.')
+      load()
+    } catch (err) {
+      toast.error(err?.message || 'Failed to update ornament.')
+    }
   }
 
   const remove = async (id) => {
     if (!confirm('Delete this ornament?')) return
-    await api.ornaments.remove(id)
-    toast.success('Deleted.')
-    load()
+    try {
+      await api.ornaments.remove(id)
+      toast.success('Deleted.')
+      load()
+    } catch (err) {
+      toast.error(err?.message || 'Failed to delete ornament.')
+    }
   }
 
   return (
@@ -46,6 +59,11 @@ export default function OrnamentMaster() {
         <button className="btn-primary" onClick={add}><Plus size={16} /> Add</button>
       </div>
       <div className="card overflow-x-auto">
+        {loading ? (
+          <div className="flex items-center justify-center py-10 text-slate-400"><Loader2 size={20} className="animate-spin" /></div>
+        ) : rows.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-slate-400">No ornaments yet. Add your first one above.</p>
+        ) : (
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
@@ -80,6 +98,7 @@ export default function OrnamentMaster() {
             ))}
           </tbody>
         </table>
+        )}
       </div>
     </div>
   )
