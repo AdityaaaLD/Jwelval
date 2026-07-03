@@ -210,6 +210,7 @@ export default function ValuationForm() {
     setField('branchCode', preset.branchCode || '')
     setField('rateOfInterest', preset.rateOfInterest || '')
     if (preset.loanLtv) setField('loanLtv', preset.loanLtv)
+    if (preset.loanLtv) setField('bankLtv', preset.loanLtv)
     setField('bankPresetId', preset.id)
     if (preset.certificateRules) setField('certificateRules', preset.certificateRules)
     // Preview application ID (does NOT consume the number yet — that happens on save)
@@ -351,6 +352,15 @@ export default function ValuationForm() {
             <label className="label">Loan % (LTV)</label>
             <input type="number" className="input" placeholder="e.g. 70" value={form.loanLtv} onChange={(e) => setField('loanLtv', e.target.value)} disabled={disabled} />
             <p className="mt-1 text-xs text-slate-500">% of market value offered as loan</p>
+          </div>
+          <div>
+            <label className="label">Bank Gold Rate (per gram)</label>
+            <input type="number" className="input" placeholder="e.g. 5800" value={form.bankGoldRatePerGram} onChange={(e) => setField('bankGoldRatePerGram', e.target.value)} disabled={disabled} />
+          </div>
+          <div>
+            <label className="label">Bank LTV (%)</label>
+            <input type="number" className="input" placeholder="e.g. 75" value={form.bankLtv} onChange={(e) => setField('bankLtv', e.target.value)} disabled={disabled} />
+            <p className="mt-1 text-xs text-slate-500">Used only for bank recommended value</p>
           </div>
         </div>
       </section>
@@ -523,8 +533,8 @@ export default function ValuationForm() {
           </div>
           <div>
             <label className="label">Bank Recommended Value</label>
-            <input type="number" className="input" placeholder="Enter bank value" value={form.bankRecommendedValue} onChange={(e) => setField('bankRecommendedValue', e.target.value)} disabled={disabled} />
-            <p className="mt-1 text-xs text-slate-500">Flat amount recommended by bank</p>
+            <input type="number" className="input" value={form.bankRecommendedValue} disabled />
+            <p className="mt-1 text-xs text-slate-500">Auto-calculated from Bank Gold Rate and Bank LTV</p>
           </div>
           <div>
             <label className="label">Recommended Loan Amount</label>

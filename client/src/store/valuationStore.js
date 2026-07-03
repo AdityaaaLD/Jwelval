@@ -33,6 +33,8 @@ const initialForm = () => ({
   bankPresetId: '',
   loanLtv: 57,
   goldRate22k: '',
+  bankGoldRatePerGram: '',
+  bankLtv: '',
   loanAmount: '',
   bankRecommendedValue: '',
   valuationFee: '',
@@ -76,15 +78,21 @@ const deriveForm = (form) => {
   const goldRate22k = n(form.goldRate22k)
   const items = form.items.map((item) => deriveItem(item, goldRate22k))
   const marketValue = round(items.reduce((sum, item) => sum + n(item.approxValueInr), 0), 2)
+  const totalNetWeight = items.reduce((sum, item) => sum + n(item.netWeightGm), 0)
   const ltv = (n(form.loanLtv) || 57) / 100
   const ltvLoan = round(marketValue * ltv, 2)
-  const bankVal = n(form.bankRecommendedValue)
+  const bankGoldRatePerGram = n(form.bankGoldRatePerGram)
+  const bankLtv = n(form.bankLtv)
+  const bankVal = bankGoldRatePerGram > 0 && bankLtv > 0
+    ? round(totalNetWeight * bankGoldRatePerGram * (bankLtv / 100), 2)
+    : (form.bankRecommendedValue === '' ? '' : round(n(form.bankRecommendedValue), 2))
   let suggestedLoan = ltvLoan
-  if (bankVal > 0) suggestedLoan = Math.min(ltvLoan, bankVal)
+  if (Number(bankVal) > 0) suggestedLoan = Math.min(ltvLoan, Number(bankVal))
   return {
     ...form,
     items,
     marketValue,
+    bankRecommendedValue: bankVal,
     suggestedLoan,
   }
 }
@@ -105,6 +113,8 @@ export const useValuationStore = create((set, get) => ({
       bankPresetId: valuation.bankPresetId || '',
       loanLtv: valuation.loanLtv || 57,
       goldRate22k: valuation.goldRate22k || '',
+      bankGoldRatePerGram: valuation.bankGoldRatePerGram || '',
+      bankLtv: valuation.bankLtv || '',
       loanAmount: valuation.loanAmount || '',
       bankRecommendedValue: valuation.bankRecommendedValue || '',
       valuationFee: valuation.valuationFee || '',
@@ -160,6 +170,8 @@ export const useValuationStore = create((set, get) => ({
       bankPresetId: form.bankPresetId ? Number(form.bankPresetId) : null,
       goldRate22k: Number(form.goldRate22k),
       goldRate24k: +(Number(form.goldRate22k) * 24 / 22).toFixed(2),
+      bankGoldRatePerGram: form.bankGoldRatePerGram === '' ? null : Number(form.bankGoldRatePerGram),
+      bankLtv: form.bankLtv === '' ? null : Number(form.bankLtv),
       loanAmount: Number(form.loanAmount),
       bankRecommendedValue: form.bankRecommendedValue !== '' ? Number(form.bankRecommendedValue) : null,
       valuationFee: Number(form.valuationFee) || 0,

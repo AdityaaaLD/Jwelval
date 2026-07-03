@@ -233,6 +233,8 @@ for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN aadhar_photo_doc TEXT',
   'ALTER TABLE valuations ADD COLUMN pan_photo TEXT',
   'ALTER TABLE valuations ADD COLUMN customer_snapshot TEXT',
+  'ALTER TABLE valuations ADD COLUMN bank_gold_rate_per_gram REAL',
+  'ALTER TABLE valuations ADD COLUMN bank_ltv REAL',
   'ALTER TABLE appraiser_profile ADD COLUMN empanelment_id TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN gstn TEXT',
   'ALTER TABLE bank_presets ADD COLUMN branch_code TEXT',
