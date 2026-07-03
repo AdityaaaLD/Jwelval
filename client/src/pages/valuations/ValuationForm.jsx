@@ -208,6 +208,7 @@ export default function ValuationForm() {
     if (!preset) return
     setField('branch', preset.branch || '')
     setField('branchCode', preset.branchCode || '')
+    setField('empanelmentId', preset.empanelmentId || '')
     setField('rateOfInterest', preset.rateOfInterest || '')
     if (preset.loanLtv) setField('loanLtv', preset.loanLtv)
     if (preset.loanLtv) setField('bankLtv', preset.loanLtv)

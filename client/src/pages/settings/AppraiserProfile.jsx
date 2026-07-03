@@ -9,7 +9,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MOBILE_RE = /^[6-9]\d{9}$/
 const UPI_RE = /^[\w.+-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$/
 
-const EMPTY_FORM = { appraiserName: '', businessName: '', mobile: '', email: '', upiId: '', address: '', empanelmentId: '', gstn: '', qualification: '', organization: '', certNumber: '' }
+const EMPTY_FORM = { appraiserName: '', businessName: '', mobile: '', email: '', upiId: '', address: '', gstn: '', qualification: '', organization: '', certNumber: '' }
 
 function normalizeMobile(input) {
   let digits = String(input || '').replace(/\D/g, '')
@@ -46,7 +46,6 @@ export default function AppraiserProfile() {
           email: p.email || '',
           upiId: p.upi_id || '',
           address: p.address || '',
-          empanelmentId: p.empanelment_id || '',
           gstn: p.gstn || '',
           qualification: p.qualification || '',
           organization: p.organization || '',
@@ -131,7 +130,6 @@ export default function AppraiserProfile() {
           <input className={`input ${errors.upiId ? 'border-red-500' : ''}`} placeholder="e.g. name@okhdfcbank" value={form.upiId} onChange={setField('upiId')} />
           {errors.upiId && <p className="mt-1 text-xs text-red-600">{errors.upiId}</p>}
         </div>
-        <div><label className="label">Empanelment ID</label><input className="input" placeholder="e.g. BOMPUN1413_24" value={form.empanelmentId} onChange={setField('empanelmentId')} /></div>
         <div><label className="label">GSTN/PAN/TAN</label><input className="input" placeholder="e.g. ACHPU8474H" value={form.gstn} onChange={setField('gstn')} /></div>
         <div className="md:col-span-2"><label className="label">Address</label><textarea className="input min-h-20" value={form.address} onChange={setField('address')} /></div>
         <div className="md:col-span-2 border-t border-slate-200 pt-4 mt-1"><p className="text-sm font-semibold text-slate-700">Certificate Header Info</p><p className="text-xs text-slate-400">Shown below the business name on all print formats.</p></div>

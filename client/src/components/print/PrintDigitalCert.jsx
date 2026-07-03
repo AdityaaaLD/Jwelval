@@ -21,6 +21,7 @@ export default function PrintDigitalCert({ valuation }) {
   }), { units: 0, gross: 0, net: 0, value: 0 })
 
   const reportDateTime = resolveReportDateTime(valuation)
+  const empanelmentId = valuation?.empanelmentId || ''
   const dateStr = reportDateTime.toLocaleString('en-IN', {
     day: '2-digit',
     month: '2-digit',
@@ -46,7 +47,7 @@ export default function PrintDigitalCert({ valuation }) {
           <p className="dc-header-line">{profile?.address || ''}</p>
           {profile?.cert_number && <p className="dc-header-line">No. {profile.cert_number}</p>}
           <p className="dc-header-line">{[profile?.mobile ? `Mob: ${profile.mobile}` : '', profile?.email || ''].filter(Boolean).join(' | ')}{profile?.gstn ? ` | GSTN: ${profile.gstn}` : ''}</p>
-          {profile?.empanelment_id && <p className="dc-header-line">(Digital ID of Empanelment: {profile.empanelment_id})</p>}
+          {empanelmentId && <p className="dc-header-line">(Digital ID of Empanelment: {empanelmentId})</p>}
         </header>
 
         <div className="dc-row-box">
@@ -61,7 +62,7 @@ export default function PrintDigitalCert({ valuation }) {
           <div className="dc-party-from">
             <p><b>From,</b></p>
             <p>{profile?.appraiser_name || ''}</p>
-            {profile?.empanelment_id && <p>Empanelment ID: {profile.empanelment_id}</p>}
+            {empanelmentId && <p>Empanelment ID: {empanelmentId}</p>}
           </div>
           <div className="dc-party-to-photos">
             <div className="dc-party-to">

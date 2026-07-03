@@ -45,7 +45,6 @@ function validateProfilePayload(body) {
     upiId: String(body.upiId || '').trim().toLowerCase(),
     logoPhoto: typeof body.logoPhoto === 'string' ? body.logoPhoto : '',
     address: String(body.address || '').trim(),
-    empanelmentId: String(body.empanelmentId || '').trim(),
     gstn: String(body.gstn || '').trim().toUpperCase(),
     proprietorName: String(body.proprietorName || '').trim(),
     qualification: String(body.qualification || '').trim(),
@@ -76,7 +75,6 @@ function validateProfilePayload(body) {
   }
 
   if (clean.address.length > 500) errors.address = 'Address is too long (max 500 characters).'
-  if (clean.empanelmentId.length > 100) errors.empanelmentId = 'Empanelment ID is too long.'
   if (clean.qualification.length > 200) errors.qualification = 'Qualification is too long.'
   if (clean.organization.length > 200) errors.organization = 'Organization is too long.'
   if (clean.certNumber.length > 100) errors.certNumber = 'Certificate/Registration No. is too long.'
@@ -102,11 +100,11 @@ router.put('/', (req, res) => {
     sqlite.prepare(`
       UPDATE appraiser_profile
       SET appraiser_name = ?, business_name = ?, mobile = ?, email = ?, upi_id = ?, logo_photo = ?, address = ?,
-          empanelment_id = ?, gstn = ?, proprietor_name = ?, qualification = ?, organization = ?, cert_number = ?, updated_at = ?
+          gstn = ?, proprietor_name = ?, qualification = ?, organization = ?, cert_number = ?, updated_at = ?
       WHERE user_id = ?
     `).run(
       clean.appraiserName, clean.businessName, clean.mobile, clean.email, clean.upiId, clean.logoPhoto, clean.address,
-      clean.empanelmentId, clean.gstn, clean.proprietorName, clean.qualification, clean.organization, clean.certNumber, now, userId
+      clean.gstn, clean.proprietorName, clean.qualification, clean.organization, clean.certNumber, now, userId
     )
 
     const updated = sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId)

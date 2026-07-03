@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 import { Pencil, Plus, Trash2, Check, X } from 'lucide-react'
 import { api } from '../../lib/api'
 
-const emptyForm = { bankName: 'Bank of Maharashtra', branch: '', branchCode: '', rateOfInterest: '', loanLtv: 57, managerName: '', address: '', appIdPrefix: '', appIdDigits: 10, certificateRules: '' }
+const emptyForm = { bankName: 'Bank of Maharashtra', branch: '', branchCode: '', rateOfInterest: '', loanLtv: 57, empanelmentId: '', managerName: '', address: '', appIdPrefix: '', appIdDigits: 10, certificateRules: '' }
 
 export default function BankPresets() {
   const [rows, setRows] = useState([])
@@ -28,7 +28,7 @@ export default function BankPresets() {
 
   const startEdit = (r) => {
     setEditId(r.id)
-    setForm({ bankName: r.bankName, branch: r.branch, branchCode: r.branchCode || '', rateOfInterest: r.rateOfInterest || '', loanLtv: r.loanLtv || 57, managerName: r.managerName || '', address: r.address || '', appIdPrefix: r.appIdPrefix || '', appIdDigits: r.appIdDigits || 10, certificateRules: r.certificateRules || '' })
+    setForm({ bankName: r.bankName, branch: r.branch, branchCode: r.branchCode || '', rateOfInterest: r.rateOfInterest || '', loanLtv: r.loanLtv || 57, empanelmentId: r.empanelmentId || '', managerName: r.managerName || '', address: r.address || '', appIdPrefix: r.appIdPrefix || '', appIdDigits: r.appIdDigits || 10, certificateRules: r.certificateRules || '' })
   }
 
   const cancelEdit = () => { setEditId(null); setForm({ ...emptyForm }) }
@@ -53,6 +53,7 @@ export default function BankPresets() {
           <div><label className="label">Branch Code</label><input className="input" value={form.branchCode} onChange={(e) => setForm({ ...form, branchCode: e.target.value })} /></div>
           <div><label className="label">Rate of Interest (%)</label><input type="number" className="input" value={form.rateOfInterest} onChange={(e) => setForm({ ...form, rateOfInterest: e.target.value })} /></div>
           <div><label className="label">LTV (%)</label><input type="number" className="input" value={form.loanLtv} onChange={(e) => setForm({ ...form, loanLtv: e.target.value })} /></div>
+          <div><label className="label">Empanelment ID</label><input className="input" value={form.empanelmentId} onChange={(e) => setForm({ ...form, empanelmentId: e.target.value })} /></div>
           <div><label className="label">Manager Name</label><input className="input" value={form.managerName} onChange={(e) => setForm({ ...form, managerName: e.target.value })} /></div>
           <div><label className="label">App ID Prefix</label><input className="input" value={form.appIdPrefix} onChange={(e) => setForm({ ...form, appIdPrefix: e.target.value })} /></div>
           <div><label className="label">App ID Digits</label><input type="number" className="input" value={form.appIdDigits} onChange={(e) => setForm({ ...form, appIdDigits: e.target.value })} /></div>
@@ -75,6 +76,7 @@ export default function BankPresets() {
               <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">ROI%</th>
               <th className="px-4 py-3">LTV%</th>
+              <th className="px-4 py-3">Empanelment ID</th>
               <th className="px-4 py-3">Manager</th>
               <th className="px-4 py-3">App Prefix</th>
               <th className="px-4 py-3">Next #</th>
@@ -89,6 +91,7 @@ export default function BankPresets() {
                 <td className="px-4 py-3">{r.branchCode || '-'}</td>
                 <td className="px-4 py-3">{r.rateOfInterest || '-'}</td>
                 <td className="px-4 py-3">{r.loanLtv || '-'}</td>
+                <td className="px-4 py-3">{r.empanelmentId || '-'}</td>
                 <td className="px-4 py-3">{r.managerName || '-'}</td>
                 <td className="px-4 py-3">{r.appIdPrefix || '-'}</td>
                 <td className="px-4 py-3">{(r.appIdCurrentNumber || 0) + 1}</td>
