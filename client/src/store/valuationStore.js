@@ -163,7 +163,7 @@ export const useValuationStore = create((set, get) => ({
     const form = get().form
     return {
       customerId: Number(form.customerId),
-      seriesId: Number(form.seriesId),
+      seriesId: form.seriesId === '' || form.seriesId == null ? null : Number(form.seriesId),
       valuationDate: form.valuationDate,
       branch: form.branch,
       branchCode: form.branchCode,

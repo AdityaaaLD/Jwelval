@@ -151,11 +151,19 @@ export default function ValuationForm() {
       return toast.error('Add at least one ornament item.')
     }
 
+    const data = payload()
+    if (!data.seriesId && series[0]?.id) {
+      data.seriesId = Number(series[0].id)
+    }
+    if (!data.seriesId) {
+      return toast.error('No number series found. Please create one in Settings > Number Series.')
+    }
+
     setSaving(true)
     try {
       const saved = isEdit
-        ? await api.valuations.update(id, payload())
-        : await api.valuations.create(payload())
+        ? await api.valuations.update(id, data)
+        : await api.valuations.create(data)
       markClean()
       toast.success(preview ? 'Draft saved. Print preview is next.' : 'Draft saved.')
       setValuation(saved)
@@ -292,6 +300,12 @@ export default function ValuationForm() {
         </div>
       )}
 
+      {!isEdit && series.length === 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Number series is missing for this account. Create one in <Link className="font-semibold underline" to="/settings/series">Settings &gt; Number Series</Link>.
+        </div>
+      )}
+
       <section className="card p-5">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="xl:col-span-2">
@@ -312,6 +326,18 @@ export default function ValuationForm() {
           <div>
             <label className="label">Valuation Date</label>
             <input type="date" className="input" value={form.valuationDate} onChange={(e) => setField('valuationDate', e.target.value)} disabled={disabled} />
+          </div>
+          <div>
+            <label className="label">Number Series</label>
+            <select className="input" value={form.seriesId} onChange={(e) => setField('seriesId', e.target.value)} disabled={disabled || isEdit}>
+              <option value="">Choose number series</option>
+              {series.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.seriesName} ({s.nextNumber || `${s.prefix}-${String((s.currentNumber || 0) + 1).padStart(s.numberOfDigits || 4, '0')}`})
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">Controls the generated valuation number.</p>
           </div>
           <div>
             <label className="label">Bank Format</label>

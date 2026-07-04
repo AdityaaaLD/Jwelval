@@ -5,6 +5,7 @@ import { db, sqlite } from '../db/client.js'
 import { valuations, valuationItems, customers, valuationSeries, payments } from '../db/schema.js'
 import { reserveNextValuationNumber } from '../lib/numbering.js'
 import { deriveItem, totalsFromItems, LOAN_LTV } from '../lib/compute.js'
+import { ensureDefaultValuationSeriesForUser } from '../lib/defaultValuationSeries.js'
 
 const router = Router()
 
@@ -132,7 +133,7 @@ router.get('/:id', async (req, res) => {
 router.post(
   '/',
   body('customerId').isInt(),
-  body('seriesId').isInt(),
+  body('seriesId').optional({ nullable: true }).isInt(),
   body('goldRate22k').isFloat({ gt: 0 }).withMessage('Gold rate must be greater than zero'),
   body('items').isArray({ min: 1 }),
   validate,
@@ -167,6 +168,16 @@ router.post(
       } = req.body
 
       const userId = req.user.id
+      ensureDefaultValuationSeriesForUser(userId)
+
+      let selectedSeriesId = Number(seriesId)
+      if (!Number.isInteger(selectedSeriesId) || selectedSeriesId <= 0) {
+        const fallbackSeries = sqlite
+          .prepare('SELECT id FROM valuation_series WHERE user_id = ? ORDER BY id DESC LIMIT 1')
+          .get(userId)
+        selectedSeriesId = Number(fallbackSeries?.id || 0)
+      }
+
       const [customerRow] = await db
         .select()
         .from(customers)
@@ -178,12 +189,15 @@ router.post(
       const [seriesRow] = await db
         .select()
         .from(valuationSeries)
-        .where(and(eq(valuationSeries.id, Number(seriesId)), eq(valuationSeries.userId, userId)))
+        .where(and(eq(valuationSeries.id, selectedSeriesId), eq(valuationSeries.userId, userId)))
       if (!seriesRow) {
-        return res.status(400).json({ error: 'SERIES_NOT_FOUND', message: 'Selected valuation series was not found.' })
+        return res.status(400).json({
+          error: 'SERIES_NOT_FOUND',
+          message: 'No number series configured for this account. Create one in Settings > Number Series.',
+        })
       }
 
-      const reserved = reserveNextValuationNumber(seriesId)
+      const reserved = reserveNextValuationNumber(selectedSeriesId)
 
       let finalCertificateRules = certificateRules || ''
       if (!finalCertificateRules && bankPresetId) {
@@ -212,7 +226,7 @@ router.post(
         .insert(valuations)
         .values({
           valuationNumber: reserved.number,
-          seriesId,
+          seriesId: selectedSeriesId,
           customerId,
           formatType: reserved.formatType,
           valuationDate: valuationDate || now.slice(0, 10),

@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth.js'
 import { sendEmail } from '../mailer.js'
 import { logEvent, logErrorEvent } from '../lib/logger.js'
 import { DEFAULT_ORNAMENTS } from '../lib/defaultOrnaments.js'
+import { ensureDefaultValuationSeriesForUser } from '../lib/defaultValuationSeries.js'
 
 const router = Router()
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -524,27 +525,24 @@ function seedDefaultsForUser(userId, now) {
   for (const name of DEFAULT_ORNAMENTS) insertOrn.run(name, userId, now)
 
   // Default appraiser profile
-  sqlite.prepare(
-    `INSERT INTO appraiser_profile (user_id, appraiser_name, business_name, mobile, email, upi_id, address, updated_at)
-     VALUES (?, 'Gold Appraiser', 'JewelVal Appraiser', '', '', '', '', ?)`
-  ).run(userId, now)
+  const hasProfile = sqlite.prepare('SELECT id FROM appraiser_profile WHERE user_id = ? LIMIT 1').get(userId)
+  if (!hasProfile) {
+    sqlite.prepare(
+      `INSERT INTO appraiser_profile (user_id, appraiser_name, business_name, mobile, email, upi_id, address, updated_at)
+       VALUES (?, 'Gold Appraiser', 'JewelVal Appraiser', '', '', '', '', ?)`
+    ).run(userId, now)
+  }
 
-  // Default valuation series
-  const defaultSeries = [
-    { seriesName: 'RUSH-2025', prefix: 'RUSH-2025', formatType: 'RUSHIKESH' },
-    { seriesName: 'DNYAN-2025', prefix: 'DNYAN-2025', formatType: 'DNYANESHWARI' },
-    { seriesName: 'BOM-2025', prefix: 'BOM-2025', formatType: 'BANK_OF_MAHA' },
-    { seriesName: 'DIGITAL-2025', prefix: 'GLCN', formatType: 'DIGITAL_CERT' },
-  ]
-  const insertSeries = sqlite.prepare(
-    'INSERT INTO valuation_series (series_name, prefix, current_number, number_of_digits, format_type, user_id, created_at) VALUES (?, ?, 0, 4, ?, ?, ?)'
-  )
-  for (const s of defaultSeries) insertSeries.run(s.seriesName, s.prefix, s.formatType, userId, now)
+  // Ensure at least one default series per supported format exists for this user
+  ensureDefaultValuationSeriesForUser(userId, now)
 
   // Default bill series
-  sqlite.prepare(
-    'INSERT INTO bill_series (series_name, prefix, current_number, number_of_digits, user_id, created_at) VALUES (?, ?, 0, 3, ?, ?)'
-  ).run('SELL-2025', '', userId, now)
+  const hasBillSeries = sqlite.prepare('SELECT id FROM bill_series WHERE user_id = ? LIMIT 1').get(userId)
+  if (!hasBillSeries) {
+    sqlite.prepare(
+      'INSERT INTO bill_series (series_name, prefix, current_number, number_of_digits, user_id, created_at) VALUES (?, ?, 0, 3, ?, ?)'
+    ).run('SELL-2025', '', userId, now)
+  }
 }
 
 // Admin-only: create a new user account
@@ -606,12 +604,8 @@ router.post('/users/:id/approve', requireAuth, async (req, res) => {
 
   sqlite.prepare('UPDATE users SET status = ?, approved_by = ?, approved_at = ? WHERE id = ?').run('ACTIVE', req.user.id, nowIso(), id)
 
-  // Ensure default profile/ornaments/series exist for this user (public signups aren't
-  // seeded until approval; this also self-heals any account seeded before this fix).
-  const hasProfile = sqlite.prepare('SELECT id FROM appraiser_profile WHERE user_id = ?').get(id)
-  if (!hasProfile) {
-    seedDefaultsForUser(id, nowIso())
-  }
+  // Ensure defaults exist after approval and self-heal partially seeded accounts.
+  seedDefaultsForUser(id, nowIso())
 
   if (!user.email_verified) {
     try {

@@ -4,6 +4,7 @@ import { eq, and, desc } from 'drizzle-orm'
 import { db } from '../db/client.js'
 import { valuationSeries } from '../db/schema.js'
 import { previewNext } from '../lib/numbering.js'
+import { ensureDefaultValuationSeriesForUser } from '../lib/defaultValuationSeries.js'
 
 const router = Router()
 
@@ -15,6 +16,7 @@ const validate = (req, res, next) => {
 
 router.get('/', async (req, res) => {
   const userId = req.user.id
+  ensureDefaultValuationSeriesForUser(userId)
   const rows = await db.select().from(valuationSeries).where(eq(valuationSeries.userId, userId)).orderBy(desc(valuationSeries.id))
   const enriched = await Promise.all(
     rows.map(async (s) => ({ ...s, nextNumber: await previewNext(s.id) }))
@@ -26,7 +28,7 @@ router.post(
   '/',
   body('seriesName').isString().trim().notEmpty(),
   body('prefix').isString().trim().notEmpty(),
-  body('formatType').isIn(['RUSHIKESH', 'DNYANESHWARI', 'BANK_OF_MAHA']),
+  body('formatType').isIn(['RUSHIKESH', 'DNYANESHWARI', 'BANK_OF_MAHA', 'DIGITAL_CERT']),
   body('startingNumber').optional().isInt({ min: 0 }),
   body('numberOfDigits').optional().isInt({ min: 3, max: 6 }),
   validate,

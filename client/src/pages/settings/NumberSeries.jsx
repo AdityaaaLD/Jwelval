@@ -7,6 +7,7 @@ const formats = [
   ['RUSHIKESH', 'Rushikesh Jewellers'],
   ['DNYANESHWARI', 'Dnyaneshwari Jewellers'],
   ['BANK_OF_MAHA', 'Bank of Maharashtra'],
+  ['DIGITAL_CERT', 'Digital Certificate'],
 ]
 
 export default function NumberSeries() {
