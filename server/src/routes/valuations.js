@@ -8,6 +8,18 @@ import { deriveItem, totalsFromItems, LOAN_LTV } from '../lib/compute.js'
 
 const router = Router()
 
+for (const stmt of [
+  'ALTER TABLE valuations ADD COLUMN bank_gold_rate_per_gram REAL',
+  'ALTER TABLE valuations ADD COLUMN bank_ltv REAL',
+  'ALTER TABLE valuations ADD COLUMN empanelment_id TEXT',
+]) {
+  try { sqlite.exec(stmt) } catch (error) {
+    if (!String(error.message).includes('duplicate column name')) {
+      console.warn('[valuations] optional schema patch skipped:', error.message)
+    }
+  }
+}
+
 const validate = (req, res, next) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) return res.status(400).json({ error: 'VALIDATION', details: errors.array() })
@@ -125,113 +137,131 @@ router.post(
   body('items').isArray({ min: 1 }),
   validate,
   async (req, res) => {
-    const {
-      customerId,
-      seriesId,
-      branch,
-      branchCode,
-      empanelmentId,
-      acNo,
-      applicationId,
-      bankPresetId,
-      valuationDate,
-      goldRate22k,
-      goldRate24k,
-      bankGoldRatePerGram,
-      bankLtv,
-      rateOfInterest,
-      loanAmount,
-      bankRecommendedValue,
-      valuationFee,
-      loanType,
-      personPhoto,
-      jewelleryPhoto,
-      ornamentPhotos,
-      aadharPhotoDoc,
-      panPhoto,
-      certificateRules,
-      items,
-    } = req.body
-
-    const userId = req.user.id
-    const [customerRow] = await db
-      .select()
-      .from(customers)
-      .where(and(eq(customers.id, Number(customerId)), eq(customers.userId, userId)))
-    if (!customerRow) {
-      return res.status(400).json({ error: 'CUSTOMER_NOT_FOUND', message: 'Selected customer was not found.' })
-    }
-
-    const reserved = reserveNextValuationNumber(seriesId)
-
-    // Resolve certificate rules from bank preset if not provided directly
-    let finalCertificateRules = certificateRules || ''
-    if (!finalCertificateRules && bankPresetId) {
-      const preset = sqlite.prepare('SELECT certificate_rules FROM bank_presets WHERE id = ? AND user_id = ?').get(bankPresetId, userId)
-      if (preset?.certificate_rules) finalCertificateRules = preset.certificate_rules
-    }
-
-    // Deferred App ID: consume the number from the bank preset only on actual save
-    let finalApplicationId = applicationId || ''
-    if (bankPresetId && applicationId) {
-      const preset = sqlite.prepare('SELECT * FROM bank_presets WHERE id = ? AND user_id = ?').get(bankPresetId, userId)
-      if (preset && preset.app_id_prefix) {
-        const nextNum = preset.app_id_current_number + 1
-        sqlite.prepare('UPDATE bank_presets SET app_id_current_number = ? WHERE id = ?').run(nextNum, bankPresetId)
-        const padded = String(nextNum).padStart(preset.app_id_digits || 10, '0')
-        finalApplicationId = `${preset.app_id_prefix}${padded}`
-      }
-    }
-
-    const derived = items.map((it) => deriveItem(it, goldRate22k))
-    const totals = totalsFromItems(derived)
-    const now = new Date().toISOString()
-    const finalGoldRate24k = Number(goldRate24k) || +(Number(goldRate22k) * 24 / 22).toFixed(2)
-    const finalLoan = loanAmount != null ? Number(loanAmount) : +(totals.marketValue * LOAN_LTV).toFixed(2)
-
-    const [created] = await db
-      .insert(valuations)
-      .values({
-        valuationNumber: reserved.number,
-        seriesId,
+    try {
+      const {
         customerId,
-        formatType: reserved.formatType,
-        valuationDate: valuationDate || now.slice(0, 10),
-        acNo: acNo || '',
-        branch: branch || '',
-        branchCode: branchCode || '',
-        empanelmentId: empanelmentId || '',
-        applicationId: finalApplicationId,
-        goldRate22k: Number(goldRate22k),
-        goldRate24k: finalGoldRate24k,
-        bankGoldRatePerGram: bankGoldRatePerGram != null ? Number(bankGoldRatePerGram) : null,
-        bankLtv: bankLtv != null ? Number(bankLtv) : null,
-        marketValue: +totals.marketValue.toFixed(2),
-        loanAmount: finalLoan,
-        bankRecommendedValue: bankRecommendedValue != null ? Number(bankRecommendedValue) : null,
-        valuationFee: valuationFee != null ? Number(valuationFee) : 0,
-        rateOfInterest: rateOfInterest != null ? Number(rateOfInterest) : null,
-        loanType: loanType || '',
-        personPhoto: personPhoto || '',
-        jewelleryPhoto: jewelleryPhoto || '',
-        ornamentPhotos: JSON.stringify(ornamentPhotos || []),
-        aadharPhotoDoc: aadharPhotoDoc || '',
-        panPhoto: panPhoto || '',
-        customerSnapshot: JSON.stringify(buildCustomerSnapshot(customerRow)),
-        certificateRules: finalCertificateRules,
-        status: 'DRAFT',
-        userId,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning()
+        seriesId,
+        branch,
+        branchCode,
+        empanelmentId,
+        acNo,
+        applicationId,
+        bankPresetId,
+        valuationDate,
+        goldRate22k,
+        goldRate24k,
+        bankGoldRatePerGram,
+        bankLtv,
+        rateOfInterest,
+        loanAmount,
+        bankRecommendedValue,
+        valuationFee,
+        loanType,
+        personPhoto,
+        jewelleryPhoto,
+        ornamentPhotos,
+        aadharPhotoDoc,
+        panPhoto,
+        certificateRules,
+        items,
+      } = req.body
 
-    if (derived.length) {
-      await db.insert(valuationItems).values(
-        derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: created.id }))
-      )
+      const userId = req.user.id
+      const [customerRow] = await db
+        .select()
+        .from(customers)
+        .where(and(eq(customers.id, Number(customerId)), eq(customers.userId, userId)))
+      if (!customerRow) {
+        return res.status(400).json({ error: 'CUSTOMER_NOT_FOUND', message: 'Selected customer was not found.' })
+      }
+
+      const [seriesRow] = await db
+        .select()
+        .from(valuationSeries)
+        .where(and(eq(valuationSeries.id, Number(seriesId)), eq(valuationSeries.userId, userId)))
+      if (!seriesRow) {
+        return res.status(400).json({ error: 'SERIES_NOT_FOUND', message: 'Selected valuation series was not found.' })
+      }
+
+      const reserved = reserveNextValuationNumber(seriesId)
+
+      let finalCertificateRules = certificateRules || ''
+      if (!finalCertificateRules && bankPresetId) {
+        const preset = sqlite.prepare('SELECT certificate_rules FROM bank_presets WHERE id = ? AND user_id = ?').get(bankPresetId, userId)
+        if (preset?.certificate_rules) finalCertificateRules = preset.certificate_rules
+      }
+
+      let finalApplicationId = applicationId || ''
+      if (bankPresetId && applicationId) {
+        const preset = sqlite.prepare('SELECT * FROM bank_presets WHERE id = ? AND user_id = ?').get(bankPresetId, userId)
+        if (preset && preset.app_id_prefix) {
+          const nextNum = preset.app_id_current_number + 1
+          sqlite.prepare('UPDATE bank_presets SET app_id_current_number = ? WHERE id = ?').run(nextNum, bankPresetId)
+          const padded = String(nextNum).padStart(preset.app_id_digits || 10, '0')
+          finalApplicationId = `${preset.app_id_prefix}${padded}`
+        }
+      }
+
+      const derived = items.map((it) => deriveItem(it, goldRate22k))
+      const totals = totalsFromItems(derived)
+      const now = new Date().toISOString()
+      const finalGoldRate24k = Number(goldRate24k) || +(Number(goldRate22k) * 24 / 22).toFixed(2)
+      const finalLoan = loanAmount != null ? Number(loanAmount) : +(totals.marketValue * LOAN_LTV).toFixed(2)
+
+      const [created] = await db
+        .insert(valuations)
+        .values({
+          valuationNumber: reserved.number,
+          seriesId,
+          customerId,
+          formatType: reserved.formatType,
+          valuationDate: valuationDate || now.slice(0, 10),
+          acNo: acNo || '',
+          branch: branch || '',
+          branchCode: branchCode || '',
+          empanelmentId: empanelmentId || '',
+          applicationId: finalApplicationId,
+          goldRate22k: Number(goldRate22k),
+          goldRate24k: finalGoldRate24k,
+          bankGoldRatePerGram: bankGoldRatePerGram != null ? Number(bankGoldRatePerGram) : null,
+          bankLtv: bankLtv != null ? Number(bankLtv) : null,
+          marketValue: +totals.marketValue.toFixed(2),
+          loanAmount: finalLoan,
+          bankRecommendedValue: bankRecommendedValue != null ? Number(bankRecommendedValue) : null,
+          valuationFee: valuationFee != null ? Number(valuationFee) : 0,
+          rateOfInterest: rateOfInterest != null ? Number(rateOfInterest) : null,
+          loanType: loanType || '',
+          personPhoto: personPhoto || '',
+          jewelleryPhoto: jewelleryPhoto || '',
+          ornamentPhotos: JSON.stringify(ornamentPhotos || []),
+          aadharPhotoDoc: aadharPhotoDoc || '',
+          panPhoto: panPhoto || '',
+          customerSnapshot: JSON.stringify(buildCustomerSnapshot(customerRow)),
+          certificateRules: finalCertificateRules,
+          status: 'DRAFT',
+          userId,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning()
+
+      if (derived.length) {
+        await db.insert(valuationItems).values(
+          derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: created.id }))
+        )
+      }
+      res.status(201).json(await hydrate(created))
+    } catch (error) {
+      const msg = String(error?.message || '')
+      console.error('[valuations] create failed:', error)
+      if (msg.includes('no column named') || msg.includes('has no column named')) {
+        return res.status(500).json({
+          error: 'SCHEMA_OUTDATED',
+          message: 'Database schema update is pending. Please restart server once and try again.',
+        })
+      }
+      return res.status(500).json({ error: 'VALUATION_SAVE_FAILED', message: 'Unable to save valuation. Please try again.' })
     }
-    res.status(201).json(await hydrate(created))
   }
 )
 
