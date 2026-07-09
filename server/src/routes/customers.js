@@ -3,7 +3,7 @@ import { body, validationResult } from 'express-validator'
 import { eq, and, desc } from 'drizzle-orm'
 import { db, sqlite } from '../db/client.js'
 import { customers, valuations } from '../db/schema.js'
-import { formatCustomerCode } from '../lib/numbering.js'
+import { reserveNextCustomerCode } from '../lib/numbering.js'
 
 const router = Router()
 
@@ -65,12 +65,7 @@ router.post(
     } = req.body
 
     const txn = sqlite.transaction(() => {
-      const row = sqlite.prepare('SELECT COUNT(*) AS n FROM customers WHERE user_id = ?').get(userId)
-      const nextNum = (row?.n || 0) + 1
-      const code = formatCustomerCode(nextNum)
-      // If code already exists (edge case), append user id to make unique
-      const exists = sqlite.prepare('SELECT 1 FROM customers WHERE customer_code = ?').get(code)
-      const finalCode = exists ? `${code}-U${userId}` : code
+      const finalCode = reserveNextCustomerCode(userId)
       const insert = sqlite.prepare(`
         INSERT INTO customers (customer_code, name, address, mobile, alternate_mobile, aadhar_number, aadhar_photo,
                                aadhar_photo_back, pan_photo, customer_photo, savings_ac_no, bank_name, branch, user_id, created_at)

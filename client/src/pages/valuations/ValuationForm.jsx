@@ -214,6 +214,9 @@ export default function ValuationForm() {
   const applyPreset = async (presetId) => {
     const preset = bankPresets.find((p) => String(p.id) === String(presetId))
     if (!preset) return
+    if (preset.valuationSeriesId) {
+      setField('seriesId', String(preset.valuationSeriesId))
+    }
     setField('branch', preset.branch || '')
     setField('branchCode', preset.branchCode || '')
     setField('empanelmentId', preset.empanelmentId || '')
@@ -341,7 +344,7 @@ export default function ValuationForm() {
           </div>
           <div>
             <label className="label">Bank Format</label>
-            <select className="input" onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
+            <select className="input" value={form.bankPresetId || ''} onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
               <option value="">Select bank format</option>
               {bankPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.bankName} - {preset.branch}</option>)}
             </select>

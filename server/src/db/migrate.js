@@ -104,6 +104,7 @@ sqlite.exec(`
     loan_ltv REAL,
     manager_name TEXT,
     address TEXT,
+    valuation_series_id INTEGER REFERENCES valuation_series(id),
     created_at TEXT NOT NULL
   );
 
@@ -243,6 +244,7 @@ for (const stmt of [
   'ALTER TABLE bank_presets ADD COLUMN app_id_prefix TEXT',
   'ALTER TABLE bank_presets ADD COLUMN app_id_current_number INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE bank_presets ADD COLUMN app_id_digits INTEGER NOT NULL DEFAULT 10',
+  'ALTER TABLE bank_presets ADD COLUMN valuation_series_id INTEGER',
   'ALTER TABLE customers ADD COLUMN aadhar_photo_back TEXT',
   'ALTER TABLE customers ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1',
   'ALTER TABLE valuations ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1',
@@ -413,6 +415,70 @@ try {
     }
   }
 } catch (e) { /* ignore */ }
+
+// Production safety: enforce uniqueness per user for all document numbers.
+// Non-destructive behavior: if duplicates already exist, keep data intact and log.
+try {
+  const valuationDup = sqlite.prepare(`
+    SELECT COUNT(*) AS n
+    FROM (
+      SELECT user_id, valuation_number
+      FROM valuations
+      GROUP BY user_id, valuation_number
+      HAVING COUNT(*) > 1
+    )
+  `).get()?.n || 0
+
+  const sellBillDup = sqlite.prepare(`
+    SELECT COUNT(*) AS n
+    FROM (
+      SELECT user_id, bill_number
+      FROM sell_bills
+      GROUP BY user_id, bill_number
+      HAVING COUNT(*) > 1
+    )
+  `).get()?.n || 0
+
+  const customerDup = sqlite.prepare(`
+    SELECT COUNT(*) AS n
+    FROM (
+      SELECT user_id, customer_code
+      FROM customers
+      GROUP BY user_id, customer_code
+      HAVING COUNT(*) > 1
+    )
+  `).get()?.n || 0
+
+  if (valuationDup === 0) {
+    try {
+      sqlite.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_valuations_user_number ON valuations(user_id, valuation_number)')
+    } catch (e) { console.log('[migrate] valuations unique index skipped:', e.message) }
+  } else {
+    console.log(`[migrate] valuations unique index deferred: found ${valuationDup} duplicate user+valuation_number group(s)`)
+  }
+
+  if (sellBillDup === 0) {
+    try {
+      sqlite.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_sell_bills_user_number ON sell_bills(user_id, bill_number)')
+    } catch (e) { console.log('[migrate] sell_bills unique index skipped:', e.message) }
+  } else {
+    console.log(`[migrate] sell_bills unique index deferred: found ${sellBillDup} duplicate user+bill_number group(s)`)
+  }
+
+  if (customerDup === 0) {
+    try {
+      sqlite.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_user_code ON customers(user_id, customer_code)')
+    } catch (e) { console.log('[migrate] customers unique index skipped:', e.message) }
+  } else {
+    console.log(`[migrate] customers unique index deferred: found ${customerDup} duplicate user+customer_code group(s)`)
+  }
+} catch (e) {
+  console.log('[migrate] per-user uniqueness hardening skipped:', e.message)
+}
+
+try {
+  sqlite.exec('CREATE INDEX IF NOT EXISTS idx_bank_presets_user_val_series ON bank_presets(user_id, valuation_series_id)')
+} catch (e) { console.log('[migrate] bank_presets valuation-series index skipped:', e.message) }
 
 // Add remarks column to valuation_items
 try { sqlite.exec(`ALTER TABLE valuation_items ADD COLUMN remarks TEXT`) } catch (e) { /* already exists */ }

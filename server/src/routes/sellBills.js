@@ -5,13 +5,28 @@ import { sellBills, sellBillItems, customers, billSeries } from '../db/schema.js
 
 const router = Router()
 
-function reserveNextBillNumber(seriesId) {
-  const series = sqlite.prepare('SELECT * FROM bill_series WHERE id = ?').get(seriesId)
-  if (!series) throw Object.assign(new Error('Bill series not found'), { status: 404 })
-  const nextNum = series.current_number + 1
-  sqlite.prepare('UPDATE bill_series SET current_number = ? WHERE id = ?').run(nextNum, seriesId)
-  const padded = String(nextNum).padStart(series.number_of_digits, '0')
-  return { number: series.prefix ? `${series.prefix}${padded}` : padded, seriesId }
+function reserveNextBillNumber(seriesId, userId) {
+  const txn = sqlite.transaction((id, ownerId) => {
+    const series = sqlite.prepare('SELECT * FROM bill_series WHERE id = ? AND user_id = ?').get(id, ownerId)
+    if (!series) throw Object.assign(new Error('Bill series not found'), { status: 404 })
+
+    let nextNum = (series.current_number || 0) + 1
+    let padded = String(nextNum).padStart(series.number_of_digits, '0')
+    let number = series.prefix ? `${series.prefix}${padded}` : padded
+    const check = sqlite.prepare('SELECT 1 FROM sell_bills WHERE user_id = ? AND bill_number = ? LIMIT 1')
+    let attempts = 0
+    while (check.get(ownerId, number) && attempts < 100) {
+      nextNum += 1
+      padded = String(nextNum).padStart(series.number_of_digits, '0')
+      number = series.prefix ? `${series.prefix}${padded}` : padded
+      attempts += 1
+    }
+
+    sqlite.prepare('UPDATE bill_series SET current_number = ? WHERE id = ? AND user_id = ?').run(nextNum, id, ownerId)
+    return { number, seriesId: id }
+  })
+
+  return txn(seriesId, userId)
 }
 
 async function hydrateBill(bill) {
@@ -70,7 +85,7 @@ router.post('/', async (req, res) => {
   if (!customerId) return res.status(400).json({ error: 'Customer required' })
   if (!billSeriesId) return res.status(400).json({ error: 'Bill series required' })
 
-  const reserved = reserveNextBillNumber(billSeriesId)
+  const reserved = reserveNextBillNumber(billSeriesId, userId)
 
   // Server-side amount: use provided amount, or compute from netWeight*rate+making
   const derivedItems = (items || []).map((it) => {
