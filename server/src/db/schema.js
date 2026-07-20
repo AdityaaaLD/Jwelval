@@ -112,7 +112,6 @@ export const bankPresets = sqliteTable('bank_presets', {
   appIdPrefix: text('app_id_prefix'),
   appIdCurrentNumber: integer('app_id_current_number').notNull().default(0),
   appIdDigits: integer('app_id_digits').notNull().default(10),
-  valuationSeriesId: integer('valuation_series_id').references(() => valuationSeries.id),
   certificateRules: text('certificate_rules'),
   userId: integer('user_id').notNull().default(1),
   createdAt: text('created_at').notNull(),

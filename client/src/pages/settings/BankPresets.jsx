@@ -3,18 +3,13 @@ import toast from 'react-hot-toast'
 import { Pencil, Plus, Trash2, Check, X } from 'lucide-react'
 import { api } from '../../lib/api'
 
-const emptyForm = { bankName: 'Bank of Maharashtra', branch: '', branchCode: '', rateOfInterest: '', loanLtv: 57, empanelmentId: '', managerName: '', address: '', appIdPrefix: '', appIdDigits: 10, valuationSeriesId: '', certificateRules: '' }
+const emptyForm = { bankName: 'Bank of Maharashtra', branch: '', branchCode: '', rateOfInterest: '', loanLtv: 57, empanelmentId: '', managerName: '', address: '', appIdPrefix: '', appIdDigits: 10, certificateRules: '' }
 
 export default function BankPresets() {
   const [rows, setRows] = useState([])
-  const [series, setSeries] = useState([])
   const [form, setForm] = useState({ ...emptyForm })
   const [editId, setEditId] = useState(null)
-  const load = async () => {
-    const [presetRows, seriesRows] = await Promise.all([api.presets.banks(), api.series.list()])
-    setRows(presetRows)
-    setSeries(seriesRows)
-  }
+  const load = () => api.presets.banks().then(setRows)
   useEffect(() => { load() }, [])
 
   const save = async () => {
@@ -33,7 +28,7 @@ export default function BankPresets() {
 
   const startEdit = (r) => {
     setEditId(r.id)
-    setForm({ bankName: r.bankName, branch: r.branch, branchCode: r.branchCode || '', rateOfInterest: r.rateOfInterest || '', loanLtv: r.loanLtv || 57, empanelmentId: r.empanelmentId || '', managerName: r.managerName || '', address: r.address || '', appIdPrefix: r.appIdPrefix || '', appIdDigits: r.appIdDigits || 10, valuationSeriesId: r.valuationSeriesId ? String(r.valuationSeriesId) : '', certificateRules: r.certificateRules || '' })
+    setForm({ bankName: r.bankName, branch: r.branch, branchCode: r.branchCode || '', rateOfInterest: r.rateOfInterest || '', loanLtv: r.loanLtv || 57, empanelmentId: r.empanelmentId || '', managerName: r.managerName || '', address: r.address || '', appIdPrefix: r.appIdPrefix || '', appIdDigits: r.appIdDigits || 10, certificateRules: r.certificateRules || '' })
   }
 
   const cancelEdit = () => { setEditId(null); setForm({ ...emptyForm }) }
@@ -62,7 +57,6 @@ export default function BankPresets() {
           <div><label className="label">Manager Name</label><input className="input" value={form.managerName} onChange={(e) => setForm({ ...form, managerName: e.target.value })} /></div>
           <div><label className="label">App ID Prefix</label><input className="input" value={form.appIdPrefix} onChange={(e) => setForm({ ...form, appIdPrefix: e.target.value })} /></div>
           <div><label className="label">App ID Digits</label><input type="number" className="input" value={form.appIdDigits} onChange={(e) => setForm({ ...form, appIdDigits: e.target.value })} /></div>
-          <div><label className="label">Valuation Number Series</label><select className="input" value={form.valuationSeriesId || ''} onChange={(e) => setForm({ ...form, valuationSeriesId: e.target.value })}><option value="">Use form/default series</option>{series.map((s) => <option key={s.id} value={s.id}>{s.seriesName}</option>)}</select></div>
         </div>
         <div>
           <label className="label">Certificate Rules / Declaration Text</label>
@@ -85,7 +79,6 @@ export default function BankPresets() {
               <th className="px-4 py-3">Empanelment ID</th>
               <th className="px-4 py-3">Manager</th>
               <th className="px-4 py-3">App Prefix</th>
-              <th className="px-4 py-3">Valuation Series</th>
               <th className="px-4 py-3">Next #</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -101,7 +94,6 @@ export default function BankPresets() {
                 <td className="px-4 py-3">{r.empanelmentId || '-'}</td>
                 <td className="px-4 py-3">{r.managerName || '-'}</td>
                 <td className="px-4 py-3">{r.appIdPrefix || '-'}</td>
-                <td className="px-4 py-3">{series.find((s) => String(s.id) === String(r.valuationSeriesId))?.seriesName || '-'}</td>
                 <td className="px-4 py-3">{(r.appIdCurrentNumber || 0) + 1}</td>
                 <td className="px-4 py-3 text-right">
                   <span className="inline-flex gap-1">

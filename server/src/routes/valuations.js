@@ -29,19 +29,6 @@ const validate = (req, res, next) => {
 
 const isLocked = (status) => status === 'PRINTED' || status === 'LOCKED'
 
-function reserveNextBankPresetApplicationId(presetId, userId) {
-  const txn = sqlite.transaction((id, ownerId) => {
-    const preset = sqlite.prepare('SELECT * FROM bank_presets WHERE id = ? AND user_id = ?').get(id, ownerId)
-    if (!preset) return null
-    if (!preset.app_id_prefix) return { applicationId: '', preset }
-    const nextNum = (preset.app_id_current_number || 0) + 1
-    sqlite.prepare('UPDATE bank_presets SET app_id_current_number = ? WHERE id = ? AND user_id = ?').run(nextNum, id, ownerId)
-    const padded = String(nextNum).padStart(preset.app_id_digits || 10, '0')
-    return { applicationId: `${preset.app_id_prefix}${padded}`, preset }
-  })
-  return txn(presetId, userId)
-}
-
 function buildCustomerSnapshot(customerRow = {}) {
   return {
     id: customerRow.id,
@@ -183,38 +170,10 @@ router.post(
       const userId = req.user.id
       ensureDefaultValuationSeriesForUser(userId)
 
-      let presetRow = null
-      const parsedPresetId = Number(bankPresetId)
-      if (Number.isInteger(parsedPresetId) && parsedPresetId > 0) {
-        presetRow = sqlite.prepare('SELECT * FROM bank_presets WHERE id = ? AND user_id = ?').get(parsedPresetId, userId)
-        if (!presetRow) {
-          return res.status(400).json({
-            error: 'PRESET_NOT_FOUND',
-            message: 'Selected bank preset was not found for this account.',
-          })
-        }
-      }
-
       let selectedSeriesId = Number(seriesId)
-      if (Number.isInteger(selectedSeriesId) && selectedSeriesId > 0) {
-        const ownSeries = sqlite.prepare('SELECT id FROM valuation_series WHERE id = ? AND user_id = ?').get(selectedSeriesId, userId)
-        if (!ownSeries) {
-          return res.status(400).json({
-            error: 'SERIES_NOT_FOUND',
-            message: 'Selected number series does not belong to this account.',
-          })
-        }
-      }
-
-      if (!Number.isInteger(selectedSeriesId) || selectedSeriesId <= 0) {
-        if (presetRow?.valuation_series_id) {
-          selectedSeriesId = Number(presetRow.valuation_series_id)
-        }
-      }
-
       if (!Number.isInteger(selectedSeriesId) || selectedSeriesId <= 0) {
         const fallbackSeries = sqlite
-          .prepare("SELECT id FROM valuation_series WHERE user_id = ? ORDER BY CASE WHEN format_type = 'DIGITAL_CERT' THEN 0 ELSE 1 END, id DESC LIMIT 1")
+          .prepare('SELECT id FROM valuation_series WHERE user_id = ? ORDER BY id DESC LIMIT 1')
           .get(userId)
         selectedSeriesId = Number(fallbackSeries?.id || 0)
       }
@@ -241,15 +200,19 @@ router.post(
       const reserved = reserveNextValuationNumber(selectedSeriesId)
 
       let finalCertificateRules = certificateRules || ''
-      if (!finalCertificateRules && presetRow?.certificate_rules) {
-        finalCertificateRules = presetRow.certificate_rules
+      if (!finalCertificateRules && bankPresetId) {
+        const preset = sqlite.prepare('SELECT certificate_rules FROM bank_presets WHERE id = ? AND user_id = ?').get(bankPresetId, userId)
+        if (preset?.certificate_rules) finalCertificateRules = preset.certificate_rules
       }
 
       let finalApplicationId = applicationId || ''
-      if (presetRow) {
-        const allocation = reserveNextBankPresetApplicationId(presetRow.id, userId)
-        if (allocation?.applicationId) {
-          finalApplicationId = allocation.applicationId
+      if (bankPresetId && applicationId) {
+        const preset = sqlite.prepare('SELECT * FROM bank_presets WHERE id = ? AND user_id = ?').get(bankPresetId, userId)
+        if (preset && preset.app_id_prefix) {
+          const nextNum = preset.app_id_current_number + 1
+          sqlite.prepare('UPDATE bank_presets SET app_id_current_number = ? WHERE id = ?').run(nextNum, bankPresetId)
+          const padded = String(nextNum).padStart(preset.app_id_digits || 10, '0')
+          finalApplicationId = `${preset.app_id_prefix}${padded}`
         }
       }
 
