@@ -14,9 +14,9 @@ function ensureProfileRow(userId) {
 
   const now = new Date().toISOString()
   sqlite.prepare(
-    `INSERT INTO appraiser_profile (user_id, appraiser_name, business_name, mobile, email, upi_id, logo_photo, address,
+    `INSERT INTO appraiser_profile (user_id, appraiser_name, business_name, mobile, email, upi_id, bank_account_number, logo_photo, address,
       empanelment_id, gstn, proprietor_name, qualification, organization, cert_number, updated_at)
-     VALUES (?, ?, ?, '', '', '', '', '', '', '', '', '', '', '', ?)`
+     VALUES (?, ?, ?, '', '', '', '', '', '', '', '', '', '', '', '', ?)`
   ).run(userId, DEFAULT_PROFILE.appraiserName, DEFAULT_PROFILE.businessName, now)
 
   return sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId)
@@ -43,6 +43,7 @@ function validateProfilePayload(body) {
     mobile,
     email: String(body.email || '').trim().toLowerCase(),
     upiId: String(body.upiId || '').trim().toLowerCase(),
+    bankAccountNumber: String(body.bankAccountNumber || '').trim(),
     logoPhoto: typeof body.logoPhoto === 'string' ? body.logoPhoto : '',
     address: String(body.address || '').trim(),
     gstn: String(body.gstn || '').trim().toUpperCase(),
@@ -73,6 +74,7 @@ function validateProfilePayload(body) {
   if (clean.gstn && clean.gstn.length > 20) {
     errors.gstn = 'GSTN/PAN/TAN looks too long.'
   }
+  if (clean.bankAccountNumber.length > 50) errors.bankAccountNumber = 'Bank account number is too long.'
 
   if (clean.address.length > 500) errors.address = 'Address is too long (max 500 characters).'
   if (clean.qualification.length > 200) errors.qualification = 'Qualification is too long.'
@@ -99,11 +101,11 @@ router.put('/', (req, res) => {
 
     sqlite.prepare(`
       UPDATE appraiser_profile
-      SET appraiser_name = ?, business_name = ?, mobile = ?, email = ?, upi_id = ?, logo_photo = ?, address = ?,
+      SET appraiser_name = ?, business_name = ?, mobile = ?, email = ?, upi_id = ?, bank_account_number = ?, logo_photo = ?, address = ?,
           gstn = ?, proprietor_name = ?, qualification = ?, organization = ?, cert_number = ?, updated_at = ?
       WHERE user_id = ?
     `).run(
-      clean.appraiserName, clean.businessName, clean.mobile, clean.email, clean.upiId, clean.logoPhoto, clean.address,
+      clean.appraiserName, clean.businessName, clean.mobile, clean.email, clean.upiId, clean.bankAccountNumber, clean.logoPhoto, clean.address,
       clean.gstn, clean.proprietorName, clean.qualification, clean.organization, clean.certNumber, now, userId
     )
 

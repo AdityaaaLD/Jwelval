@@ -9,7 +9,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MOBILE_RE = /^[6-9]\d{9}$/
 const UPI_RE = /^[\w.+-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$/
 
-const EMPTY_FORM = { appraiserName: '', businessName: '', mobile: '', email: '', upiId: '', address: '', gstn: '', qualification: '', organization: '', certNumber: '' }
+const EMPTY_FORM = { appraiserName: '', businessName: '', mobile: '', email: '', upiId: '', bankAccountNumber: '', address: '', gstn: '', qualification: '', organization: '', certNumber: '' }
 
 function normalizeMobile(input) {
   let digits = String(input || '').replace(/\D/g, '')
@@ -45,6 +45,7 @@ export default function AppraiserProfile() {
           mobile: p.mobile || '',
           email: p.email || '',
           upiId: p.upi_id || '',
+          bankAccountNumber: p.bank_account_number || '',
           address: p.address || '',
           gstn: p.gstn || '',
           qualification: p.qualification || '',
@@ -129,6 +130,10 @@ export default function AppraiserProfile() {
           <label className="label">UPI ID</label>
           <input className={`input ${errors.upiId ? 'border-red-500' : ''}`} placeholder="e.g. name@okhdfcbank" value={form.upiId} onChange={setField('upiId')} />
           {errors.upiId && <p className="mt-1 text-xs text-red-600">{errors.upiId}</p>}
+        </div>
+        <div>
+          <label className="label">Bank Account Number</label>
+          <input className="input" placeholder="e.g. 123456789012" value={form.bankAccountNumber} onChange={setField('bankAccountNumber')} />
         </div>
         <div><label className="label">GSTN/PAN/TAN</label><input className="input" placeholder="e.g. ACHPU8474H" value={form.gstn} onChange={setField('gstn')} /></div>
         <div className="md:col-span-2"><label className="label">Address</label><textarea className="input min-h-20" value={form.address} onChange={setField('address')} /></div>

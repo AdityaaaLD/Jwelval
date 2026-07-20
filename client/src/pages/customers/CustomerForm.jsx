@@ -12,6 +12,8 @@ const emptyCustomer = {
   mobile: '',
   alternateMobile: '',
   address: '',
+  currentAddress: '',
+  currentAddressDifferent: false,
   aadharNumber: '',
   aadharPhoto: '',
   aadharPhotoBack: '',
@@ -52,6 +54,8 @@ export default function CustomerForm() {
         mobile: customer.mobile || '',
         alternateMobile: customer.alternateMobile || '',
         address: customer.address || '',
+        currentAddress: customer.currentAddress || '',
+        currentAddressDifferent: Boolean(customer.currentAddressDifferent),
         aadharNumber: customer.aadharNumber || '',
         aadharPhoto: customer.aadharPhoto || '',
         aadharPhotoBack: customer.aadharPhotoBack || '',
@@ -65,6 +69,14 @@ export default function CustomerForm() {
   }, [id, isEdit])
 
   const update = (field) => (event) => setForm((current) => ({ ...current, [field]: event.target.value }))
+  const updateCurrentAddressToggle = (event) => {
+    const checked = event.target.checked
+    setForm((current) => ({
+      ...current,
+      currentAddressDifferent: checked,
+      currentAddress: checked ? current.currentAddress : '',
+    }))
+  }
 
   const readFileAsDataUrl = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -128,6 +140,8 @@ export default function CustomerForm() {
       setForm((current) => ({
         ...current,
         address: parsed.address || current.address,
+        currentAddressDifferent: false,
+        currentAddress: '',
       }))
       toast.success('Back side scanned. Please verify address.')
     } catch (error) {
@@ -257,6 +271,23 @@ export default function CustomerForm() {
             <label className="label" htmlFor="address">Address</label>
             <textarea id="address" className="input min-h-24" value={form.address} onChange={update('address')} />
           </div>
+          <div className="md:col-span-2">
+            <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700" htmlFor="currentAddressDifferent">
+              <input
+                id="currentAddressDifferent"
+                type="checkbox"
+                checked={form.currentAddressDifferent}
+                onChange={updateCurrentAddressToggle}
+              />
+              Current address is different from Aadhaar address
+            </label>
+          </div>
+          {form.currentAddressDifferent && (
+            <div className="md:col-span-2">
+              <label className="label" htmlFor="currentAddress">Current Address</label>
+              <textarea id="currentAddress" className="input min-h-24" value={form.currentAddress} onChange={update('currentAddress')} />
+            </div>
+          )}
           <div>
             <label className="label" htmlFor="aadhar">Aadhar Number</label>
             <input id="aadhar" className="input" value={form.aadharNumber} onChange={update('aadharNumber')} maxLength="12" />

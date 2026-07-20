@@ -45,6 +45,7 @@ export default function PrintDigitalCert({ valuation }) {
           <p className="dc-header-line">{profile?.address || ''}</p>
           {profile?.cert_number && <p className="dc-header-line">No. {profile.cert_number}</p>}
           <p className="dc-header-line">{[profile?.mobile ? `Mob: ${profile.mobile}` : '', profile?.email || ''].filter(Boolean).join(' | ')}{profile?.gstn ? ` | GSTN: ${profile.gstn}` : ''}</p>
+          {profile?.bank_account_number && <p className="dc-header-line">Bank A/C: {profile.bank_account_number}</p>}
           {empanelmentId && <p className="dc-header-line">(Digital ID of Empanelment: {empanelmentId})</p>}
         </header>
 
@@ -135,11 +136,11 @@ export default function PrintDigitalCert({ valuation }) {
                 <td>{index + 1}</td>
                 <td className="dc-td-left">{item.description}</td>
                 <td>{item.remarks || '-'}</td>
-                <td>{item.noOfUnits}</td>
-                <td>{num(item.grossWeightGm, 3)}</td>
-                <td>{num(item.netWeightGm, 3)}</td>
+                <td>{num(item.noOfUnits, 2)}</td>
+                <td>{num(item.grossWeightGm, 2)}</td>
+                <td>{num(item.netWeightGm, 2)}</td>
                 <td>{item.purityCarat || 22}K</td>
-                <td>{num(item.approxValueInr, 0)}</td>
+                <td>{num(item.approxValueInr, 2)}</td>
               </tr>
             ))}
           </tbody>
@@ -147,11 +148,11 @@ export default function PrintDigitalCert({ valuation }) {
             <tr>
               <td colSpan="2"><b>Total</b></td>
               <td></td>
-              <td><b>{totals.units}</b></td>
-              <td><b>{num(totals.gross, 3)}</b></td>
-              <td><b>{num(totals.net, 3)}</b></td>
+              <td><b>{num(totals.units, 2)}</b></td>
+              <td><b>{num(totals.gross, 2)}</b></td>
+              <td><b>{num(totals.net, 2)}</b></td>
               <td></td>
-              <td><b>{num(totals.value, 0)}</b></td>
+              <td><b>{num(totals.value, 2)}</b></td>
             </tr>
           </tfoot>
         </table>

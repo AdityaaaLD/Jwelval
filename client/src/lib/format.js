@@ -1,8 +1,8 @@
 export const inr = (n) =>
-  'Rs. ' + (Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })
+  'Rs. ' + (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 export const num = (n, digits = 3) =>
-  (Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: digits })
+  (Number(n) || 0).toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 
 const pad2 = (value) => String(value).padStart(2, '0')
 

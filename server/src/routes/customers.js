@@ -54,6 +54,8 @@ router.post(
       mobile,
       alternateMobile,
       address,
+      currentAddress,
+      currentAddressDifferent,
       aadharNumber,
       aadharPhoto,
       aadharPhotoBack,
@@ -72,10 +74,10 @@ router.post(
       const exists = sqlite.prepare('SELECT 1 FROM customers WHERE customer_code = ?').get(code)
       const finalCode = exists ? `${code}-U${userId}` : code
       const insert = sqlite.prepare(`
-        INSERT INTO customers (customer_code, name, address, mobile, alternate_mobile, aadhar_number, aadhar_photo,
+        INSERT INTO customers (customer_code, name, address, current_address, current_address_different, mobile, alternate_mobile, aadhar_number, aadhar_photo,
                                aadhar_photo_back, pan_photo, customer_photo, savings_ac_no, bank_name, branch, user_id, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(finalCode, name, address || '', mobile || '', alternateMobile || '', aadharNumber || '', aadharPhoto || '',
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(finalCode, name, address || '', currentAddress || '', currentAddressDifferent ? 1 : 0, mobile || '', alternateMobile || '', aadharNumber || '', aadharPhoto || '',
              aadharPhotoBack || '', panPhoto || '', customerPhoto || '', savingsAcNo || '', bankName || '', branch || '', userId, now)
       return insert.lastInsertRowid
     })
@@ -98,6 +100,8 @@ router.put('/:id', body('name').isString().trim().notEmpty(), validate, async (r
     mobile,
     alternateMobile,
     address,
+    currentAddress,
+    currentAddressDifferent,
     aadharNumber,
     aadharPhoto,
     aadharPhotoBack,
@@ -114,6 +118,8 @@ router.put('/:id', body('name').isString().trim().notEmpty(), validate, async (r
       mobile: mobile || '',
       alternateMobile: alternateMobile || '',
       address: address || '',
+      currentAddress: currentAddress || '',
+      currentAddressDifferent: currentAddressDifferent ? 1 : 0,
       aadharNumber: aadharNumber || '',
       aadharPhoto: aadharPhoto || '',
       aadharPhotoBack: aadharPhotoBack || '',
