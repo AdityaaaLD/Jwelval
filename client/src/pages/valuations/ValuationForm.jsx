@@ -155,8 +155,9 @@ export default function ValuationForm() {
     }
 
     const data = payload()
-    if (!data.seriesId && series[0]?.id) {
-      data.seriesId = Number(series[0].id)
+    if (!data.seriesId && series.length) {
+      const preferredSeries = series.find((s) => s.formatType === 'DIGITAL_CERT') || series[0]
+      data.seriesId = Number(preferredSeries.id)
     }
     if (!data.seriesId) {
       return toast.error('No number series found. Please create one in Settings > Number Series.')
