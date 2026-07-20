@@ -65,6 +65,10 @@ export default function ValuationForm() {
   const [cropSession, setCropSession] = useState(null)
   const customerDetailCacheRef = useRef({})
   const { form, dirty, reset, hydrate, setField, setItem, addItem, removeItem, markClean, payload } = useValuationStore()
+  const preferredSeries = useMemo(
+    () => series.find((s) => s.formatType === 'DIGITAL_CERT') || series[0] || null,
+    [series]
+  )
 
   const handleValuationDateInput = (value) => {
     if (value === '') {
@@ -118,7 +122,8 @@ export default function ValuationForm() {
         if (rate.goldRate22k) {
           setField('goldRate22k', rate.goldRate22k)
         }
-        if (seriesRows.length) setField('seriesId', String(seriesRows[0].id))
+        const preferred = seriesRows.find((s) => s.formatType === 'DIGITAL_CERT') || seriesRows[0]
+        if (preferred?.id) setField('seriesId', String(preferred.id))
       }
     })
   }, [isEdit, reset, searchParams, setField])
@@ -161,8 +166,8 @@ export default function ValuationForm() {
     }
 
     const data = payload()
-    if (!data.seriesId && series[0]?.id) {
-      data.seriesId = Number(series[0].id)
+    if (!data.seriesId && preferredSeries?.id) {
+      data.seriesId = Number(preferredSeries.id)
     }
     if (!data.seriesId) {
       return toast.error('No number series found. Please create one in Settings > Number Series.')

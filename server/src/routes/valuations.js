@@ -173,8 +173,8 @@ router.post(
       let selectedSeriesId = Number(seriesId)
       if (!Number.isInteger(selectedSeriesId) || selectedSeriesId <= 0) {
         const fallbackSeries = sqlite
-          .prepare('SELECT id FROM valuation_series WHERE user_id = ? ORDER BY id DESC LIMIT 1')
-          .get(userId)
+          .prepare('SELECT id FROM valuation_series WHERE user_id = ? ORDER BY CASE WHEN format_type = ? THEN 0 ELSE 1 END, id DESC LIMIT 1')
+          .get(userId, 'DIGITAL_CERT')
         selectedSeriesId = Number(fallbackSeries?.id || 0)
       }
 

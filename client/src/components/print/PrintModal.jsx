@@ -4,16 +4,10 @@ import { Printer, X } from 'lucide-react'
 import { api } from '../../lib/api'
 import { shareViaWhatsApp } from '../../lib/share'
 import { verificationUrl } from '../../lib/qr'
-import PrintRushikesh from './PrintRushikesh'
-import PrintDnyaneshwari from './PrintDnyaneshwari'
-import PrintBankOfMaha from './PrintBankOfMaha'
 import PrintDigitalCert from './PrintDigitalCert'
 
 function Template({ valuation }) {
-  if (valuation.formatType === 'DNYANESHWARI') return <PrintDnyaneshwari valuation={valuation} />
-  if (valuation.formatType === 'BANK_OF_MAHA') return <PrintBankOfMaha valuation={valuation} />
-  if (valuation.formatType === 'DIGITAL_CERT') return <PrintDigitalCert valuation={valuation} />
-  return <PrintRushikesh valuation={valuation} />
+  return <PrintDigitalCert valuation={valuation} />
 }
 
 export default function PrintModal({ valuation, onClose, onLocked }) {
