@@ -109,7 +109,10 @@ export default function ValuationForm() {
         if (rate.goldRate22k) {
           setField('goldRate22k', rate.goldRate22k)
         }
-        if (seriesRows.length) setField('seriesId', String(seriesRows[0].id))
+        if (seriesRows.length) {
+          const preferredSeries = seriesRows.find((s) => s.formatType === 'DIGITAL_CERT') || seriesRows[0]
+          setField('seriesId', String(preferredSeries.id))
+        }
       }
     })
   }, [isEdit, reset, searchParams, setField])
