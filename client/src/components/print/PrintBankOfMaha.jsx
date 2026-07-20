@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { inr } from '../../lib/format'
+import { formatDateDMY, inr } from '../../lib/format'
 import { api } from '../../lib/api'
 import { CertificateRules, OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
 
@@ -18,7 +18,7 @@ export default function PrintBankOfMaha({ valuation }) {
             <p><b>Borrower:</b> {customer.name}</p><p><b>Mobile:</b> {customer.mobile}</p>
             <p><b>Rate:</b> {valuation.rateOfInterest || '-'}</p><p><b>Aadhar:</b> {customer.aadharNumber || '-'}</p>
             <p><b>Customer ID:</b> {customer.customerCode}</p><p><b>22K Rate:</b> {inr(valuation.goldRate22k)}</p>
-            <p><b>Savings A/C:</b> {customer.savingsAcNo || valuation.acNo}</p><p><b>Date:</b> {valuation.valuationDate}</p>
+            <p><b>Savings A/C:</b> {customer.savingsAcNo || valuation.acNo}</p><p><b>Date:</b> {formatDateDMY(valuation.valuationDate)}</p>
             <p><b>Branch:</b> {valuation.branch}</p><p><b>Bank:</b> Bank of Maharashtra</p>
           </div>
         </div>

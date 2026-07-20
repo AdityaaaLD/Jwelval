@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { inr } from '../../lib/format'
+import { formatDateDMY, inr } from '../../lib/format'
 import QrImage from '../QrImage'
 import { upiUrl } from '../../lib/qr'
 
@@ -18,7 +18,7 @@ export default function FeeReceipt({ valuation, profile }) {
       <h2>Valuation Fee Receipt</h2>
       <div className="receipt-grid">
         <p><b>Receipt For:</b> {valuation.valuationNumber}</p>
-        <p><b>Date:</b> {valuation.valuationDate}</p>
+        <p><b>Date:</b> {formatDateDMY(valuation.valuationDate)}</p>
         <p><b>Customer:</b> {customer.name}</p>
         <p><b>Mobile:</b> {customer.mobile || '-'}</p>
         <p><b>Valuation Fee:</b> {inr(fee)}</p>

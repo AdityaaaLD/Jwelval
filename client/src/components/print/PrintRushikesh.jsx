@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { inr } from '../../lib/format'
+import { formatDateDMY, inr } from '../../lib/format'
 import { api } from '../../lib/api'
 import { CertificateRules, LetterheadSubheader, OrnamentPhotoStrip, OrnamentTable, PhotoBox, SignatureGrid, VerificationBlock } from './PrintHelpers'
 
@@ -18,7 +18,7 @@ export default function PrintRushikesh({ valuation }) {
         </div>
         <PhotoBox src={valuation.jewelleryPhoto} label="Jewellery Photo" />
       </header>
-      <div className="print-title"><strong>GOLD VALUATION CERTIFICATE</strong><span>Date: {valuation.valuationDate}</span></div>
+      <div className="print-title"><strong>GOLD VALUATION CERTIFICATE</strong><span>Date: {formatDateDMY(valuation.valuationDate)}</span></div>
       <section className="print-two-col"><div><p>The Branch Manager, Bank Of Maharashtra</p><p>Branch: {valuation.branch}</p><p>A/C NO: {valuation.acNo}</p></div><div><p>Customer: {customer.name}</p><p>Mo.No: {customer.mobile}</p><p>Valuation No: {valuation.valuationNumber}</p></div></section>
       <p className="print-copy">At the request of Shri/Smt. {customer.name}, I have appraised the following ornaments, the details of which are given below.</p>
       <OrnamentTable valuation={valuation} />

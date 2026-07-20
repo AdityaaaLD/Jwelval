@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { inr, num } from '../../lib/format'
+import { formatDateDMY, inr, num } from '../../lib/format'
 import { api } from '../../lib/api'
 import { CertificateRules, SignatureGrid, resolveReportDateTime } from './PrintHelpers'
 import QrImage from '../QrImage'
@@ -22,10 +22,8 @@ export default function PrintDigitalCert({ valuation }) {
 
   const reportDateTime = resolveReportDateTime(valuation)
   const empanelmentId = valuation?.empanelmentId || ''
-  const dateStr = reportDateTime.toLocaleString('en-IN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
+  const dateStr = formatDateDMY(reportDateTime)
+  const timeStr = reportDateTime.toLocaleTimeString('en-IN', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -55,7 +53,7 @@ export default function PrintDigitalCert({ valuation }) {
         </div>
         <div className="dc-row-box dc-row-split">
           <span>Certificate No: {valuation.valuationNumber}</span>
-          <span>Date: {dateStr}</span>
+          <span>Date: {dateStr} {timeStr}</span>
         </div>
 
         <div className="dc-row-box dc-parties dc-parties-with-photos">
@@ -168,7 +166,7 @@ export default function PrintDigitalCert({ valuation }) {
       {(aadharFrontDoc || aadharBackDoc || valuation.panPhoto) && (
         <article className="print-page digital-cert dc-page2">
           <h2 className="dc-page2-title">KYC Documents — {customer.name || 'Borrower'}</h2>
-          <p className="dc-page2-ref">Ref: Certificate No. {valuation.valuationNumber} | Date: {dateStr}</p>
+          <p className="dc-page2-ref">Ref: Certificate No. {valuation.valuationNumber} | Date: {dateStr} {timeStr}</p>
           <div className="dc-doc-grid">
             {(aadharFrontDoc || aadharBackDoc) && (
               <div className="dc-doc-box">

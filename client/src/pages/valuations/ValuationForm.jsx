@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Camera, Copy, Eye, Plus, Printer, Receipt, Save, Trash2, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
-import { inr, num } from '../../lib/format'
+import { formatDateDMY, inr, num, parseDateInputToISO } from '../../lib/format'
 import { compressDataUrl } from '../../lib/imageCompress'
 import { useValuationStore, REMARK_OPTIONS } from '../../store/valuationStore'
 import PrintModal from '../../components/print/PrintModal'
@@ -66,6 +66,15 @@ export default function ValuationForm() {
   const customerDetailCacheRef = useRef({})
   const { form, dirty, reset, hydrate, setField, setItem, addItem, removeItem, markClean, payload } = useValuationStore()
 
+  const handleValuationDateInput = (value) => {
+    if (value === '') {
+      setField('valuationDate', '')
+      return
+    }
+    const iso = parseDateInputToISO(value)
+    if (iso) setField('valuationDate', iso)
+  }
+
   const syncCustomerIdentityPhotos = async (customerId) => {
     if (!customerId) {
       setField('personPhoto', '')
@@ -109,10 +118,7 @@ export default function ValuationForm() {
         if (rate.goldRate22k) {
           setField('goldRate22k', rate.goldRate22k)
         }
-        if (seriesRows.length) {
-          const preferredSeries = seriesRows.find((s) => s.formatType === 'DIGITAL_CERT') || seriesRows[0]
-          setField('seriesId', String(preferredSeries.id))
-        }
+        if (seriesRows.length) setField('seriesId', String(seriesRows[0].id))
       }
     })
   }, [isEdit, reset, searchParams, setField])
@@ -155,9 +161,8 @@ export default function ValuationForm() {
     }
 
     const data = payload()
-    if (!data.seriesId && series.length) {
-      const preferredSeries = series.find((s) => s.formatType === 'DIGITAL_CERT') || series[0]
-      data.seriesId = Number(preferredSeries.id)
+    if (!data.seriesId && series[0]?.id) {
+      data.seriesId = Number(series[0].id)
     }
     if (!data.seriesId) {
       return toast.error('No number series found. Please create one in Settings > Number Series.')
@@ -218,9 +223,6 @@ export default function ValuationForm() {
   const applyPreset = async (presetId) => {
     const preset = bankPresets.find((p) => String(p.id) === String(presetId))
     if (!preset) return
-    if (preset.valuationSeriesId) {
-      setField('seriesId', String(preset.valuationSeriesId))
-    }
     setField('branch', preset.branch || '')
     setField('branchCode', preset.branchCode || '')
     setField('empanelmentId', preset.empanelmentId || '')
@@ -332,7 +334,16 @@ export default function ValuationForm() {
           </div>
           <div>
             <label className="label">Valuation Date</label>
-            <input type="date" className="input" value={form.valuationDate} onChange={(e) => setField('valuationDate', e.target.value)} disabled={disabled} />
+            <input
+              type="text"
+              inputMode="numeric"
+              className="input"
+              value={formatDateDMY(form.valuationDate)}
+              onChange={(e) => handleValuationDateInput(e.target.value)}
+              placeholder="dd-mm-yyyy"
+              disabled={disabled}
+            />
+            <p className="mt-1 text-xs text-slate-500">Format: dd-mm-yyyy</p>
           </div>
           <div>
             <label className="label">Number Series</label>
@@ -348,7 +359,7 @@ export default function ValuationForm() {
           </div>
           <div>
             <label className="label">Bank Format</label>
-            <select className="input" value={form.bankPresetId || ''} onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
+            <select className="input" onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
               <option value="">Select bank format</option>
               {bankPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.bankName} - {preset.branch}</option>)}
             </select>
@@ -397,6 +408,7 @@ export default function ValuationForm() {
             <p className="mt-1 text-xs text-slate-500">Used only for bank recommended value</p>
           </div>
         </div>
+
       </section>
 
       <section className="card p-5">
@@ -413,11 +425,8 @@ export default function ValuationForm() {
       </section>
 
       <section className="card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+        <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="font-semibold text-slate-950">Ornaments</h2>
-          <button type="button" className="btn-secondary" onClick={addItem} disabled={disabled}>
-            <Plus size={16} /> Add Row
-          </button>
         </div>
 
         {/* Mobile card layout */}
@@ -556,6 +565,11 @@ export default function ValuationForm() {
               </tr>
             </tfoot>
           </table>
+        </div>
+        <div className="flex justify-end border-t border-slate-200 px-5 py-3">
+          <button type="button" className="btn-secondary" onClick={addItem} disabled={disabled}>
+            <Plus size={16} /> Add Row
+          </button>
         </div>
       </section>
 
