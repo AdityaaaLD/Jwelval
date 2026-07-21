@@ -30,22 +30,44 @@ async function buildPdfBlobFromElement(element, excludeSelectors = []) {
           backgroundColor: '#ffffff',
           logging: false,
           onclone: (clonedDoc) => {
-            // Remove excluded sections (e.g. KYC page .dc-page2)
-            for (const selector of excludeSelectors) {
-              clonedDoc.querySelectorAll(selector).forEach((n) => n.remove())
-            }
-            // Remove any mobile transform on .print-preview-center in the clone
+            // Hide the app root to avoid any interference
+            const root = clonedDoc.querySelector('#root')
+            if (root) root.style.display = 'none'
+
+            // Neutralize .print-overlay — remove fixed positioning and dark background
+            clonedDoc.querySelectorAll('.print-overlay').forEach((n) => {
+              n.style.position = 'static'
+              n.style.inset = 'auto'
+              n.style.zIndex = 'auto'
+              n.style.background = 'none'
+            })
+
+            // Neutralize .print-preview-scroll — remove overflow clipping and height constraint
+            clonedDoc.querySelectorAll('.print-preview-scroll').forEach((n) => {
+              n.style.height = 'auto'
+              n.style.overflow = 'visible'
+              n.style.padding = '0'
+            })
+
+            // Remove any mobile transform/scale on .print-preview-center
             clonedDoc.querySelectorAll('.print-preview-center').forEach((n) => {
               n.style.transform = 'none'
               n.style.width = `${A4_WIDTH_PX}px`
               n.style.maxWidth = 'none'
               n.style.margin = '0'
             })
-            // Set explicit A4 pixel width on all .print-page elements
+
+            // Set explicit A4 pixel width on all .print-page elements, remove screen-only styles
             clonedDoc.querySelectorAll('.print-page').forEach((p) => {
               p.style.width = `${A4_WIDTH_PX}px`
               p.style.boxShadow = 'none'
             })
+
+            // Remove excluded sections (e.g. KYC page .dc-page2)
+            for (const selector of excludeSelectors) {
+              clonedDoc.querySelectorAll(selector).forEach((n) => n.remove())
+            }
+
             // Hide the toolbar in the clone
             clonedDoc.querySelectorAll('.no-print, .print-modal-toolbar').forEach((n) => {
               n.style.display = 'none'
