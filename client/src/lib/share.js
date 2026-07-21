@@ -18,6 +18,22 @@ function forcePageWidthForCapture(container) {
   }
 }
 
+function cloneForPdfCapture(element, excludeSelectors = []) {
+  const clone = element.cloneNode(true)
+  clone.style.position = 'fixed'
+  clone.style.left = '-99999px'
+  clone.style.top = '0'
+  clone.style.zIndex = '-1'
+  clone.style.background = '#fff'
+  clone.setAttribute('aria-hidden', 'true')
+  for (const selector of excludeSelectors) {
+    const nodes = clone.querySelectorAll(selector)
+    nodes.forEach((node) => node.remove())
+  }
+  document.body.appendChild(clone)
+  return () => clone
+}
+
 async function buildPdfBlobFromElement(element) {
   const { default: html2pdf } = await import('html2pdf.js')
   const restore = forcePageWidthForCapture(element)
@@ -38,9 +54,16 @@ async function buildPdfBlobFromElement(element) {
   }
 }
 
-export async function createPdfFileFromElement({ element, fileBaseName }) {
+export async function createPdfFileFromElement({ element, fileBaseName, excludeSelectors = [] }) {
   if (!element) throw new Error('Print content not found for PDF export.')
-  const blob = await buildPdfBlobFromElement(element)
+  const getCaptureElement = cloneForPdfCapture(element, excludeSelectors)
+  const captureElement = getCaptureElement()
+  let blob
+  try {
+    blob = await buildPdfBlobFromElement(captureElement)
+  } finally {
+    captureElement.remove()
+  }
   const filename = makeFilename(fileBaseName)
   const canCreateFile = typeof File !== 'undefined'
   if (canCreateFile) return new File([blob], filename, { type: 'application/pdf' })
@@ -65,8 +88,8 @@ export async function sharePdfFileStrict({ file, shareTitle, shareText }) {
   return { shared: true }
 }
 
-export async function sharePdfFromElement({ element, fileBaseName, shareTitle, shareText }) {
-  const file = await createPdfFileFromElement({ element, fileBaseName })
+export async function sharePdfFromElement({ element, fileBaseName, shareTitle, shareText, excludeSelectors = [] }) {
+  const file = await createPdfFileFromElement({ element, fileBaseName, excludeSelectors })
   if (!(file instanceof File)) {
     throw new Error('This browser does not support direct file sharing for PDF.')
   }

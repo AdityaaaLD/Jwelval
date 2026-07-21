@@ -24,6 +24,7 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
         const file = await createPdfFileFromElement({
           element: printable,
           fileBaseName: `${valuation?.valuationNumber || 'valuation-report'}`,
+          excludeSelectors: ['.dc-page2'],
         })
         if (!cancelled) setPdfFile(file)
       } catch {
