@@ -1,16 +1,47 @@
 const A4_WIDTH_PX = 794
+const A4_HEIGHT_PX = 1123
+
+// CSS that mirrors @media print rules — injected into html2canvas clone
+const PRINT_CSS = `
+  html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; }
+  #root { display: none !important; }
+  .no-print, .print-modal-toolbar { display: none !important; }
+  #print-portal { position: static !important; background: none !important; z-index: auto !important; }
+  .print-overlay { position: static !important; inset: auto !important; z-index: auto !important; background: none !important; }
+  .print-preview-scroll { overflow: visible !important; padding: 0 !important; height: auto !important; }
+  .print-preview-center { margin: 0 !important; width: ${A4_WIDTH_PX}px !important; max-width: none !important; transform: none !important; }
+  .print-page { width: ${A4_WIDTH_PX}px !important; min-height: auto !important; padding: 0 !important; box-shadow: none !important; }
+  .sb-page { width: ${A4_WIDTH_PX}px !important; min-height: auto !important; padding: 0 !important; box-shadow: none !important; }
+  .fee-receipt { box-shadow: none !important; }
+  .sb-table tbody tr:hover { background: none !important; }
+`
 
 function makeFilename(baseName) {
   const safe = String(baseName || 'valuation-report').trim().replace(/[^a-z0-9-_]+/gi, '_')
   return `${safe}.pdf`
 }
 
-async function buildPdfBlobFromElement(element, excludeSelectors = []) {
-  const { default: html2pdf } = await import('html2pdf.js')
+async function capturePageAsCanvas(html2canvas, pageEl) {
+  return html2canvas(pageEl, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: '#ffffff',
+    logging: false,
+    width: A4_WIDTH_PX,
+    windowWidth: A4_WIDTH_PX,
+    onclone: (clonedDoc) => {
+      const style = clonedDoc.createElement('style')
+      style.textContent = PRINT_CSS
+      clonedDoc.head.appendChild(style)
+    },
+  })
+}
 
-  // Temporarily remove mobile transform/scale on the live element so html2canvas
-  // captures it at full A4 width. html2canvas clones internally — we use onclone
-  // to inject print-equivalent CSS into the clone.
+async function buildPdfBlobFromElement(element, excludeSelectors = []) {
+  const html2canvas = (await import('html2canvas')).default
+  const { jsPDF } = await import('jspdf')
+
+  // Temporarily remove mobile transform/scale on the live element
   const savedTransform = element.style.transform
   const savedWidth = element.style.width
   const savedMaxWidth = element.style.maxWidth
@@ -18,80 +49,76 @@ async function buildPdfBlobFromElement(element, excludeSelectors = []) {
   element.style.width = `${A4_WIDTH_PX}px`
   element.style.maxWidth = 'none'
 
-  try {
-    return await html2pdf()
-      .set({
-        margin: 0,
-        filename: 'valuation-report.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-          onclone: (clonedDoc) => {
-            // Inject a style tag that mirrors the exact @media print rules from print.css
-            // This ensures the clone renders with the same layout as the browser's print output
-            const style = clonedDoc.createElement('style')
-            style.textContent = `
-              html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; }
-              #root { display: none !important; }
-              .no-print, .print-modal-toolbar { display: none !important; }
-              #print-portal { position: static !important; background: none !important; z-index: auto !important; }
-              .print-overlay { position: static !important; inset: auto !important; z-index: auto !important; background: none !important; }
-              .print-preview-scroll { overflow: visible !important; padding: 0 !important; height: auto !important; }
-              .print-preview-center { margin: 0 !important; width: ${A4_WIDTH_PX}px !important; max-width: none !important; transform: none !important; }
-              .print-page { width: ${A4_WIDTH_PX}px !important; min-height: auto !important; padding: 0 !important; box-shadow: none !important; page-break-after: always; }
-              .print-page:last-child { page-break-after: auto; }
-              .fee-receipt { box-shadow: none !important; }
-              .print-page-break { page-break-after: always; }
-              .print-avoid-break,
-              .verification-block,
-              .signature-grid,
-              .dc-photos,
-              .dc-photo-box,
-              .dc-row-box,
-              .dc-table,
-              .dc-table thead,
-              .dc-table tbody,
-              .dc-table tfoot,
-              .dc-table tr,
-              .certificate-rules,
-              .ornament-strip,
-              .ornament-strip img,
-              .print-photo,
-              .print-table,
-              .print-table thead,
-              .print-table tbody,
-              .print-table tfoot,
-              .print-table tr,
-              .sb-table,
-              .sb-table thead,
-              .sb-table tbody,
-              .sb-table tr {
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-              }
-              .sb-page { width: ${A4_WIDTH_PX}px !important; min-height: auto !important; padding: 0 !important; box-shadow: none !important; page-break-after: auto; }
-              .sb-table tbody tr:hover { background: none !important; }
-            `
-            clonedDoc.head.appendChild(style)
+  // Temporarily hide excluded sections on the live DOM
+  const hiddenNodes = []
+  for (const selector of excludeSelectors) {
+    element.querySelectorAll(selector).forEach((n) => {
+      hiddenNodes.push({ n, display: n.style.display })
+      n.style.display = 'none'
+    })
+  }
 
-            // Remove excluded sections (e.g. KYC page .dc-page2)
-            for (const selector of excludeSelectors) {
-              clonedDoc.querySelectorAll(selector).forEach((n) => n.remove())
-            }
-          },
-        },
-        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['css', 'legacy'] },
-      })
-      .from(element)
-      .outputPdf('blob')
+  try {
+    // Find all .print-page elements — each one is a separate A4 page
+    let pages = Array.from(element.querySelectorAll('.print-page'))
+    // If no .print-page found, capture the whole element as a single page
+    if (pages.length === 0) pages = [element]
+
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' })
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = pdf.internal.pageSize.getHeight()
+
+    for (let i = 0; i < pages.length; i++) {
+      const canvas = await capturePageAsCanvas(html2canvas, pages[i])
+      const imgData = canvas.toDataURL('image/jpeg', 0.98)
+
+      // Scale canvas to fit A4 width, maintain aspect ratio
+      const imgWidth = pdfWidth
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width
+
+      if (i > 0) pdf.addPage()
+
+      // If content is taller than A4, split across multiple pages
+      if (imgHeight <= pdfHeight) {
+        pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight)
+      } else {
+        // Slice tall canvas across multiple A4 pages
+        let remainingHeight = imgHeight
+        let srcY = 0
+        const scaleRatio = canvas.width / pdfWidth
+        while (remainingHeight > 0) {
+          const sliceHeight = Math.min(pdfHeight, remainingHeight)
+          // Create a sub-canvas for this slice
+          const subCanvas = document.createElement('canvas')
+          subCanvas.width = canvas.width
+          subCanvas.height = Math.round(sliceHeight * scaleRatio)
+          const ctx = subCanvas.getContext('2d')
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(0, 0, subCanvas.width, subCanvas.height)
+          ctx.drawImage(
+            canvas,
+            0, Math.round(srcY * scaleRatio),
+            canvas.width, subCanvas.height,
+            0, 0,
+            canvas.width, subCanvas.height
+          )
+          const sliceData = subCanvas.toDataURL('image/jpeg', 0.98)
+          if (i > 0 || srcY > 0) pdf.addPage()
+          pdf.addImage(sliceData, 'JPEG', 0, 0, imgWidth, sliceHeight)
+          remainingHeight -= sliceHeight
+          srcY += sliceHeight
+        }
+      }
+    }
+
+    return pdf.output('blob')
   } finally {
+    // Restore live element styles
     element.style.transform = savedTransform
     element.style.width = savedWidth
     element.style.maxWidth = savedMaxWidth
+    // Restore hidden nodes
+    hiddenNodes.forEach(({ n, display }) => { n.style.display = display })
   }
 }
 
