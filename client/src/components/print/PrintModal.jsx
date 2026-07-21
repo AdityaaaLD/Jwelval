@@ -33,7 +33,7 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
         if (!cancelled) setPreparingPdf(false)
       }
     }
-    const timer = setTimeout(preparePdf, 150)
+    const timer = setTimeout(preparePdf, 800)
     return () => {
       cancelled = true
       clearTimeout(timer)
