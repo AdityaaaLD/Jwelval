@@ -10,7 +10,7 @@ async function buildPdfBlobFromElement(element, excludeSelectors = []) {
 
   // Temporarily remove mobile transform/scale on the live element so html2canvas
   // captures it at full A4 width. html2canvas clones internally — we use onclone
-  // to further modify the clone (remove excluded pages, set widths, remove transforms).
+  // to inject print-equivalent CSS into the clone.
   const savedTransform = element.style.transform
   const savedWidth = element.style.width
   const savedMaxWidth = element.style.maxWidth
@@ -30,48 +30,57 @@ async function buildPdfBlobFromElement(element, excludeSelectors = []) {
           backgroundColor: '#ffffff',
           logging: false,
           onclone: (clonedDoc) => {
-            // Hide the app root to avoid any interference
-            const root = clonedDoc.querySelector('#root')
-            if (root) root.style.display = 'none'
-
-            // Neutralize .print-overlay — remove fixed positioning and dark background
-            clonedDoc.querySelectorAll('.print-overlay').forEach((n) => {
-              n.style.position = 'static'
-              n.style.inset = 'auto'
-              n.style.zIndex = 'auto'
-              n.style.background = 'none'
-            })
-
-            // Neutralize .print-preview-scroll — remove overflow clipping and height constraint
-            clonedDoc.querySelectorAll('.print-preview-scroll').forEach((n) => {
-              n.style.height = 'auto'
-              n.style.overflow = 'visible'
-              n.style.padding = '0'
-            })
-
-            // Remove any mobile transform/scale on .print-preview-center
-            clonedDoc.querySelectorAll('.print-preview-center').forEach((n) => {
-              n.style.transform = 'none'
-              n.style.width = `${A4_WIDTH_PX}px`
-              n.style.maxWidth = 'none'
-              n.style.margin = '0'
-            })
-
-            // Set explicit A4 pixel width on all .print-page elements, remove screen-only styles
-            clonedDoc.querySelectorAll('.print-page').forEach((p) => {
-              p.style.width = `${A4_WIDTH_PX}px`
-              p.style.boxShadow = 'none'
-            })
+            // Inject a style tag that mirrors the exact @media print rules from print.css
+            // This ensures the clone renders with the same layout as the browser's print output
+            const style = clonedDoc.createElement('style')
+            style.textContent = `
+              html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; }
+              #root { display: none !important; }
+              .no-print, .print-modal-toolbar { display: none !important; }
+              #print-portal { position: static !important; background: none !important; z-index: auto !important; }
+              .print-overlay { position: static !important; inset: auto !important; z-index: auto !important; background: none !important; }
+              .print-preview-scroll { overflow: visible !important; padding: 0 !important; height: auto !important; }
+              .print-preview-center { margin: 0 !important; width: ${A4_WIDTH_PX}px !important; max-width: none !important; transform: none !important; }
+              .print-page { width: ${A4_WIDTH_PX}px !important; min-height: auto !important; padding: 0 !important; box-shadow: none !important; page-break-after: always; }
+              .print-page:last-child { page-break-after: auto; }
+              .fee-receipt { box-shadow: none !important; }
+              .print-page-break { page-break-after: always; }
+              .print-avoid-break,
+              .verification-block,
+              .signature-grid,
+              .dc-photos,
+              .dc-photo-box,
+              .dc-row-box,
+              .dc-table,
+              .dc-table thead,
+              .dc-table tbody,
+              .dc-table tfoot,
+              .dc-table tr,
+              .certificate-rules,
+              .ornament-strip,
+              .ornament-strip img,
+              .print-photo,
+              .print-table,
+              .print-table thead,
+              .print-table tbody,
+              .print-table tfoot,
+              .print-table tr,
+              .sb-table,
+              .sb-table thead,
+              .sb-table tbody,
+              .sb-table tr {
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+              }
+              .sb-page { width: ${A4_WIDTH_PX}px !important; min-height: auto !important; padding: 0 !important; box-shadow: none !important; page-break-after: auto; }
+              .sb-table tbody tr:hover { background: none !important; }
+            `
+            clonedDoc.head.appendChild(style)
 
             // Remove excluded sections (e.g. KYC page .dc-page2)
             for (const selector of excludeSelectors) {
               clonedDoc.querySelectorAll(selector).forEach((n) => n.remove())
             }
-
-            // Hide the toolbar in the clone
-            clonedDoc.querySelectorAll('.no-print, .print-modal-toolbar').forEach((n) => {
-              n.style.display = 'none'
-            })
           },
         },
         jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
