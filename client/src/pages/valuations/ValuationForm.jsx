@@ -160,6 +160,9 @@ export default function ValuationForm() {
 
   const save = async (preview = false) => {
     if (!form.customerId) return toast.error('Select a customer.')
+    if (!form.bankPresetId) return toast.error('Select a bank format.')
+    if (!String(form.branch || '').trim()) return toast.error('Branch is required.')
+    if (!form.jewelleryPhoto) return toast.error('Jewellery photo is required.')
     if (!Number(form.goldRate22k)) return toast.error('Enter the 22K gold rate.')
     if (!form.items.some((item) => item.description && Number(item.netWeightGm) > 0)) {
       return toast.error('Add at least one ornament item.')
@@ -323,7 +326,7 @@ export default function ValuationForm() {
       <section className="card p-5">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="xl:col-span-2">
-            <label className="label">Select Customer</label>
+            <label className="label">Select Customer *</label>
             <select className="input" value={form.customerId} onChange={(e) => {
               const cId = e.target.value
               setField('customerId', cId)
@@ -363,14 +366,14 @@ export default function ValuationForm() {
             <p className="mt-1 text-xs text-slate-500">Controls the generated valuation number.</p>
           </div>
           <div>
-            <label className="label">Bank Format</label>
+            <label className="label">Bank Format *</label>
             <select className="input" onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
               <option value="">Select bank format</option>
               {bankPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.bankName} - {preset.branch}</option>)}
             </select>
           </div>
           <div>
-            <label className="label">Branch</label>
+            <label className="label">Branch *</label>
             <input className="input" value={form.branch} onChange={(e) => setField('branch', e.target.value)} disabled={disabled} />
           </div>
           <div>
@@ -614,7 +617,7 @@ export default function ValuationForm() {
 
       <section className="card p-5">
         <div className="mb-4">
-          <h2 className="font-semibold text-slate-950">Jewellery Photos</h2>
+          <h2 className="font-semibold text-slate-950">Jewellery Photos *</h2>
           <p className="text-sm text-slate-500">Capture jewellery images for valuation records.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">

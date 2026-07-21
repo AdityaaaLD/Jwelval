@@ -20,12 +20,25 @@ function forcePageWidthForCapture(container) {
 
 function cloneForPdfCapture(element, excludeSelectors = []) {
   const clone = element.cloneNode(true)
-  clone.style.position = 'fixed'
-  clone.style.left = '-99999px'
+  clone.style.position = 'absolute'
+  clone.style.left = '0'
   clone.style.top = '0'
-  clone.style.zIndex = '-1'
+  clone.style.opacity = '0'
+  clone.style.pointerEvents = 'none'
+  clone.style.zIndex = '0'
   clone.style.background = '#fff'
+  clone.style.transform = 'none'
+  clone.style.width = `${element.scrollWidth || element.clientWidth || A4_WIDTH_PX}px`
+  clone.style.maxWidth = 'none'
   clone.setAttribute('aria-hidden', 'true')
+
+  const scaledContainers = clone.querySelectorAll('.print-preview-center')
+  scaledContainers.forEach((node) => {
+    node.style.transform = 'none'
+    node.style.width = `${A4_WIDTH_PX}px`
+    node.style.maxWidth = 'none'
+  })
+
   for (const selector of excludeSelectors) {
     const nodes = clone.querySelectorAll(selector)
     nodes.forEach((node) => node.remove())

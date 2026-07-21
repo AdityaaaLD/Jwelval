@@ -100,6 +100,9 @@ export default function PrintDigitalCert({ valuation }) {
           <div className="dc-loan-meta-left">
             {valuation.loanType && <span><b>Loan Type:</b> {valuation.loanType}</span>}
             {valuation.rateOfInterest != null && <span className="dc-loan-rate"><b>Rate of Interest:</b> {valuation.rateOfInterest}%</span>}
+            {valuation.bankGoldRatePerGram != null && Number(valuation.bankGoldRatePerGram) > 0 && (
+              <span className="dc-recommended-rate"><b>Bank Recommended Gold Rate:</b> {inr(valuation.bankGoldRatePerGram)}/gm</span>
+            )}
             {valuation.bankRecommendedValue != null && (
               <span className="dc-recommended-loan"><b>Bank Recommended Loan Amount:</b> {inr(valuation.bankRecommendedValue)}</span>
             )}
