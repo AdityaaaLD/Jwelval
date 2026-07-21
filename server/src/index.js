@@ -145,9 +145,25 @@ app.use('/api/ocr', rateLimit, requireAuth, ocrRouter)
 if (isProd) {
   const distPath = resolve(here, '../../client/dist')
   if (existsSync(distPath)) {
-    app.use(express.static(distPath))
+    app.use(express.static(distPath, {
+      etag: true,
+      lastModified: true,
+      maxAge: 0,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('.html')) {
+          res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+          res.setHeader('Pragma', 'no-cache')
+          res.setHeader('Expires', '0')
+          return
+        }
+        res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate')
+      },
+    }))
     app.get('*', (req, res, next) => {
       if (req.path.startsWith('/api')) return next()
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+      res.setHeader('Pragma', 'no-cache')
+      res.setHeader('Expires', '0')
       res.sendFile(join(distPath, 'index.html'))
     })
   }
