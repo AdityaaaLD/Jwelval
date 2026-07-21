@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { Printer, Share2, X } from 'lucide-react'
 import { api } from '../../lib/api'
-import { createPdfFileFromElement, sharePdfFile } from '../../lib/share'
+import { createPdfFileFromElement, sharePdfFileStrict } from '../../lib/share'
 import PrintDigitalCert from './PrintDigitalCert'
 
 function Template({ valuation }) {
@@ -11,7 +11,33 @@ function Template({ valuation }) {
 }
 
 export default function PrintModal({ valuation, onClose, onLocked }) {
+  const [pdfFile, setPdfFile] = useState(null)
   const [preparingPdf, setPreparingPdf] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    const preparePdf = async () => {
+      const printable = document.querySelector('#print-portal .print-preview-center')
+      if (!printable) return
+      setPreparingPdf(true)
+      try {
+        const file = await createPdfFileFromElement({
+          element: printable,
+          fileBaseName: `${valuation?.valuationNumber || 'valuation-report'}`,
+        })
+        if (!cancelled) setPdfFile(file)
+      } catch {
+        if (!cancelled) setPdfFile(null)
+      } finally {
+        if (!cancelled) setPreparingPdf(false)
+      }
+    }
+    const timer = setTimeout(preparePdf, 150)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [valuation?.id, valuation?.valuationNumber])
 
   const lockAfterPrint = async () => {
     if (valuation.status === 'DRAFT') onLocked?.(await api.valuations.markPrinted(valuation.id))
@@ -23,34 +49,27 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
   }
 
   const handleSharePdf = async () => {
-    const printable = document.querySelector('#print-portal .print-preview-center')
-    if (!printable) {
-      toast.error('Print content not found.')
+    if (preparingPdf) {
+      toast.loading('Preparing PDF for sharing...', { id: 'pdf-share-prepare' })
       return
     }
-    setPreparingPdf(true)
-    const toastId = toast.loading('Generating PDF...')
+    if (!(pdfFile instanceof File)) {
+      toast.error('PDF is not ready for native sharing yet. Please wait a moment and try again.')
+      return
+    }
     try {
-      const file = await createPdfFileFromElement({
-        element: printable,
-        fileBaseName: `${valuation?.valuationNumber || 'valuation-report'}`,
-        excludeSelectors: ['.dc-page2'],
-      })
-      await sharePdfFile({
-        file,
+      toast.dismiss('pdf-share-prepare')
+      await sharePdfFileStrict({
+        file: pdfFile,
         shareTitle: `Valuation Report ${valuation?.valuationNumber || ''}`,
         shareText: `Valuation report ${valuation?.valuationNumber || ''}`,
       })
       await lockAfterPrint()
-      toast.success('PDF shared successfully.', { id: toastId })
+      toast.success('PDF shared successfully.')
     } catch (error) {
-      if (error?.name === 'AbortError') {
-        toast.dismiss(toastId)
-        return
-      }
-      toast.error(error?.message || 'Failed to share PDF. Please try again.', { id: toastId })
-    } finally {
-      setPreparingPdf(false)
+      toast.dismiss('pdf-share-prepare')
+      if (error?.name === 'AbortError') return
+      toast.error(error?.message || 'Failed to share PDF. Please try again.')
     }
   }
 
