@@ -38,32 +38,43 @@ async function buildPdfBlobFromElement(element) {
   }
 }
 
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  URL.revokeObjectURL(url)
-}
-
-export async function sharePdfFromElement({ element, fileBaseName, shareTitle, shareText }) {
+export async function createPdfFileFromElement({ element, fileBaseName }) {
   if (!element) throw new Error('Print content not found for PDF export.')
   const blob = await buildPdfBlobFromElement(element)
   const filename = makeFilename(fileBaseName)
-  const file = new File([blob], filename, { type: 'application/pdf' })
+  const canCreateFile = typeof File !== 'undefined'
+  if (canCreateFile) return new File([blob], filename, { type: 'application/pdf' })
+  return { blob, filename, type: 'application/pdf' }
+}
 
-  if (navigator.share && navigator.canShare?.({ files: [file] })) {
-    await navigator.share({
-      title: shareTitle || 'Valuation Report',
-      text: shareText || 'Please find attached valuation report PDF.',
-      files: [file],
-    })
-    return { shared: true }
+export async function sharePdfFileStrict({ file, shareTitle, shareText }) {
+  if (!navigator.share) throw new Error('Native share is not supported on this browser.')
+  if (!file) throw new Error('PDF file is not ready yet. Please try again.')
+
+  const sharePayload = {
+    title: shareTitle || 'Valuation Report',
+    text: shareText || 'Please find attached valuation report PDF.',
+    files: [file],
   }
 
-  downloadBlob(blob, filename)
-  return { shared: false }
+  if (typeof navigator.canShare === 'function' && !navigator.canShare({ files: [file] })) {
+    throw new Error('This browser cannot share PDF files directly. Please use a browser that supports file sharing.')
+  }
+
+  await navigator.share(sharePayload)
+  return { shared: true }
+}
+
+export async function sharePdfFromElement({ element, fileBaseName, shareTitle, shareText }) {
+  const file = await createPdfFileFromElement({ element, fileBaseName })
+  if (!(file instanceof File)) {
+    throw new Error('This browser does not support direct file sharing for PDF.')
+  }
+
+  try {
+    return await sharePdfFileStrict({ file, shareTitle, shareText })
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error
+    throw error
+  }
 }
