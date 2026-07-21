@@ -131,34 +131,44 @@ export async function createPdfFileFromElement({ element, fileBaseName, excludeS
   return { blob, filename, type: 'application/pdf' }
 }
 
-export async function sharePdfFileStrict({ file, shareTitle, shareText }) {
-  if (!navigator.share) throw new Error('Native share is not supported on this browser.')
-  if (!file) throw new Error('PDF file is not ready yet. Please try again.')
+export async function sharePdfFile({ file, shareTitle, shareText }) {
+  const filename = file instanceof File ? file.name : (file?.filename || 'valuation-report.pdf')
+  const actualFile = file instanceof File ? file : null
 
-  const sharePayload = {
-    title: shareTitle || 'Valuation Report',
-    text: shareText || 'Please find attached valuation report PDF.',
-    files: [file],
+  // Try native share with file attachment first
+  if (actualFile && typeof navigator.share === 'function') {
+    const sharePayload = {
+      title: shareTitle || 'Valuation Report',
+      text: shareText || 'Please find attached valuation report PDF.',
+      files: [actualFile],
+    }
+
+    if (typeof navigator.canShare !== 'function' || navigator.canShare({ files: [actualFile] })) {
+      try {
+        await navigator.share(sharePayload)
+        return { shared: true }
+      } catch (err) {
+        if (err?.name === 'AbortError') throw err
+        // Fall through to download fallback
+      }
+    }
   }
 
-  if (typeof navigator.canShare === 'function' && !navigator.canShare({ files: [file] })) {
-    throw new Error('This browser cannot share PDF files directly. Please use a browser that supports file sharing.')
-  }
-
-  await navigator.share(sharePayload)
-  return { shared: true }
+  // Fallback: download the PDF file
+  const blob = actualFile || file?.blob
+  if (!blob) throw new Error('PDF file could not be generated.')
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return { shared: false, downloaded: true }
 }
 
 export async function sharePdfFromElement({ element, fileBaseName, shareTitle, shareText, excludeSelectors = [] }) {
   const file = await createPdfFileFromElement({ element, fileBaseName, excludeSelectors })
-  if (!(file instanceof File)) {
-    throw new Error('This browser does not support direct file sharing for PDF.')
-  }
-
-  try {
-    return await sharePdfFileStrict({ file, shareTitle, shareText })
-  } catch (error) {
-    if (error?.name === 'AbortError') throw error
-    throw error
-  }
+  return sharePdfFile({ file, shareTitle, shareText })
 }
