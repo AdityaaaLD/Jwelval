@@ -45,7 +45,7 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
     <div id="print-portal" className="print-overlay">
       <div className="print-modal-toolbar no-print">
         <button type="button" className="btn-secondary" onClick={onClose}><X size={16} /> Close</button>
-        <button type="button" className="btn-secondary" onClick={handleSharePdf}><Share2 size={16} /> Share PDF</button>
+        <button type="button" className="btn-secondary" onClick={handleSharePdf}><Share2 size={16} /> Share as PDF</button>
         <button type="button" className="btn-primary" onClick={handlePrint}><Printer size={16} /> Print / Save PDF</button>
       </div>
       <div className="print-preview-scroll">

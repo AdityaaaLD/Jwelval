@@ -39,6 +39,12 @@
 .dc-header-line:first-child,
 .dc-header-line:first-child b { color: #b8860b; }
 .dc-header-line:not(:first-child) { color: #b91c1c; }
+.digital-cert,
+.dc-header-box,
+.dc-header-line {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
 .dc-row-box { border: 1px solid #000; border-top: 0; padding: 3px 7px; font-size: 10.8px; margin: 0; }
 .dc-row-split { display: flex; justify-content: space-between; }
 .dc-parties { display: grid; grid-template-columns: 36% 64%; }

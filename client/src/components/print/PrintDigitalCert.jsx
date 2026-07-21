@@ -39,14 +39,14 @@ export default function PrintDigitalCert({ valuation }) {
             <QrImage text={verificationUrl(valuation.valuationNumber)} className="dc-header-qr-image" />
             <p>Scan &amp; Verify</p>
           </div>
-          <p className="dc-header-line" style={{ fontSize: '18px', letterSpacing: '1px' }}><b>{(profile?.business_name || 'JEWELLERS').toUpperCase()}</b></p>
-          <p className="dc-header-line">Proprietor, {profile?.appraiser_name || ''}, {profile?.qualification || 'Government Approved Gold Appaisal'}</p>
-          {profile?.organization && <p className="dc-header-line">({profile.organization})</p>}
-          <p className="dc-header-line">{profile?.address || ''}</p>
-          {profile?.cert_number && <p className="dc-header-line">No. {profile.cert_number}</p>}
-          <p className="dc-header-line">{[profile?.mobile ? `Mob: ${profile.mobile}` : '', profile?.email || ''].filter(Boolean).join(' | ')}{profile?.gstn ? ` | GSTN: ${profile.gstn}` : ''}</p>
-          {profile?.bank_account_number && <p className="dc-header-line">Bank A/C: {profile.bank_account_number}</p>}
-          {empanelmentId && <p className="dc-header-line">(Digital ID of Empanelment: {empanelmentId})</p>}
+          <p className="dc-header-line" style={{ fontSize: '18px', letterSpacing: '1px', color: '#b8860b' }}><b>{(profile?.business_name || 'JEWELLERS').toUpperCase()}</b></p>
+          <p className="dc-header-line" style={{ color: '#b91c1c' }}>Proprietor, {profile?.appraiser_name || ''}, {profile?.qualification || 'Government Approved Gold Appaisal'}</p>
+          {profile?.organization && <p className="dc-header-line" style={{ color: '#b91c1c' }}>({profile.organization})</p>}
+          <p className="dc-header-line" style={{ color: '#b91c1c' }}>{profile?.address || ''}</p>
+          {profile?.cert_number && <p className="dc-header-line" style={{ color: '#b91c1c' }}>No. {profile.cert_number}</p>}
+          <p className="dc-header-line" style={{ color: '#b91c1c' }}>{[profile?.mobile ? `Mob: ${profile.mobile}` : '', profile?.email || ''].filter(Boolean).join(' | ')}{profile?.gstn ? ` | GSTN: ${profile.gstn}` : ''}</p>
+          {profile?.bank_account_number && <p className="dc-header-line" style={{ color: '#b91c1c' }}>Bank A/C: {profile.bank_account_number}</p>}
+          {empanelmentId && <p className="dc-header-line" style={{ color: '#b91c1c' }}>(Digital ID of Empanelment: {empanelmentId})</p>}
         </header>
 
         <div className="dc-row-box">
