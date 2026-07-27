@@ -27,6 +27,7 @@ import { requireAuth } from './middleware/auth.js'
 import { authRateLimit, rateLimit, subscriptionRateLimit } from './middleware/rateLimit.js'
 import { getMailerHealth, validateMailerConfiguration } from './mailer.js'
 import { logEvent, logErrorEvent } from './lib/logger.js'
+import { shutdownPdfRenderer } from './lib/pdfRenderer.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -199,7 +200,8 @@ async function bootstrap() {
 
     server.keepAliveTimeout = 65000
     server.headersTimeout = 66000
-    server.requestTimeout = 30000
+    // PDF rendering runs headless Chrome and can legitimately take a while.
+    server.requestTimeout = Number(process.env.REQUEST_TIMEOUT_MS || 150000)
 
     if (memoryLogIntervalMs > 0) {
       memoryLogTimer = setInterval(() => {
@@ -240,9 +242,10 @@ const shutdown = (signal) => {
     process.exit(0)
     return
   }
-  server.close(() => {
+  server.close(async () => {
     try {
       if (memoryLogTimer) clearInterval(memoryLogTimer)
+      await shutdownPdfRenderer()
       closeDatabaseConnection()
     } catch {}
     process.exit(0)

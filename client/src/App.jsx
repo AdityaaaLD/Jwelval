@@ -25,6 +25,7 @@ import VerifyCertificate from './pages/VerifyCertificate'
 import Login from './pages/Login'
 import Subscribe from './pages/Subscribe'
 import ManageUsers from './pages/admin/ManageUsers'
+import PrintRender from './pages/PrintRender'
 
 function AppShell({ children }) {
   return (
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/subscribe" element={<Subscribe />} />
           <Route path="/verify/:number" element={<VerifyCertificate />} />
+          <Route path="/print/valuation/:id" element={<PrintRender />} />
 
           <Route path="/dashboard" element={<AppShell><Dashboard /></AppShell>} />
           <Route path="/customers" element={<AppShell><CustomerList /></AppShell>} />

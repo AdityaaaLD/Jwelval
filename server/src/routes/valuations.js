@@ -6,8 +6,21 @@ import { valuations, valuationItems, customers, valuationSeries, payments } from
 import { reserveNextValuationNumber } from '../lib/numbering.js'
 import { deriveItem, totalsFromItems, LOAN_LTV } from '../lib/compute.js'
 import { ensureDefaultValuationSeriesForUser } from '../lib/defaultValuationSeries.js'
+import { renderUrlToPdf } from '../lib/pdfRenderer.js'
+import { logEvent, logErrorEvent } from '../lib/logger.js'
 
 const router = Router()
+
+const PDF_REQUEST_TIMEOUT_MS = Number(process.env.PDF_REQUEST_TIMEOUT_MS || 120000)
+
+function printBaseUrl() {
+  const configured = String(process.env.PDF_BASE_URL || '').trim()
+  if (configured) return configured.replace(/\/+$/, '')
+  const port = parseInt(process.env.PORT || '3001', 10)
+  return process.env.NODE_ENV === 'production'
+    ? `http://127.0.0.1:${port}`
+    : 'http://127.0.0.1:5173'
+}
 
 for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN bank_gold_rate_per_gram REAL',
@@ -128,6 +141,38 @@ router.get('/:id', async (req, res) => {
   const [v] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   if (!v) return res.status(404).json({ error: 'Not found' })
   res.json(await hydrate(v))
+})
+
+router.get('/:id/pdf', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  const userId = req.user.id
+  const [v] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
+  if (!v) return res.status(404).json({ error: 'NOT_FOUND', message: 'Valuation not found.' })
+
+  req.setTimeout(PDF_REQUEST_TIMEOUT_MS)
+  res.setTimeout(PDF_REQUEST_TIMEOUT_MS)
+
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+  const url = `${printBaseUrl()}/print/valuation/${id}`
+  const startedAt = Date.now()
+
+  try {
+    const pdf = await renderUrlToPdf({ url, authToken: token })
+    const safeName = String(v.valuationNumber || `valuation-${id}`).replace(/[^a-z0-9-_]+/gi, '_')
+    logEvent('PDF_GENERATED', { valuationId: id, bytes: pdf.length, ms: Date.now() - startedAt })
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Length', String(pdf.length))
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}.pdf"`)
+    res.setHeader('Cache-Control', 'no-store')
+    return res.end(pdf)
+  } catch (error) {
+    logErrorEvent('PDF_GENERATION_FAILED', error, { valuationId: id, url, ms: Date.now() - startedAt })
+    const status = error.code === 'PDF_BROWSER_MISSING' || error.code === 'PDF_ENGINE_MISSING' ? 503 : 500
+    return res.status(status).json({
+      error: error.code || 'PDF_FAILED',
+      message: 'Could not generate the PDF right now. Please try again.',
+    })
+  }
 })
 
 router.post(

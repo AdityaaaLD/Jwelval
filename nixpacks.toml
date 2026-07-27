@@ -1,5 +1,21 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "python3", "gcc", "gnumake", "pkg-config"]
+nixPkgs = [
+  "nodejs_20",
+  "python3",
+  "gcc",
+  "gnumake",
+  "pkg-config",
+  "chromium",
+  "fontconfig",
+  "freetype",
+  "liberation_ttf",
+  "dejavu_fonts",
+]
+
+[variables]
+# Puppeteer uses the Chromium provided by Nix instead of downloading its own.
+PUPPETEER_SKIP_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/nix/var/nix/profiles/default/bin/chromium"
 
 [phases.install]
 cmds = ["npm install --workspaces --include-workspace-root"]

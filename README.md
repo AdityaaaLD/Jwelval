@@ -111,7 +111,24 @@ ALLOW_STUB_MAILER_IN_PROD=false
 SUBSCRIPTION_SUPPORT_EMAIL=support@logic-motive.com
 SUBSCRIPTION_RATE_LIMIT_WINDOW_MS=900000
 SUBSCRIPTION_RATE_LIMIT_MAX_REQS=20
+
+# Server-side PDF rendering (headless Chrome)
+# Leave PUPPETEER_EXECUTABLE_PATH unset to auto-detect Chromium/Chrome.
+PUPPETEER_EXECUTABLE_PATH=
+# Origin the renderer loads the print page from (defaults to the local server).
+PDF_BASE_URL=
+PDF_MAX_CONCURRENCY=2
+PDF_REQUEST_TIMEOUT_MS=120000
 ```
+
+### Valuation PDF generation
+
+Shared PDFs are rendered on the server with headless Chrome so the output is
+identical on every device and browser. `GET /api/valuations/:id/pdf` loads the
+authenticated print page at `/print/valuation/:id`, waits for the report to
+finish rendering, and returns the PDF produced by Chrome's own print engine.
+The deployment must therefore have Chromium available — `nixpacks.toml`
+installs it, and the renderer falls back to any Chrome/Chromium found on `PATH`.
 
 Mailer behavior:
 - `MAIL_PROVIDER=sendgrid`: force SendGrid

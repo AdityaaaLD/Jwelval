@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { Printer, Share2, X } from 'lucide-react'
 import { api } from '../../lib/api'
-import { createPdfFileFromElement, sharePdfFileStrict } from '../../lib/share'
+import { fetchValuationPdf, sharePdf } from '../../lib/share'
 import PrintDigitalCert from './PrintDigitalCert'
 
 function Template({ valuation }) {
@@ -11,94 +11,82 @@ function Template({ valuation }) {
 }
 
 export default function PrintModal({ valuation, onClose, onLocked }) {
-  const [pdfFile, setPdfFile] = useState(null)
-  const [preparingPdf, setPreparingPdf] = useState(false)
+  const [pdf, setPdf] = useState(null)
+  const [preparing, setPreparing] = useState(false)
+  const [sharing, setSharing] = useState(false)
+  const abortRef = useRef(null)
 
+  const fileBaseName = valuation?.valuationNumber || `valuation-${valuation?.id || 'report'}`
+
+  // Warm the PDF up front so the share sheet can open inside the user's tap
+  // gesture, which is required by Safari and some Android browsers.
   useEffect(() => {
+    if (!valuation?.id) return undefined
+    const controller = new AbortController()
+    abortRef.current = controller
     let cancelled = false
-    const preparePdf = async () => {
-      const printable = document.querySelector('#print-portal .print-preview-center')
-      if (!printable) return
-      setPreparingPdf(true)
-      try {
-        const file = await createPdfFileFromElement({
-          element: printable,
-          fileBaseName: `${valuation?.valuationNumber || 'valuation-report'}`,
-        })
-        if (!cancelled) setPdfFile(file)
-      } catch {
-        if (!cancelled) setPdfFile(null)
-      } finally {
-        if (!cancelled) setPreparingPdf(false)
-      }
-    }
-    const timer = setTimeout(preparePdf, 800)
+
+    setPreparing(true)
+    fetchValuationPdf({ valuationId: valuation.id, fileBaseName, signal: controller.signal })
+      .then((result) => { if (!cancelled) setPdf(result) })
+      .catch(() => { if (!cancelled) setPdf(null) })
+      .finally(() => { if (!cancelled) setPreparing(false) })
+
     return () => {
       cancelled = true
-      clearTimeout(timer)
+      controller.abort()
     }
-  }, [valuation?.id, valuation?.valuationNumber])
+  }, [valuation?.id, fileBaseName])
 
   const lockAfterPrint = async () => {
     if (valuation.status === 'DRAFT') onLocked?.(await api.valuations.markPrinted(valuation.id))
   }
+
   const handlePrint = async () => {
     window.print()
     await lockAfterPrint()
     toast.success('Document sent to print / saved as PDF.')
   }
 
-  const handleSharePdf = async () => {
-    if (preparingPdf) {
-      toast.loading('Preparing PDF for sharing...', { id: 'pdf-share-prepare' })
-      return
-    }
-    let file = pdfFile
-    if (!(file instanceof File)) {
-      const printable = document.querySelector('#print-portal .print-preview-center')
-      if (!printable) {
-        toast.error('Print content not found. Please reopen the print preview.')
-        return
-      }
-      setPreparingPdf(true)
-      try {
-        file = await createPdfFileFromElement({
-          element: printable,
-          fileBaseName: `${valuation?.valuationNumber || 'valuation-report'}`,
-        })
-        setPdfFile(file)
-      } catch (error) {
-        toast.error(error?.message || 'Could not generate the PDF. Please try again.')
-        return
-      } finally {
-        setPreparingPdf(false)
-      }
-    }
-    if (!(file instanceof File)) {
-      toast.error('PDF is not ready for native sharing yet. Please wait a moment and try again.')
-      return
-    }
+  const handleShare = async () => {
+    if (sharing) return
+    setSharing(true)
+    const toastId = 'pdf-share'
     try {
-      toast.dismiss('pdf-share-prepare')
-      await sharePdfFileStrict({
-        file,
-        shareTitle: `Valuation Report ${valuation?.valuationNumber || ''}`,
-        shareText: `Valuation report ${valuation?.valuationNumber || ''}`,
+      let ready = pdf
+      if (!ready) {
+        toast.loading('Preparing PDF...', { id: toastId })
+        ready = await fetchValuationPdf({ valuationId: valuation.id, fileBaseName })
+        setPdf(ready)
+      }
+      const { method } = await sharePdf({
+        pdf: ready,
+        shareTitle: `Valuation Report ${valuation?.valuationNumber || ''}`.trim(),
+        shareText: `Valuation report ${valuation?.valuationNumber || ''}`.trim(),
       })
+      toast.dismiss(toastId)
       await lockAfterPrint()
-      toast.success('PDF shared successfully.')
+      if (method === 'share') toast.success('PDF shared successfully.')
+      else if (method === 'download') toast.success('PDF downloaded. You can now attach it anywhere.')
+      else toast.success('PDF opened. Use your browser share option to send it.')
     } catch (error) {
-      toast.dismiss('pdf-share-prepare')
+      toast.dismiss(toastId)
       if (error?.name === 'AbortError') return
       toast.error(error?.message || 'Failed to share PDF. Please try again.')
+    } finally {
+      setSharing(false)
     }
   }
+
+  const shareLabel = sharing ? 'Sharing...' : preparing ? 'Preparing PDF...' : 'Share as PDF'
 
   return createPortal(
     <div id="print-portal" className="print-overlay">
       <div className="print-modal-toolbar no-print">
         <button type="button" className="btn-secondary" onClick={onClose}><X size={16} /> Close</button>
-        <button type="button" className="btn-secondary" onClick={handleSharePdf} disabled={preparingPdf}><Share2 size={16} /> {preparingPdf ? 'Preparing PDF...' : 'Share as PDF'}</button>
+        <button type="button" className="btn-secondary" onClick={handleShare} disabled={sharing}>
+          <Share2 size={16} /> {shareLabel}
+        </button>
         <button type="button" className="btn-primary" onClick={handlePrint}><Printer size={16} /> Print / Save PDF</button>
       </div>
       <div className="print-preview-scroll">
