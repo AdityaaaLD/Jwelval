@@ -32,7 +32,7 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
         if (!cancelled) setPreparingPdf(false)
       }
     }
-    const timer = setTimeout(preparePdf, 150)
+    const timer = setTimeout(preparePdf, 800)
     return () => {
       cancelled = true
       clearTimeout(timer)
@@ -53,14 +53,35 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
       toast.loading('Preparing PDF for sharing...', { id: 'pdf-share-prepare' })
       return
     }
-    if (!(pdfFile instanceof File)) {
+    let file = pdfFile
+    if (!(file instanceof File)) {
+      const printable = document.querySelector('#print-portal .print-preview-center')
+      if (!printable) {
+        toast.error('Print content not found. Please reopen the print preview.')
+        return
+      }
+      setPreparingPdf(true)
+      try {
+        file = await createPdfFileFromElement({
+          element: printable,
+          fileBaseName: `${valuation?.valuationNumber || 'valuation-report'}`,
+        })
+        setPdfFile(file)
+      } catch (error) {
+        toast.error(error?.message || 'Could not generate the PDF. Please try again.')
+        return
+      } finally {
+        setPreparingPdf(false)
+      }
+    }
+    if (!(file instanceof File)) {
       toast.error('PDF is not ready for native sharing yet. Please wait a moment and try again.')
       return
     }
     try {
       toast.dismiss('pdf-share-prepare')
       await sharePdfFileStrict({
-        file: pdfFile,
+        file,
         shareTitle: `Valuation Report ${valuation?.valuationNumber || ''}`,
         shareText: `Valuation report ${valuation?.valuationNumber || ''}`,
       })

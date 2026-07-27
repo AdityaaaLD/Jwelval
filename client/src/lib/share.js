@@ -20,16 +20,20 @@ function forcePageWidthForCapture(container) {
 
 function cloneForPdfCapture(element, excludeSelectors = []) {
   const clone = element.cloneNode(true)
+  // NOTE: never use opacity:0 here — html2canvas honours it and renders a blank page.
+  // Keep the clone fully opaque and simply park it outside the viewport.
   clone.style.position = 'absolute'
-  clone.style.left = '0'
+  clone.style.left = '-100000px'
   clone.style.top = '0'
-  clone.style.opacity = '0'
+  clone.style.opacity = '1'
+  clone.style.visibility = 'visible'
   clone.style.pointerEvents = 'none'
   clone.style.zIndex = '0'
   clone.style.background = '#fff'
   clone.style.transform = 'none'
-  clone.style.width = `${element.scrollWidth || element.clientWidth || A4_WIDTH_PX}px`
+  clone.style.width = `${A4_WIDTH_PX}px`
   clone.style.maxWidth = 'none'
+  clone.style.margin = '0'
   clone.setAttribute('aria-hidden', 'true')
 
   const scaledContainers = clone.querySelectorAll('.print-preview-center')
@@ -44,20 +48,64 @@ function cloneForPdfCapture(element, excludeSelectors = []) {
     nodes.forEach((node) => node.remove())
   }
   document.body.appendChild(clone)
-  return () => clone
+  return clone
+}
+
+async function waitForImages(container) {
+  const images = Array.from(container.querySelectorAll('img'))
+  await Promise.all(
+    images.map((img) => {
+      if (img.complete && img.naturalWidth > 0) return Promise.resolve()
+      return new Promise((resolve) => {
+        const done = () => resolve()
+        img.addEventListener('load', done, { once: true })
+        img.addEventListener('error', done, { once: true })
+        setTimeout(done, 8000)
+      })
+    })
+  )
+  if (typeof document !== 'undefined' && document.fonts?.ready) {
+    try { await document.fonts.ready } catch { /* fonts are optional */ }
+  }
 }
 
 async function buildPdfBlobFromElement(element) {
   const { default: html2pdf } = await import('html2pdf.js')
   const restore = forcePageWidthForCapture(element)
   try {
+    await waitForImages(element)
     return await html2pdf()
       .set({
         margin: 0,
         filename: 'valuation-report.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false },
-        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: '#ffffff',
+          logging: false,
+          imageTimeout: 15000,
+          scrollX: 0,
+          scrollY: 0,
+          windowWidth: Math.max(A4_WIDTH_PX + 80, window.innerWidth || 0),
+          onclone: (clonedDoc) => {
+            clonedDoc.querySelectorAll('.print-preview-center').forEach((node) => {
+              node.style.transform = 'none'
+              node.style.opacity = '1'
+              node.style.visibility = 'visible'
+              node.style.width = `${A4_WIDTH_PX}px`
+              node.style.maxWidth = 'none'
+            })
+            clonedDoc.querySelectorAll('.print-page').forEach((node) => {
+              node.style.opacity = '1'
+              node.style.visibility = 'visible'
+              node.style.boxShadow = 'none'
+              node.style.width = `${A4_WIDTH_PX}px`
+            })
+          },
+        },
+        jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait', compress: true },
         pagebreak: { mode: ['css', 'legacy'] },
       })
       .from(element)
@@ -69,14 +117,14 @@ async function buildPdfBlobFromElement(element) {
 
 export async function createPdfFileFromElement({ element, fileBaseName, excludeSelectors = [] }) {
   if (!element) throw new Error('Print content not found for PDF export.')
-  const getCaptureElement = cloneForPdfCapture(element, excludeSelectors)
-  const captureElement = getCaptureElement()
+  const captureElement = cloneForPdfCapture(element, excludeSelectors)
   let blob
   try {
     blob = await buildPdfBlobFromElement(captureElement)
   } finally {
     captureElement.remove()
   }
+  if (!blob || blob.size < 2048) throw new Error('Generated PDF looked empty. Please retry sharing.')
   const filename = makeFilename(fileBaseName)
   const canCreateFile = typeof File !== 'undefined'
   if (canCreateFile) return new File([blob], filename, { type: 'application/pdf' })
