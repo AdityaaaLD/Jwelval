@@ -72,10 +72,32 @@
 .dc-party-to { flex: 1; }
 .dc-inline-photos { display: flex; align-items: flex-end; justify-content: flex-end; gap: 6px; }
 .dc-inline-photo-box { flex: 0 0 auto; }
+/* Paged certificate: the ornament table's column headers repeat via <thead>,
+   while the tall letterhead block and the signature block are printed as fixed
+   running elements (see the @media print rules). */
+.dc-paged-table { width: 100%; border-collapse: collapse; }
+.dc-paged-table > thead { display: table-header-group; }
+.dc-cert-text-cell {
+  border: 0 !important;
+  padding: 5px 0 0 !important;
+  background: #fff !important;
+  color: #111827 !important;
+  font-weight: 400 !important;
+  font-size: 11.1px;
+  text-align: left !important;
+  vertical-align: top;
+}
+.dc-table-fixed { table-layout: fixed; }
+.dc-running-head { flex: 0 0 auto; padding-bottom: 3px; }
+.dc-running-foot { flex: 0 0 auto; }
+.dc-page-body { flex: 1 1 auto; min-height: 0; }
+.dc-total-row td { font-weight: 700; }
+/* Off-screen sizing pass used to work out where the page breaks fall. */
+.dc-measure { position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
+
 .dc-signature { margin-top: 12px; }
 .dc-signature p { margin: 0; }
 .dc-sign-space { height: 18mm; }
-.dc-signature-footer { margin-top: auto; padding-top: 4mm; }
 .digital-cert .signature-grid { margin-top: 2px; padding-top: 6mm; gap: 6px; }
 .digital-cert .signature-box { min-height: 12mm; font-size: 9.8px; padding-top: 2px; }
 
@@ -284,15 +306,28 @@
   .print-page:last-child { page-break-after: auto; }
   .fee-receipt { box-shadow: none; }
   .print-page-break { page-break-after: always; }
+  /* Certificate sheets are pre-paginated by PrintDigitalCert, so each article
+     is exactly one physical page: fixed height, own margins via padding, and
+     the signature block pushed to the bottom edge. Height must stay in sync
+     with PAGE_HEIGHT_MM in PrintDigitalCert.jsx. */
+  .print-page.digital-cert {
+    display: flex;
+    flex-direction: column;
+    width: 210mm;
+    height: 296.9mm;
+    min-height: 0;
+    padding: 6mm 6.5mm;
+    overflow: hidden;
+  }
+  .dc-measure { display: none !important; }
+
   .print-avoid-break,
   .verification-block,
   .signature-grid,
   .dc-photos,
   .dc-photo-box,
   .dc-row-box,
-  .dc-table,
   .dc-table thead,
-  .dc-table tbody,
   .dc-table tfoot,
   .dc-table tr,
   .certificate-rules,

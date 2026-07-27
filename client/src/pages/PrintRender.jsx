@@ -24,6 +24,15 @@ async function waitForFonts() {
   }
 }
 
+async function waitForPageRule({ timeoutMs = 8000, intervalMs = 100 } = {}) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (document.querySelector('style[data-dc-page-rule="true"]')) return true
+    await new Promise((r) => setTimeout(r, intervalMs))
+  }
+  return false
+}
+
 function imagesSettled(root) {
   const images = Array.from(root.querySelectorAll('img'))
   if (!images.length) return false
@@ -76,6 +85,7 @@ export default function PrintRender() {
     const run = async () => {
       const root = document.getElementById('print-portal') || document.body
       await waitForStableRender(root)
+      await waitForPageRule()
       await waitForFonts()
       // one extra frame so late layout/paint work is flushed before capture
       await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)))
