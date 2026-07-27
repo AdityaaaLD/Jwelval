@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Save, Loader2 } from 'lucide-react'
 import QrImage from '../../components/QrImage'
+import WhatsAppMark from '../../components/WhatsAppMark'
 import { api } from '../../lib/api'
 import { upiUrl } from '../../lib/qr'
 
@@ -9,7 +10,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MOBILE_RE = /^[6-9]\d{9}$/
 const UPI_RE = /^[\w.+-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$/
 
-const EMPTY_FORM = { appraiserName: '', businessName: '', mobile: '', email: '', upiId: '', bankAccountNumber: '', address: '', gstn: '', qualification: '', organization: '', certNumber: '' }
+const EMPTY_FORM = { appraiserName: '', businessName: '', mobile: '', whatsappNumber: '', email: '', upiId: '', bankAccountNumber: '', address: '', gstn: '', qualification: '', organization: '', certNumber: '' }
 
 function normalizeMobile(input) {
   let digits = String(input || '').replace(/\D/g, '')
@@ -23,6 +24,8 @@ function validate(form) {
   if (!form.businessName.trim()) errors.businessName = 'Business name is required.'
   const normalizedMobile = normalizeMobile(form.mobile)
   if (normalizedMobile && !MOBILE_RE.test(normalizedMobile)) errors.mobile = 'Enter a valid 10-digit mobile number.'
+  const normalizedWhatsapp = normalizeMobile(form.whatsappNumber)
+  if (normalizedWhatsapp && !MOBILE_RE.test(normalizedWhatsapp)) errors.whatsappNumber = 'Enter a valid 10-digit WhatsApp number.'
   if (form.email.trim() && !EMAIL_RE.test(form.email.trim())) errors.email = 'Enter a valid email address.'
   if (form.upiId.trim() && !UPI_RE.test(form.upiId.trim())) errors.upiId = 'Enter a valid UPI ID (e.g. name@bank).'
   return errors
@@ -43,6 +46,7 @@ export default function AppraiserProfile() {
           appraiserName: p.appraiser_name || '',
           businessName: p.business_name || '',
           mobile: p.mobile || '',
+          whatsappNumber: p.whatsapp_number || '',
           email: p.email || '',
           upiId: p.upi_id || '',
           bankAccountNumber: p.bank_account_number || '',
@@ -69,6 +73,7 @@ export default function AppraiserProfile() {
     const normalizedForm = {
       ...form,
       mobile: normalizeMobile(form.mobile),
+      whatsappNumber: normalizeMobile(form.whatsappNumber),
       email: String(form.email || '').trim().toLowerCase(),
       upiId: String(form.upiId || '').trim().toLowerCase(),
     }
@@ -120,6 +125,22 @@ export default function AppraiserProfile() {
           <label className="label">Mobile</label>
           <input className={`input ${errors.mobile ? 'border-red-500' : ''}`} value={form.mobile} onChange={setField('mobile')} maxLength={10} />
           {errors.mobile && <p className="mt-1 text-xs text-red-600">{errors.mobile}</p>}
+        </div>
+        <div>
+          <label className="label flex items-center gap-1.5">
+            <WhatsAppMark className="h-4 w-4 text-[#25D366]" />
+            WhatsApp Number
+          </label>
+          <input
+            className={`input ${errors.whatsappNumber ? 'border-red-500' : ''}`}
+            placeholder="e.g. 9876543210"
+            value={form.whatsappNumber}
+            onChange={setField('whatsappNumber')}
+            maxLength={10}
+          />
+          {errors.whatsappNumber
+            ? <p className="mt-1 text-xs text-red-600">{errors.whatsappNumber}</p>
+            : <p className="mt-1 text-xs text-slate-500">Shown on the valuation report when filled.</p>}
         </div>
         <div>
           <label className="label">Email</label>

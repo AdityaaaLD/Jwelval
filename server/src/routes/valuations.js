@@ -4,7 +4,7 @@ import { and, eq, desc, gte, lte } from 'drizzle-orm'
 import { db, sqlite } from '../db/client.js'
 import { valuations, valuationItems, customers, valuationSeries, payments } from '../db/schema.js'
 import { reserveNextValuationNumber } from '../lib/numbering.js'
-import { deriveItem, totalsFromItems, LOAN_LTV } from '../lib/compute.js'
+import { deriveItem, totalsFromItems, bankRecommendedFromRate, LOAN_LTV } from '../lib/compute.js'
 import { ensureDefaultValuationSeriesForUser } from '../lib/defaultValuationSeries.js'
 import { renderUrlToPdf } from '../lib/pdfRenderer.js'
 import { logEvent, logErrorEvent } from '../lib/logger.js'
@@ -24,7 +24,7 @@ function printBaseUrl() {
 
 for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN bank_gold_rate_per_gram REAL',
-  'ALTER TABLE valuations ADD COLUMN bank_ltv REAL',
+  'ALTER TABLE valuations ADD COLUMN loan_ltv REAL',
   'ALTER TABLE valuations ADD COLUMN empanelment_id TEXT',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {
@@ -200,7 +200,7 @@ router.post(
         goldRate22k,
         goldRate24k,
         bankGoldRatePerGram,
-        bankLtv,
+        loanLtv,
         rateOfInterest,
         loanAmount,
         bankRecommendedValue,
@@ -269,6 +269,8 @@ router.post(
       const now = new Date().toISOString()
       const finalGoldRate24k = Number(goldRate24k) || +(Number(goldRate22k) * 24 / 22).toFixed(2)
       const finalLoan = loanAmount != null ? Number(loanAmount) : +(totals.marketValue * LOAN_LTV).toFixed(2)
+      // Derived on the server so the printed figure can never drift from the items.
+      const finalBankValue = bankRecommendedFromRate(totals.net, bankGoldRatePerGram)
 
       const [created] = await db
         .insert(valuations)
@@ -286,10 +288,12 @@ router.post(
           goldRate22k: Number(goldRate22k),
           goldRate24k: finalGoldRate24k,
           bankGoldRatePerGram: bankGoldRatePerGram != null ? Number(bankGoldRatePerGram) : null,
-          bankLtv: bankLtv != null ? Number(bankLtv) : null,
+          loanLtv: loanLtv != null ? Number(loanLtv) : null,
           marketValue: +totals.marketValue.toFixed(2),
           loanAmount: finalLoan,
-          bankRecommendedValue: bankRecommendedValue != null ? Number(bankRecommendedValue) : null,
+          bankRecommendedValue: finalBankValue != null
+            ? finalBankValue
+            : (bankRecommendedValue != null ? Number(bankRecommendedValue) : null),
           valuationFee: valuationFee != null ? Number(valuationFee) : 0,
           rateOfInterest: rateOfInterest != null ? Number(rateOfInterest) : null,
           loanType: loanType || '',
@@ -348,7 +352,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
     goldRate22k,
     goldRate24k,
     bankGoldRatePerGram,
-    bankLtv,
+    loanLtv,
     rateOfInterest,
     loanAmount,
     bankRecommendedValue,
@@ -366,11 +370,14 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
   const rate22 = goldRate22k != null ? Number(goldRate22k) : existing.goldRate22k
   const rate24 = goldRate24k != null ? Number(goldRate24k) : existing.goldRate24k
   let derived = []
-  let totals = { marketValue: existing.marketValue }
+  let totals = { marketValue: existing.marketValue, net: null }
   if (Array.isArray(items)) {
     derived = items.map((it) => deriveItem(it, rate22))
     totals = totalsFromItems(derived)
   }
+
+  const nextBankRate = bankGoldRatePerGram != null ? Number(bankGoldRatePerGram) : existing.bankGoldRatePerGram
+  const recomputedBankValue = totals.net != null ? bankRecommendedFromRate(totals.net, nextBankRate) : null
 
   await db
     .update(valuations)
@@ -383,8 +390,8 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
       empanelmentId: empanelmentId ?? existing.empanelmentId,
       goldRate22k: rate22,
       goldRate24k: rate24,
-      bankGoldRatePerGram: bankGoldRatePerGram != null ? Number(bankGoldRatePerGram) : existing.bankGoldRatePerGram,
-      bankLtv: bankLtv != null ? Number(bankLtv) : existing.bankLtv,
+      bankGoldRatePerGram: nextBankRate,
+      loanLtv: loanLtv != null ? Number(loanLtv) : existing.loanLtv,
       rateOfInterest: rateOfInterest != null ? Number(rateOfInterest) : existing.rateOfInterest,
       loanType: loanType ?? existing.loanType,
       personPhoto: personPhoto ?? existing.personPhoto,
@@ -394,7 +401,9 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
       panPhoto: panPhoto ?? existing.panPhoto,
       certificateRules: certificateRules ?? existing.certificateRules,
       loanAmount: loanAmount != null ? Number(loanAmount) : +(totals.marketValue * LOAN_LTV).toFixed(2),
-      bankRecommendedValue: bankRecommendedValue != null ? Number(bankRecommendedValue) : existing.bankRecommendedValue,
+      bankRecommendedValue: recomputedBankValue != null
+        ? recomputedBankValue
+        : (bankRecommendedValue != null ? Number(bankRecommendedValue) : existing.bankRecommendedValue),
       valuationFee: valuationFee != null ? Number(valuationFee) : existing.valuationFee,
       marketValue: Array.isArray(items) ? +totals.marketValue.toFixed(2) : existing.marketValue,
       updatedAt: new Date().toISOString(),
@@ -451,7 +460,9 @@ router.post('/:id/duplicate', async (req, res) => {
     goldRate24k: Number(full.goldRate24k),
     marketValue: +totals.marketValue.toFixed(2),
     loanAmount: full.loanAmount != null ? Number(full.loanAmount) : +(totals.marketValue * LOAN_LTV).toFixed(2),
-    bankRecommendedValue: full.bankRecommendedValue != null ? Number(full.bankRecommendedValue) : null,
+    bankGoldRatePerGram: full.bankGoldRatePerGram != null ? Number(full.bankGoldRatePerGram) : null,
+    loanLtv: full.loanLtv != null ? Number(full.loanLtv) : null,
+    bankRecommendedValue: bankRecommendedFromRate(totals.net, full.bankGoldRatePerGram),
     valuationFee: Number(full.valuationFee) || 0,
     rateOfInterest: full.rateOfInterest != null ? Number(full.rateOfInterest) : null,
     loanType: full.loanType || '',

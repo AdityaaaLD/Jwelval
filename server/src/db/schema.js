@@ -48,7 +48,8 @@ export const valuations = sqliteTable('valuations', {
   goldRate22k: real('gold_rate_22k').notNull().default(0),
   goldRate24k: real('gold_rate_24k').notNull().default(0),
   bankGoldRatePerGram: real('bank_gold_rate_per_gram'),
-  bankLtv: real('bank_ltv'),
+  // LTV actually applied to this valuation; printed on the certificate.
+  loanLtv: real('loan_ltv'),
   marketValue: real('market_value').notNull().default(0),
   loanAmount: real('loan_amount').notNull().default(0),
   bankRecommendedValue: real('bank_recommended_value'),
@@ -87,6 +88,7 @@ export const appraiserProfile = sqliteTable('appraiser_profile', {
   appraiserName: text('appraiser_name'),
   businessName: text('business_name'),
   mobile: text('mobile'),
+  whatsappNumber: text('whatsapp_number'),
   email: text('email'),
   upiId: text('upi_id'),
   bankAccountNumber: text('bank_account_number'),

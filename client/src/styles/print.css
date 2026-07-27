@@ -51,10 +51,37 @@
 .dc-parties p { margin: 1px 0; }
 .dc-borrower p { margin: 1px 0; }
 .dc-borrower-sep { margin: 0 6px; font-weight: 600; }
-.dc-loan-meta-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.dc-loan-meta-left { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-.dc-loan-rate { margin-left: 0; }
-.dc-currency-inline { font-weight: 700; white-space: nowrap; }
+/* Rates and loan figures. A fixed 4-column grid keeps the labels aligned and
+   the whole block to two short lines instead of a long wrapping sentence. */
+.dc-loan-meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: baseline;
+  gap: 1px 10px;
+  font-size: 10.4px;
+  line-height: 1.25;
+}
+.dc-meta-cell { min-width: 0; }
+.dc-currency-inline { font-weight: 700; white-space: nowrap; text-align: right; }
+
+/* Contact line in the red letterhead block. */
+.dc-header-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 6px;
+}
+.dc-header-contact > span + span::before { content: '|'; margin-right: 6px; }
+.dc-header-whatsapp { display: inline-flex; align-items: center; gap: 3px; }
+.dc-whatsapp-icon {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  color: #25d366;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
 .dc-table { width: 100%; border-collapse: collapse; margin: 0; }
 .dc-table th, .dc-table td { border: 1px solid #000; padding: 2px 3px; text-align: center; vertical-align: middle; font-size: 9.7px; line-height: 1.2; word-wrap: break-word; }
 .dc-table th { font-weight: 700; background: #fff; color: #000; }

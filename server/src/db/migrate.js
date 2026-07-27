@@ -267,6 +267,10 @@ for (const stmt of [
   'ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE users ADD COLUMN approved_by INTEGER',
   'ALTER TABLE users ADD COLUMN approved_at TEXT',
+  'ALTER TABLE appraiser_profile ADD COLUMN whatsapp_number TEXT',
+  // LTV is printed on the certificate, so it is stored with the valuation.
+  // (valuations.bank_ltv is retired — kept on old databases but no longer read.)
+  'ALTER TABLE valuations ADD COLUMN loan_ltv REAL',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {
     if (!String(error.message).includes('duplicate column name')) throw error

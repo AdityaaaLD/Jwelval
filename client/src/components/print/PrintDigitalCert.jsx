@@ -3,6 +3,7 @@ import { formatDateDMY, inr, num } from '../../lib/format'
 import { api } from '../../lib/api'
 import { CertificateRules, SignatureGrid, resolveReportDateTime } from './PrintHelpers'
 import QrImage from '../QrImage'
+import WhatsAppMark from '../WhatsAppMark'
 import { verificationUrl } from '../../lib/qr'
 
 const COLS = 8
@@ -117,6 +118,18 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
     hour12: true,
   })
 
+  /* Rates and loan figures shown above the ornament table. Entries with no
+     value are dropped so the grid never prints an empty label. */
+  const metaEntries = [
+    valuation.loanType && ['Loan Type', valuation.loanType],
+    valuation.rateOfInterest != null && ['Rate of Interest', `${num(valuation.rateOfInterest, 2)}%`],
+    Number(valuation.loanLtv) > 0 && ['LTV', `${num(valuation.loanLtv, 0)}%`],
+    Number(valuation.goldRate22k) > 0 && ['Market Gold Rate (22K)', `${inr(valuation.goldRate22k)}/gm`],
+    Number(valuation.bankGoldRatePerGram) > 0 && ['Bank Gold Rate', `${inr(valuation.bankGoldRatePerGram)}/gm`],
+    Number(valuation.loanAmount) > 0 && ['Recommended Loan Amount', inr(valuation.loanAmount)],
+    Number(valuation.bankRecommendedValue) > 0 && ['Bank Recommended Loan Amount', inr(valuation.bankRecommendedValue)],
+  ].filter(Boolean)
+
   const runningHead = (
     <div className="dc-running-head">
       <header className="dc-header-box">
@@ -129,7 +142,17 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
         {profile?.organization && <p className="dc-header-line" style={{ color: '#b91c1c' }}>({profile.organization})</p>}
         <p className="dc-header-line" style={{ color: '#b91c1c' }}>{profile?.address || ''}</p>
         {profile?.cert_number && <p className="dc-header-line" style={{ color: '#b91c1c' }}>No. {profile.cert_number}</p>}
-        <p className="dc-header-line" style={{ color: '#b91c1c' }}>{[profile?.mobile ? `Mob: ${profile.mobile}` : '', profile?.email || ''].filter(Boolean).join(' | ')}{profile?.gstn ? ` | GSTN: ${profile.gstn}` : ''}</p>
+        <p className="dc-header-line dc-header-contact" style={{ color: '#b91c1c' }}>
+          {profile?.mobile && <span>Mob: {profile.mobile}</span>}
+          {profile?.whatsapp_number && (
+            <span className="dc-header-whatsapp">
+              <WhatsAppMark className="dc-whatsapp-icon" />
+              {profile.whatsapp_number}
+            </span>
+          )}
+          {profile?.email && <span>{profile.email}</span>}
+          {profile?.gstn && <span>GSTN: {profile.gstn}</span>}
+        </p>
         {profile?.bank_account_number && <p className="dc-header-line" style={{ color: '#b91c1c' }}>Bank A/C: {profile.bank_account_number}</p>}
         {empanelmentId && <p className="dc-header-line" style={{ color: '#b91c1c' }}>(Digital ID of Empanelment: {empanelmentId})</p>}
       </header>
@@ -181,18 +204,15 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
         </p>
       </div>
 
-      <div className="dc-row-box dc-loan-meta-row">
-        <div className="dc-loan-meta-left">
-          {valuation.loanType && <span><b>Loan Type:</b> {valuation.loanType}</span>}
-          {valuation.rateOfInterest != null && <span className="dc-loan-rate"><b>Rate of Interest:</b> {valuation.rateOfInterest}%</span>}
-          {valuation.bankGoldRatePerGram != null && Number(valuation.bankGoldRatePerGram) > 0 && (
-            <span className="dc-recommended-rate"><b>Bank Recommended Gold Rate:</b> {inr(valuation.bankGoldRatePerGram)}/gm</span>
-          )}
-          {valuation.bankRecommendedValue != null && (
-            <span className="dc-recommended-loan"><b>Bank Recommended Loan Amount:</b> {inr(valuation.bankRecommendedValue)}</span>
-          )}
-        </div>
-        <span className="dc-currency-inline">(Rs. in Actual)</span>
+      {/* Rates and loan figures, laid out on a fixed grid so the block stays
+          compact and the columns line up however many entries are present. */}
+      <div className="dc-row-box dc-loan-meta">
+        {metaEntries.map(([label, value]) => (
+          <span className="dc-meta-cell" key={label}>
+            <b>{label}:</b> {value}
+          </span>
+        ))}
+        <span className="dc-meta-cell dc-currency-inline">(Rs. in Actual)</span>
       </div>
     </div>
   )
@@ -245,7 +265,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
 
     rows.push(
       <tr key="totals" className="dc-total-row">
-        <td colSpan="2"><b>Total</b></td>
+        <td colSpan="2"><b>Total Market Value</b></td>
         <td></td>
         <td><b>{num(totals.units, 2)}</b></td>
         <td><b>{num(totals.gross, 2)}</b></td>

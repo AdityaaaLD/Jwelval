@@ -51,5 +51,18 @@ export function totalsFromItems(derived) {
   )
 }
 
+/**
+ * Bank recommended loan amount = the bank's own gold rate applied to the total
+ * net weight. No LTV is applied here: the bank's rate already carries their
+ * margin, and the LTV is printed alongside purely as information.
+ * Returns null when there is no bank rate to work from.
+ */
+export function bankRecommendedFromRate(totalNetWeightGm, bankGoldRatePerGram) {
+  const rate = num(bankGoldRatePerGram)
+  const weight = num(totalNetWeightGm)
+  if (rate <= 0 || weight <= 0) return null
+  return +(rate * weight).toFixed(2)
+}
+
 // RBI gold-loan LTV norm = 75% (cap). Spec uses 0.57 as a conservative recommendation.
 export const LOAN_LTV = 0.57

@@ -35,7 +35,6 @@ const initialForm = () => ({
   loanLtv: 57,
   goldRate22k: '',
   bankGoldRatePerGram: '',
-  bankLtv: '',
   loanAmount: '',
   bankRecommendedValue: '',
   valuationFee: '',
@@ -83,10 +82,10 @@ const deriveForm = (form) => {
   const ltv = (n(form.loanLtv) || 57) / 100
   const ltvLoan = round(marketValue * ltv, 2)
   const bankGoldRatePerGram = n(form.bankGoldRatePerGram)
-  const bankLtv = n(form.bankLtv)
-  const bankVal = bankGoldRatePerGram > 0 && bankLtv > 0
-    ? round(totalNetWeight * bankGoldRatePerGram * (bankLtv / 100), 2)
-    : (form.bankRecommendedValue === '' ? '' : round(n(form.bankRecommendedValue), 2))
+  // The bank's own rate already carries their margin, so no LTV is applied here.
+  const bankVal = bankGoldRatePerGram > 0 && totalNetWeight > 0
+    ? round(totalNetWeight * bankGoldRatePerGram, 2)
+    : ''
   let suggestedLoan = ltvLoan
   if (Number(bankVal) > 0) suggestedLoan = Math.min(ltvLoan, Number(bankVal))
   return {
@@ -116,7 +115,6 @@ export const useValuationStore = create((set, get) => ({
       loanLtv: valuation.loanLtv || 57,
       goldRate22k: valuation.goldRate22k || '',
       bankGoldRatePerGram: valuation.bankGoldRatePerGram || '',
-      bankLtv: valuation.bankLtv || '',
       loanAmount: valuation.loanAmount || '',
       bankRecommendedValue: valuation.bankRecommendedValue || '',
       valuationFee: valuation.valuationFee || '',
@@ -174,7 +172,7 @@ export const useValuationStore = create((set, get) => ({
       goldRate22k: Number(form.goldRate22k),
       goldRate24k: +(Number(form.goldRate22k) * 24 / 22).toFixed(2),
       bankGoldRatePerGram: form.bankGoldRatePerGram === '' ? null : Number(form.bankGoldRatePerGram),
-      bankLtv: form.bankLtv === '' ? null : Number(form.bankLtv),
+      loanLtv: form.loanLtv === '' || form.loanLtv == null ? null : Number(form.loanLtv),
       loanAmount: Number(form.loanAmount),
       bankRecommendedValue: form.bankRecommendedValue !== '' ? Number(form.bankRecommendedValue) : null,
       valuationFee: Number(form.valuationFee) || 0,

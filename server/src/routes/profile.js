@@ -14,9 +14,9 @@ function ensureProfileRow(userId) {
 
   const now = new Date().toISOString()
   sqlite.prepare(
-    `INSERT INTO appraiser_profile (user_id, appraiser_name, business_name, mobile, email, upi_id, bank_account_number, logo_photo, address,
+    `INSERT INTO appraiser_profile (user_id, appraiser_name, business_name, mobile, whatsapp_number, email, upi_id, bank_account_number, logo_photo, address,
       empanelment_id, gstn, proprietor_name, qualification, organization, cert_number, updated_at)
-     VALUES (?, ?, ?, '', '', '', '', '', '', '', '', '', '', '', '', ?)`
+     VALUES (?, ?, ?, '', '', '', '', '', '', '', '', '', '', '', '', '', ?)`
   ).run(userId, DEFAULT_PROFILE.appraiserName, DEFAULT_PROFILE.businessName, now)
 
   return sqlite.prepare('SELECT * FROM appraiser_profile WHERE user_id = ?').get(userId)
@@ -31,16 +31,21 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MOBILE_RE = /^[6-9]\d{9}$/
 const UPI_RE = /^[\w.+-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$/
 
+function normalizeIndianMobile(input) {
+  let digits = String(input || '').trim().replace(/\D/g, '')
+  if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2)
+  return digits
+}
+
 function validateProfilePayload(body) {
   const errors = {}
-  const mobileRaw = String(body.mobile || '').trim()
-  let mobile = mobileRaw.replace(/\D/g, '')
-  if (mobile.length === 12 && mobile.startsWith('91')) mobile = mobile.slice(2)
+  const mobile = normalizeIndianMobile(body.mobile)
 
   const clean = {
     appraiserName: String(body.appraiserName || '').trim(),
     businessName: String(body.businessName || '').trim(),
     mobile,
+    whatsappNumber: normalizeIndianMobile(body.whatsappNumber),
     email: String(body.email || '').trim().toLowerCase(),
     upiId: String(body.upiId || '').trim().toLowerCase(),
     bankAccountNumber: String(body.bankAccountNumber || '').trim(),
@@ -61,6 +66,10 @@ function validateProfilePayload(body) {
 
   if (clean.mobile && !MOBILE_RE.test(clean.mobile)) {
     errors.mobile = 'Enter a valid 10-digit mobile number.'
+  }
+
+  if (clean.whatsappNumber && !MOBILE_RE.test(clean.whatsappNumber)) {
+    errors.whatsappNumber = 'Enter a valid 10-digit WhatsApp number.'
   }
 
   if (clean.email && !EMAIL_RE.test(clean.email)) {
@@ -101,11 +110,11 @@ router.put('/', (req, res) => {
 
     sqlite.prepare(`
       UPDATE appraiser_profile
-      SET appraiser_name = ?, business_name = ?, mobile = ?, email = ?, upi_id = ?, bank_account_number = ?, logo_photo = ?, address = ?,
+      SET appraiser_name = ?, business_name = ?, mobile = ?, whatsapp_number = ?, email = ?, upi_id = ?, bank_account_number = ?, logo_photo = ?, address = ?,
           gstn = ?, proprietor_name = ?, qualification = ?, organization = ?, cert_number = ?, updated_at = ?
       WHERE user_id = ?
     `).run(
-      clean.appraiserName, clean.businessName, clean.mobile, clean.email, clean.upiId, clean.bankAccountNumber, clean.logoPhoto, clean.address,
+      clean.appraiserName, clean.businessName, clean.mobile, clean.whatsappNumber, clean.email, clean.upiId, clean.bankAccountNumber, clean.logoPhoto, clean.address,
       clean.gstn, clean.proprietorName, clean.qualification, clean.organization, clean.certNumber, now, userId
     )
 
