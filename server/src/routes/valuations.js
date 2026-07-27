@@ -153,13 +153,16 @@ router.get('/:id/pdf', async (req, res) => {
   res.setTimeout(PDF_REQUEST_TIMEOUT_MS)
 
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
-  const url = `${printBaseUrl()}/print/valuation/${id}`
+  // This PDF is the copy that gets shared with the bank, so the borrower's KYC
+  // sheet is left out unless it is explicitly asked for.
+  const includeKyc = String(req.query.includeKyc || '') === '1'
+  const url = `${printBaseUrl()}/print/valuation/${id}?kyc=${includeKyc ? '1' : '0'}`
   const startedAt = Date.now()
 
   try {
     const pdf = await renderUrlToPdf({ url, authToken: token })
     const safeName = String(v.valuationNumber || `valuation-${id}`).replace(/[^a-z0-9-_]+/gi, '_')
-    logEvent('PDF_GENERATED', { valuationId: id, bytes: pdf.length, ms: Date.now() - startedAt })
+    logEvent('PDF_GENERATED', { valuationId: id, bytes: pdf.length, includeKyc, ms: Date.now() - startedAt })
     res.setHeader('Content-Type', 'application/pdf')
     res.setHeader('Content-Length', String(pdf.length))
     res.setHeader('Content-Disposition', `attachment; filename="${safeName}.pdf"`)

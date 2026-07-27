@@ -81,7 +81,12 @@ function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight }) {
   return pages.length ? pages : [[]]
 }
 
-export default function PrintDigitalCert({ valuation }) {
+/**
+ * `includeKyc` is false for the shared/bank copy. The KYC sheet stays in the
+ * on-screen preview and in Print / Save PDF so the appraiser keeps it for their
+ * own records, but it is never rendered into the PDF that gets shared.
+ */
+export default function PrintDigitalCert({ valuation, includeKyc = true }) {
   const customer = valuation.customer || {}
   const items = valuation.items || []
   const aadharFrontDoc = valuation.aadharPhotoDoc || customer.aadharPhoto || ''
@@ -356,9 +361,10 @@ export default function PrintDigitalCert({ valuation }) {
         </article>
       ))}
 
-      {/* Aadhar & PAN (back of the certificate) */}
-      {(aadharFrontDoc || aadharBackDoc || valuation.panPhoto) && (
+      {/* Aadhar & PAN (back of the certificate) — own records only. */}
+      {includeKyc && (aadharFrontDoc || aadharBackDoc || valuation.panPhoto) && (
         <article className="print-page digital-cert dc-page2">
+          <p className="dc-kyc-notice no-print">Kept for your records — this sheet is not included in the shared PDF.</p>
           <h2 className="dc-page2-title">KYC Documents — {customer.name || 'Borrower'}</h2>
           <p className="dc-page2-ref">Ref: Certificate No. {valuation.valuationNumber} | Date: {dateStr} {timeStr}</p>
           <div className="dc-doc-grid">

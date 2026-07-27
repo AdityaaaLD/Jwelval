@@ -16,7 +16,8 @@ function isIos() {
 /**
  * Downloads the PDF that the server rendered with a real Chrome print engine.
  * This is the single source of truth for the shared document, so the output is
- * always identical to "Print / Save PDF" regardless of the user's device.
+ * the same on every device. It deliberately omits the borrower's KYC sheet,
+ * which "Print / Save PDF" still includes for the appraiser's own records.
  */
 export async function fetchValuationPdf({ valuationId, fileBaseName, signal }) {
   if (!valuationId) throw new Error('Valuation must be saved before it can be shared.')

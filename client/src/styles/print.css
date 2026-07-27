@@ -122,8 +122,19 @@
   font-weight: 700;
   line-height: 1;
 }
-/* Page 2 — KYC Documents */
+/* Page 2 — KYC Documents (own records only, never in the shared PDF) */
 .dc-page2 { page-break-before: always; }
+.dc-kyc-notice {
+  margin: 0 0 8px;
+  border: 1px dashed #b45309;
+  border-radius: 4px;
+  background: #fffbeb;
+  color: #92400e;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
 .dc-page2-title { margin: 0 0 4px; font-size: 16px; font-weight: 700; text-align: center; border-bottom: 2px solid #000; padding-bottom: 6px; }
 .dc-page2-ref { text-align: center; font-size: 11px; margin-bottom: 12px; color: #444; }
 .dc-doc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

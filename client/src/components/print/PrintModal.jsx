@@ -84,7 +84,13 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
     <div id="print-portal" className="print-overlay">
       <div className="print-modal-toolbar no-print">
         <button type="button" className="btn-secondary" onClick={onClose}><X size={16} /> Close</button>
-        <button type="button" className="btn-secondary" onClick={handleShare} disabled={sharing}>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={handleShare}
+          disabled={sharing}
+          title="Bank copy — the KYC documents sheet is not included"
+        >
           <Share2 size={16} /> {shareLabel}
         </button>
         <button type="button" className="btn-primary" onClick={handlePrint}><Printer size={16} /> Print / Save PDF</button>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import PrintDigitalCert from '../components/print/PrintDigitalCert'
 
@@ -59,6 +59,9 @@ async function waitForStableRender(root, { timeoutMs = 25000, stableChecks = 3, 
 
 export default function PrintRender() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  // The shared/bank copy is rendered with ?kyc=0 so the KYC sheet is left out.
+  const includeKyc = searchParams.get('kyc') !== '0'
   const [valuation, setValuation] = useState(null)
   const [failed, setFailed] = useState('')
 
@@ -104,7 +107,7 @@ export default function PrintRender() {
     <div id="print-portal" className="print-overlay">
       <div className="print-preview-scroll">
         <div className="print-preview-center">
-          <PrintDigitalCert valuation={valuation} />
+          <PrintDigitalCert valuation={valuation} includeKyc={includeKyc} />
         </div>
       </div>
     </div>,
