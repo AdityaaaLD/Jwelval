@@ -212,7 +212,6 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
             <b>{label}:</b> {value}
           </span>
         ))}
-        <span className="dc-meta-cell dc-currency-inline">(Rs. in Actual)</span>
       </div>
     </div>
   )

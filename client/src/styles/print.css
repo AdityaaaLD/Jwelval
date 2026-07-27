@@ -51,18 +51,19 @@
 .dc-parties p { margin: 1px 0; }
 .dc-borrower p { margin: 1px 0; }
 .dc-borrower-sep { margin: 0 6px; font-weight: 600; }
-/* Rates and loan figures. A fixed 4-column grid keeps the labels aligned and
-   the whole block to two short lines instead of a long wrapping sentence. */
+/* Rates and loan figures. Three columns rather than four: a quarter-width cell
+   is too narrow for "Bank Recommended Loan Amount: Rs. 63,000.00", which pushed
+   the amount onto a second line. At a third of the width every label and its
+   value stay on one line, so the columns read as a clean grid. */
 .dc-loan-meta {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: baseline;
   gap: 1px 10px;
-  font-size: 10.4px;
-  line-height: 1.25;
+  font-size: 10.2px;
+  line-height: 1.3;
 }
-.dc-meta-cell { min-width: 0; }
-.dc-currency-inline { font-weight: 700; white-space: nowrap; text-align: right; }
+.dc-meta-cell { white-space: nowrap; }
 
 /* Contact line in the red letterhead block. */
 .dc-header-contact {
