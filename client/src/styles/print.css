@@ -85,8 +85,8 @@
 }
 .dc-table { width: 100%; border-collapse: collapse; margin: 0; }
 .dc-table th, .dc-table td { border: 1px solid #000; padding: 2px 3px; text-align: center; vertical-align: middle; font-size: 9.7px; line-height: 1.2; word-wrap: break-word; }
-.dc-table th { font-weight: 700; background: #fff; color: #000; }
-.dc-table-info th { font-size: 6.7px; font-weight: 400; line-height: 1.1; padding: 2px 3px; background: #fefce8; color: #333; }
+.dc-table th { font-weight: 700; background: #fff7f7; color: #b91c1c; font-size: 10.4px; }
+.dc-table-info th { font-size: 7.6px; font-weight: 600; line-height: 1.15; padding: 2px 3px; background: #fff2f2; color: #b91c1c; }
 .dc-table tfoot td { font-weight: 700; }
 .dc-td-left { text-align: left !important; }
 .dc-cert-text { margin: 5px 0 2px; font-size: 10.2px; line-height: 1.32; }

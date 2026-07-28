@@ -93,7 +93,18 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
   const aadharFrontDoc = valuation.aadharPhotoDoc || customer.aadharPhoto || ''
   const aadharBackDoc = customer.aadharPhotoBack || ''
   const [profile, setProfile] = useState(null)
+  const [bankPreset, setBankPreset] = useState(null)
   useEffect(() => { api.profile.get().then(setProfile).catch(() => {}) }, [])
+  useEffect(() => {
+    const presetId = Number(valuation?.bankPresetId)
+    if (!presetId) {
+      setBankPreset(null)
+      return
+    }
+    api.presets.banks()
+      .then((rows) => setBankPreset(rows.find((row) => Number(row.id) === presetId) || null))
+      .catch(() => setBankPreset(null))
+  }, [valuation?.bankPresetId])
 
   const measureRef = useRef(null)
   const [tick, setTick] = useState(0)
@@ -109,7 +120,12 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
   }), { units: 0, gross: 0, net: 0, value: 0 })
 
   const reportDateTime = resolveReportDateTime(valuation)
-  const empanelmentId = valuation?.empanelmentId || ''
+  const empanelmentId = bankPreset?.empanelmentId || valuation?.empanelmentId || ''
+  const bankName = bankPreset?.bankName || customer.bankName || 'Bank of Maharashtra'
+  const branchName = valuation.branch || bankPreset?.branch || customer.branch || '-'
+  const branchCode = valuation.branchCode || bankPreset?.branchCode || ''
+  const bankManagerName = bankPreset?.managerName || 'Branch Manager'
+  const borrowerAadhar = customer.aadharNumber || '-'
   const dateStr = formatDateDMY(reportDateTime)
   const timeStr = reportDateTime.toLocaleTimeString('en-IN', {
     hour: '2-digit',
@@ -168,14 +184,17 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
       <div className="dc-row-box dc-parties dc-parties-with-photos">
         <div className="dc-party-from">
           <p><b>From,</b></p>
-          <p>{profile?.appraiser_name || ''}</p>
-          {empanelmentId && <p>Empanelment ID: {empanelmentId}</p>}
+          <p><b>Business Name:</b> {profile?.business_name || '-'}</p>
+          <p><b>Proprietor Name:</b> {profile?.appraiser_name || '-'}</p>
+          <p><b>Empanelment ID:</b> {empanelmentId || '-'}</p>
         </div>
         <div className="dc-party-to-photos">
           <div className="dc-party-to">
             <p><b>To,</b></p>
-            <p>Branch Manager,</p>
-            <p>{valuation.branch}{valuation.branchCode ? ` (Br. Code: ${valuation.branchCode})` : ''}</p>
+            <p><b>Bank Name:</b> {bankName}</p>
+            <p><b>Bank Manager Name:</b> {bankManagerName || '-'}</p>
+            <p><b>Branch Code:</b> {branchCode || '-'}</p>
+            <p><b>Branch:</b> {branchName}</p>
           </div>
           {(valuation.personPhoto || valuation.jewelleryPhoto) && (
             <div className="dc-inline-photos">
@@ -197,10 +216,10 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
       </div>
 
       <div className="dc-row-box dc-borrower">
-        <p><b>Borrower Name:</b> {customer.name} <span className="dc-borrower-sep">|</span> <b>Borrower Mob. No:</b> {customer.mobile || '-'}</p>
+        <p><b>Borrower Name:</b> {customer.name} <span className="dc-borrower-sep">|</span> <b>Aadhaar No:</b> {borrowerAadhar} <span className="dc-borrower-sep">|</span> <b>Borrower Mob. No:</b> {customer.mobile || '-'}</p>
         <p>
           {(valuation.acNo || customer.savingsAcNo) && <><b>A/C No:</b> {valuation.acNo || customer.savingsAcNo} <span className="dc-borrower-sep">|</span> </>}
-          <b>Bank:</b> {customer.bankName || 'Bank of Maharashtra'}, <b>Branch:</b> {valuation.branch || customer.branch || ''}
+          <b>Bank:</b> {bankName}, <b>Branch:</b> {branchName}
         </p>
       </div>
 
@@ -294,6 +313,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
     items.length,
     items.map((item) => `${item.description || ''}|${item.remarks || ''}`).join('~'),
     profile ? `${profile.business_name || ''}|${profile.address || ''}|${profile.organization || ''}` : '',
+    bankPreset ? `${bankPreset.id || ''}|${bankPreset.bankName || ''}|${bankPreset.managerName || ''}|${bankPreset.empanelmentId || ''}` : '',
     valuation.personPhoto ? '1' : '0',
     valuation.jewelleryPhoto ? '1' : '0',
   ].join('#')
