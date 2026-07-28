@@ -52,7 +52,7 @@
 .dc-borrower p { margin: 1px 0; }
 .dc-borrower-sep { margin: 0 6px; font-weight: 600; }
 /* Rates and loan figures. Three columns rather than four: a quarter-width cell
-   is too narrow for "Bank Recommended Loan Amount: Rs. 63,000.00", which pushed
+   is too narrow for "Bank Loan Amount: Rs. 63,000.00", which pushed
    the amount onto a second line. At a third of the width every label and its
    value stay on one line, so the columns read as a clean grid. */
 .dc-loan-meta {

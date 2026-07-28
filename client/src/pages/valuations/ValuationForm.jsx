@@ -583,12 +583,12 @@ export default function ValuationForm() {
             <p className="rounded-md bg-gold-50 px-3 py-2 text-xl font-semibold text-slate-950">{inr(form.marketValue)}</p>
           </div>
           <div>
-            <label className="label">Bank Recommended Value</label>
+            <label className="label">Bank Loan Amount</label>
             <input type="number" className="input" value={form.bankRecommendedValue} disabled />
             <p className="mt-1 text-xs text-slate-500">Auto-calculated: Bank Gold Rate x total net weight</p>
           </div>
           <div>
-            <label className="label">Recommended Loan Amount</label>
+            <label className="label">Loan Amount</label>
             <input type="number" className="input" value={form.loanAmount} onChange={(e) => setField('loanAmount', e.target.value)} disabled={disabled} />
             {form.suggestedLoan > 0 && (
               <p className="mt-1 text-xs text-slate-500">

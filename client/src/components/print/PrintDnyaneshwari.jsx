@@ -23,7 +23,7 @@ export default function PrintDnyaneshwari({ valuation }) {
       <p className="print-copy">At the request of Shri/Smt. {customer.name}, I have appraised the following ornaments, the details of which are given below.</p>
       <OrnamentTable valuation={valuation} />
       <OrnamentPhotoStrip valuation={valuation} />
-      <div className="print-summary"><span>Market Value: {inr(valuation.marketValue)}</span><span>Recommended Loan Amount: {inr(valuation.loanAmount)}</span></div>
+      <div className="print-summary"><span>Market Value: {inr(valuation.marketValue)}</span><span>Loan Amount: {inr(valuation.loanAmount)}</span></div>
       <VerificationBlock valuation={valuation} profile={profile} />
       <CertificateRules valuation={valuation} />
       <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />

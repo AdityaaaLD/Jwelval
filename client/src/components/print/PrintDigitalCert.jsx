@@ -126,8 +126,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
     Number(valuation.loanLtv) > 0 && ['LTV', `${num(valuation.loanLtv, 0)}%`],
     Number(valuation.goldRate22k) > 0 && ['Market Gold Rate (22K)', `${inr(valuation.goldRate22k)}/gm`],
     Number(valuation.bankGoldRatePerGram) > 0 && ['Bank Gold Rate', `${inr(valuation.bankGoldRatePerGram)}/gm`],
-    Number(valuation.loanAmount) > 0 && ['Recommended Loan Amount', inr(valuation.loanAmount)],
-    Number(valuation.bankRecommendedValue) > 0 && ['Bank Recommended Loan Amount', inr(valuation.bankRecommendedValue)],
+    Number(valuation.loanAmount) > 0 && ['Loan Amount', inr(valuation.loanAmount)],
+    Number(valuation.bankRecommendedValue) > 0 && ['Bank Loan Amount', inr(valuation.bankRecommendedValue)],
   ].filter(Boolean)
 
   const runningHead = (
