@@ -271,6 +271,11 @@ for (const stmt of [
   // LTV is printed on the certificate, so it is stored with the valuation.
   // (valuations.bank_ltv is retired — kept on old databases but no longer read.)
   'ALTER TABLE valuations ADD COLUMN loan_ltv REAL',
+  'ALTER TABLE valuations ADD COLUMN gold_loan_register_no TEXT',
+  'ALTER TABLE valuations ADD COLUMN gold_packets_no TEXT',
+  'ALTER TABLE valuations ADD COLUMN renewal_date TEXT',
+  'ALTER TABLE valuations ADD COLUMN tenure_months INTEGER',
+  'ALTER TABLE bank_presets ADD COLUMN bank_logo TEXT',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {
     if (!String(error.message).includes('duplicate column name')) throw error

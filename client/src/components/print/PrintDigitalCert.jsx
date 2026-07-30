@@ -126,6 +126,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
   const branchCode = valuation.branchCode || bankPreset?.branchCode || ''
   const bankManagerName = bankPreset?.managerName || 'Branch Manager'
   const borrowerAadhar = customer.aadharNumber || '-'
+  const renewalDateStr = formatDateDMY(valuation.renewalDate)
+  const totalMarketValue = Number(valuation.marketValue) > 0 ? Number(valuation.marketValue) : totals.value
   const dateStr = formatDateDMY(reportDateTime)
   const timeStr = reportDateTime.toLocaleTimeString('en-IN', {
     hour: '2-digit',
@@ -138,10 +140,12 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
      value are dropped so the grid never prints an empty label. */
   const metaEntries = [
     valuation.loanType && ['Loan Type', valuation.loanType],
+    Number(valuation.tenureMonths) > 0 && ['Tenure (Months)', `${num(valuation.tenureMonths, 0)}`],
     valuation.rateOfInterest != null && ['Rate of Interest', `${num(valuation.rateOfInterest, 2)}%`],
     Number(valuation.loanLtv) > 0 && ['LTV', `${num(valuation.loanLtv, 0)}%`],
     Number(valuation.goldRate22k) > 0 && ['Market Gold Rate (22K)', `${inr(valuation.goldRate22k)}/gm`],
     Number(valuation.bankGoldRatePerGram) > 0 && ['Bank Gold Rate', `${inr(valuation.bankGoldRatePerGram)}/gm`],
+    Number(totalMarketValue) > 0 && ['Total Market Value', inr(totalMarketValue)],
     Number(valuation.loanAmount) > 0 && ['Loan Amount', inr(valuation.loanAmount)],
     Number(valuation.bankRecommendedValue) > 0 && ['Bank Loan Amount', inr(valuation.bankRecommendedValue)],
   ].filter(Boolean)
@@ -149,6 +153,11 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
   const runningHead = (
     <div className="dc-running-head">
       <header className="dc-header-box">
+        {profile?.logo_photo && (
+          <div className="dc-header-logo-badge">
+            <img src={profile.logo_photo} alt="Shop Logo" className="dc-header-logo-image" />
+          </div>
+        )}
         <div className="dc-header-qr-badge">
           <QrImage text={verificationUrl(valuation.valuationNumber)} className="dc-header-qr-image" />
           <p>Scan &amp; Verify</p>
@@ -173,12 +182,13 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
         {empanelmentId && <p className="dc-header-line" style={{ color: '#b91c1c' }}>(Digital ID of Empanelment: {empanelmentId})</p>}
       </header>
 
-      <div className="dc-row-box">
-        <span>Application ID: {valuation.applicationId || ''}</span>
+      <div className="dc-row-box dc-row-split">
+        <span>Application ID: {valuation.applicationId || ''}{valuation.goldLoanRegisterNo ? ` | Gold Loan Register No.: ${valuation.goldLoanRegisterNo}` : ''}</span>
+        <span>Date: {dateStr} {timeStr}</span>
       </div>
       <div className="dc-row-box dc-row-split">
-        <span>Certificate No: {valuation.valuationNumber}</span>
-        <span>Date: {dateStr} {timeStr}</span>
+        <span>Certificate No: {valuation.valuationNumber}{valuation.goldPacketsNo ? ` | Gold Packets No.: ${valuation.goldPacketsNo}` : ''}</span>
+        <span>Renewal Date: {renewalDateStr || '-'}</span>
       </div>
 
       <div className="dc-row-box dc-parties dc-parties-with-photos">
@@ -293,6 +303,16 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
       </tr>
     )
 
+    if (bankPreset?.bankLogo) {
+      rows.push(
+        <tr key="bank-logo" className="dc-bank-logo-row">
+          <td colSpan={COLS} className="dc-bank-logo-cell">
+            <img src={bankPreset.bankLogo} alt="Bank Logo" className="dc-bank-logo" />
+          </td>
+        </tr>
+      )
+    }
+
     rows.push(
       <tr key="cert-text" className="dc-cert-text-row">
         <td colSpan={COLS} className="dc-cert-text-cell">
@@ -302,7 +322,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
     )
 
     return rows
-  }, [items, totals.units, totals.gross, totals.net, totals.value, valuation])
+  }, [items, totals.units, totals.gross, totals.net, totals.value, valuation, bankPreset?.bankLogo])
 
   /* Re-measure only when something that changes the layout actually changes.
      Keying on object identity would restart the measure pass on every parent
@@ -312,8 +332,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
     valuation.updatedAt || '',
     items.length,
     items.map((item) => `${item.description || ''}|${item.remarks || ''}`).join('~'),
-    profile ? `${profile.business_name || ''}|${profile.address || ''}|${profile.organization || ''}` : '',
-    bankPreset ? `${bankPreset.id || ''}|${bankPreset.bankName || ''}|${bankPreset.managerName || ''}|${bankPreset.empanelmentId || ''}` : '',
+    profile ? `${profile.business_name || ''}|${profile.address || ''}|${profile.organization || ''}|${profile.logo_photo ? '1' : '0'}` : '',
+    bankPreset ? `${bankPreset.id || ''}|${bankPreset.bankName || ''}|${bankPreset.managerName || ''}|${bankPreset.empanelmentId || ''}|${bankPreset.bankLogo ? '1' : '0'}` : '',
     valuation.personPhoto ? '1' : '0',
     valuation.jewelleryPhoto ? '1' : '0',
   ].join('#')

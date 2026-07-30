@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, Upload } from 'lucide-react'
 import QrImage from '../../components/QrImage'
 import WhatsAppMark from '../../components/WhatsAppMark'
 import { api } from '../../lib/api'
 import { upiUrl } from '../../lib/qr'
+import { compressImage } from '../../lib/imageCompress'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MOBILE_RE = /^[6-9]\d{9}$/
 const UPI_RE = /^[\w.+-]{2,256}@[a-zA-Z][a-zA-Z0-9]{1,64}$/
 
-const EMPTY_FORM = { appraiserName: '', businessName: '', mobile: '', whatsappNumber: '', email: '', upiId: '', bankAccountNumber: '', address: '', gstn: '', qualification: '', organization: '', certNumber: '' }
+const EMPTY_FORM = { appraiserName: '', businessName: '', mobile: '', whatsappNumber: '', email: '', upiId: '', bankAccountNumber: '', logoPhoto: '', address: '', gstn: '', qualification: '', organization: '', certNumber: '' }
 
 function normalizeMobile(input) {
   let digits = String(input || '').replace(/\D/g, '')
@@ -50,6 +51,7 @@ export default function AppraiserProfile() {
           email: p.email || '',
           upiId: p.upi_id || '',
           bankAccountNumber: p.bank_account_number || '',
+          logoPhoto: p.logo_photo || '',
           address: p.address || '',
           gstn: p.gstn || '',
           qualification: p.qualification || '',
@@ -67,6 +69,16 @@ export default function AppraiserProfile() {
   const setField = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }))
     if (errors[key]) setErrors((er) => ({ ...er, [key]: undefined }))
+  }
+
+  const uploadLogo = async (file) => {
+    if (!file) return
+    try {
+      const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 500, quality: 0.85 })
+      setForm((f) => ({ ...f, logoPhoto: compressed }))
+    } catch {
+      toast.error('Unable to process logo image.')
+    }
   }
 
   const save = async () => {
@@ -155,6 +167,33 @@ export default function AppraiserProfile() {
         <div>
           <label className="label">Bank Account Number</label>
           <input className="input" placeholder="e.g. 123456789012" value={form.bankAccountNumber} onChange={setField('bankAccountNumber')} />
+        </div>
+        <div className="md:col-span-2">
+          <label className="label">Shop Logo (for valuation heading)</label>
+          <div className="flex flex-col gap-3 rounded-md border border-slate-200 p-3 md:flex-row md:items-center">
+            <div className="h-20 w-44 overflow-hidden rounded border border-slate-200 bg-slate-50">
+              {form.logoPhoto
+                ? <img src={form.logoPhoto} alt="Shop logo" className="h-full w-full object-contain" />
+                : <div className="grid h-full w-full place-items-center text-xs text-slate-400">No logo</div>}
+            </div>
+            <div className="flex gap-2">
+              <label className="btn-secondary">
+                <Upload size={16} /> Upload Logo
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="sr-only"
+                  onChange={(e) => uploadLogo(e.target.files?.[0])}
+                />
+              </label>
+              {form.logoPhoto && (
+                <button type="button" className="btn-secondary" onClick={() => setForm((f) => ({ ...f, logoPhoto: '' }))}>
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">Shown at the top-left of the printed certificate header.</p>
         </div>
         <div><label className="label">GSTN/PAN/TAN</label><input className="input" placeholder="e.g. ACHPU8474H" value={form.gstn} onChange={setField('gstn')} /></div>
         <div className="md:col-span-2"><label className="label">Address</label><textarea className="input min-h-20" value={form.address} onChange={setField('address')} /></div>

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { Pencil, Plus, Trash2, Check, X } from 'lucide-react'
+import { Pencil, Plus, Trash2, Check, X, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
+import { compressImage } from '../../lib/imageCompress'
 
-const emptyForm = { bankName: 'Bank of Maharashtra', branch: '', branchCode: '', rateOfInterest: '', loanLtv: 57, empanelmentId: '', managerName: '', address: '', appIdPrefix: '', appIdDigits: 10, certificateRules: '' }
+const emptyForm = { bankName: 'Bank of Maharashtra', branch: '', branchCode: '', rateOfInterest: '', loanLtv: 57, empanelmentId: '', managerName: '', bankLogo: '', address: '', appIdPrefix: '', appIdDigits: 10, certificateRules: '' }
 
 export default function BankPresets() {
   const [rows, setRows] = useState([])
@@ -28,7 +29,7 @@ export default function BankPresets() {
 
   const startEdit = (r) => {
     setEditId(r.id)
-    setForm({ bankName: r.bankName, branch: r.branch, branchCode: r.branchCode || '', rateOfInterest: r.rateOfInterest || '', loanLtv: r.loanLtv || 57, empanelmentId: r.empanelmentId || '', managerName: r.managerName || '', address: r.address || '', appIdPrefix: r.appIdPrefix || '', appIdDigits: r.appIdDigits || 10, certificateRules: r.certificateRules || '' })
+    setForm({ bankName: r.bankName, branch: r.branch, branchCode: r.branchCode || '', rateOfInterest: r.rateOfInterest || '', loanLtv: r.loanLtv || 57, empanelmentId: r.empanelmentId || '', managerName: r.managerName || '', bankLogo: r.bankLogo || '', address: r.address || '', appIdPrefix: r.appIdPrefix || '', appIdDigits: r.appIdDigits || 10, certificateRules: r.certificateRules || '' })
   }
 
   const cancelEdit = () => { setEditId(null); setForm({ ...emptyForm }) }
@@ -38,6 +39,16 @@ export default function BankPresets() {
     await api.presets.deleteBank(id)
     toast.success('Deleted.')
     load()
+  }
+
+  const uploadBankLogo = async (file) => {
+    if (!file) return
+    try {
+      const compressed = await compressImage(file, { maxWidth: 1400, maxHeight: 500, quality: 0.85 })
+      setForm((f) => ({ ...f, bankLogo: compressed }))
+    } catch {
+      toast.error('Unable to process bank logo image.')
+    }
   }
 
   return (
@@ -57,6 +68,24 @@ export default function BankPresets() {
           <div><label className="label">Manager Name</label><input className="input" value={form.managerName} onChange={(e) => setForm({ ...form, managerName: e.target.value })} /></div>
           <div><label className="label">App ID Prefix</label><input className="input" value={form.appIdPrefix} onChange={(e) => setForm({ ...form, appIdPrefix: e.target.value })} /></div>
           <div><label className="label">App ID Digits</label><input type="number" className="input" value={form.appIdDigits} onChange={(e) => setForm({ ...form, appIdDigits: e.target.value })} /></div>
+        </div>
+        <div>
+          <label className="label">Bank Logo (horizontal)</label>
+          <div className="flex flex-col gap-3 rounded-md border border-slate-200 p-3 md:flex-row md:items-center">
+            <div className="h-20 w-full max-w-md overflow-hidden rounded border border-slate-200 bg-slate-50">
+              {form.bankLogo
+                ? <img src={form.bankLogo} alt="Bank logo" className="h-full w-full object-contain" />
+                : <div className="grid h-full w-full place-items-center text-xs text-slate-400">No bank logo</div>}
+            </div>
+            <div className="flex gap-2">
+              <label className="btn-secondary">
+                <Upload size={16} /> Upload Logo
+                <input type="file" accept="image/*" className="sr-only" onChange={(e) => uploadBankLogo(e.target.files?.[0])} />
+              </label>
+              {form.bankLogo && <button type="button" className="btn-secondary" onClick={() => setForm((f) => ({ ...f, bankLogo: '' }))}>Remove</button>}
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">Shown on valuation certificate near the declaration section.</p>
         </div>
         <div>
           <label className="label">Certificate Rules / Declaration Text</label>

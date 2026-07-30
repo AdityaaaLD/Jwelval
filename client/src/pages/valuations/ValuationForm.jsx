@@ -388,6 +388,50 @@ export default function ValuationForm() {
             <input className="input" placeholder="Auto from bank preset" value={form.applicationId} onChange={(e) => setField('applicationId', e.target.value)} disabled={disabled} />
           </div>
           <div>
+            <label className="label">Gold Loan Register No.</label>
+            <input
+              className="input"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="e.g. 125"
+              value={form.goldLoanRegisterNo}
+              onChange={(e) => setField('goldLoanRegisterNo', e.target.value.replace(/\D/g, ''))}
+              disabled={disabled}
+            />
+          </div>
+          <div>
+            <label className="label">Gold Packets No.</label>
+            <input
+              className="input"
+              placeholder="e.g. GP-12A"
+              value={form.goldPacketsNo}
+              onChange={(e) => setField('goldPacketsNo', e.target.value.toUpperCase())}
+              disabled={disabled}
+            />
+          </div>
+          <div>
+            <label className="label">Renewal Date</label>
+            <input
+              type="date"
+              className="input"
+              value={form.renewalDate || ''}
+              onChange={(e) => setField('renewalDate', e.target.value)}
+              disabled={disabled}
+            />
+          </div>
+          <div>
+            <label className="label">Tenure (Months)</label>
+            <input
+              type="number"
+              min="1"
+              className="input"
+              placeholder="e.g. 12"
+              value={form.tenureMonths}
+              onChange={(e) => setField('tenureMonths', e.target.value)}
+              disabled={disabled}
+            />
+          </div>
+          <div>
             <label className="label">Gold Rate 22K (per gram)</label>
             <input type="number" className="input" value={form.goldRate22k} onChange={(e) => setField('goldRate22k', e.target.value)} disabled={disabled} />
           </div>
