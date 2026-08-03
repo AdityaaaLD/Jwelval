@@ -170,21 +170,32 @@
   object-fit: contain;
 }
 
-.dc-bank-logo-row td {
+.dc-cert-footer-cell {
   border: 0 !important;
-  padding: 4px 0 1px !important;
+  padding: 4px 0 0 !important;
   background: #fff !important;
 }
 
-.dc-bank-logo-cell {
-  text-align: right !important;
+.dc-cert-footer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 10px;
+}
+
+.dc-cert-footer-rules {
+  min-width: 0;
+}
+
+.dc-cert-footer-logo-wrap {
+  align-self: start;
 }
 
 .dc-bank-logo {
   width: 100mm;
   max-height: 20mm;
   object-fit: contain;
-  display: inline-block;
+  display: block;
 }
 /* Page 2 — KYC Documents (own records only, never in the shared PDF) */
 .dc-page2 { page-break-before: always; }

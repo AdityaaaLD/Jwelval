@@ -321,20 +321,19 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
       </tr>
     )
 
-    if (bankPreset?.bankLogo) {
-      rows.push(
-        <tr key="bank-logo" className="dc-bank-logo-row">
-          <td colSpan={COLS} className="dc-bank-logo-cell">
-            <img src={bankPreset.bankLogo} alt="Bank Logo" className="dc-bank-logo" />
-          </td>
-        </tr>
-      )
-    }
-
     rows.push(
-      <tr key="cert-text" className="dc-cert-text-row">
-        <td colSpan={COLS} className="dc-cert-text-cell">
-          <CertificateRules valuation={valuation} className="dc-cert-text" />
+      <tr key="cert-footer" className="dc-cert-footer-row">
+        <td colSpan={COLS} className="dc-cert-footer-cell">
+          <div className="dc-cert-footer">
+            <div className="dc-cert-footer-rules">
+              <CertificateRules valuation={valuation} className="dc-cert-text" />
+            </div>
+            {bankPreset?.bankLogo && (
+              <div className="dc-cert-footer-logo-wrap">
+                <img src={bankPreset.bankLogo} alt="Bank Logo" className="dc-bank-logo" />
+              </div>
+            )}
+          </div>
         </td>
       </tr>
     )
