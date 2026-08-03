@@ -5,7 +5,7 @@ import QrImage from '../../components/QrImage'
 import WhatsAppMark from '../../components/WhatsAppMark'
 import { api } from '../../lib/api'
 import { upiUrl } from '../../lib/qr'
-import { compressImage } from '../../lib/imageCompress'
+import { normalizeLogoImage } from '../../lib/imageCompress'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MOBILE_RE = /^[6-9]\d{9}$/
@@ -74,7 +74,12 @@ export default function AppraiserProfile() {
   const uploadLogo = async (file) => {
     if (!file) return
     try {
-      const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 500, quality: 0.85 })
+      const compressed = await normalizeLogoImage(file, {
+        targetWidth: 640,
+        targetHeight: 420,
+        quality: 0.9,
+        paddingPercent: 0.08,
+      })
       setForm((f) => ({ ...f, logoPhoto: compressed }))
     } catch {
       toast.error('Unable to process logo image.')

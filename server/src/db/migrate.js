@@ -275,6 +275,7 @@ for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN gold_packets_no TEXT',
   'ALTER TABLE valuations ADD COLUMN renewal_date TEXT',
   'ALTER TABLE valuations ADD COLUMN tenure_months INTEGER',
+  'ALTER TABLE valuations ADD COLUMN bank_preset_id INTEGER',
   'ALTER TABLE bank_presets ADD COLUMN bank_logo TEXT',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {

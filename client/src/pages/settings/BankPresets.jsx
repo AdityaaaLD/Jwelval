@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { Pencil, Plus, Trash2, Check, X, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
-import { compressImage } from '../../lib/imageCompress'
+import { normalizeLogoImage } from '../../lib/imageCompress'
 
 const emptyForm = { bankName: 'Bank of Maharashtra', branch: '', branchCode: '', rateOfInterest: '', loanLtv: 57, empanelmentId: '', managerName: '', bankLogo: '', address: '', appIdPrefix: '', appIdDigits: 10, certificateRules: '' }
 
@@ -44,7 +44,12 @@ export default function BankPresets() {
   const uploadBankLogo = async (file) => {
     if (!file) return
     try {
-      const compressed = await compressImage(file, { maxWidth: 1400, maxHeight: 500, quality: 0.85 })
+      const compressed = await normalizeLogoImage(file, {
+        targetWidth: 1400,
+        targetHeight: 320,
+        quality: 0.9,
+        paddingPercent: 0.06,
+      })
       setForm((f) => ({ ...f, bankLogo: compressed }))
     } catch {
       toast.error('Unable to process bank logo image.')

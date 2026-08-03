@@ -30,6 +30,7 @@ for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN gold_packets_no TEXT',
   'ALTER TABLE valuations ADD COLUMN renewal_date TEXT',
   'ALTER TABLE valuations ADD COLUMN tenure_months INTEGER',
+  'ALTER TABLE valuations ADD COLUMN bank_preset_id INTEGER',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {
     if (!String(error.message).includes('duplicate column name')) {
@@ -293,6 +294,7 @@ router.post(
           branchCode: branchCode || '',
           empanelmentId: empanelmentId || '',
           applicationId: finalApplicationId,
+          bankPresetId: bankPresetId != null && bankPresetId !== '' ? Number(bankPresetId) : null,
           goldLoanRegisterNo: goldLoanRegisterNo || '',
           goldPacketsNo: goldPacketsNo || '',
           renewalDate: renewalDate || null,
@@ -380,6 +382,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
     aadharPhotoDoc,
     panPhoto,
     certificateRules,
+    bankPresetId,
     items,
   } = req.body
 
@@ -402,6 +405,7 @@ router.put('/:id', body('items').optional().isArray(), validate, async (req, res
       branchCode: branchCode ?? existing.branchCode,
       acNo: acNo ?? existing.acNo,
       applicationId: applicationId ?? existing.applicationId,
+      bankPresetId: bankPresetId != null ? Number(bankPresetId) : existing.bankPresetId,
       goldLoanRegisterNo: goldLoanRegisterNo ?? existing.goldLoanRegisterNo,
       goldPacketsNo: goldPacketsNo ?? existing.goldPacketsNo,
       renewalDate: renewalDate ?? existing.renewalDate,
@@ -476,6 +480,7 @@ router.post('/:id/duplicate', async (req, res) => {
     branch: full.branch || '',
     branchCode: full.branchCode || '',
     applicationId: full.applicationId || '',
+    bankPresetId: full.bankPresetId != null ? Number(full.bankPresetId) : null,
     goldLoanRegisterNo: full.goldLoanRegisterNo || '',
     goldPacketsNo: full.goldPacketsNo || '',
     renewalDate: full.renewalDate || null,

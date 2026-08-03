@@ -40,6 +40,62 @@ export function compressImage(file, opts = {}) {
 }
 
 /**
+ * Normalize logos to a consistent canvas size so print layout is stable across
+ * different uploaded logo dimensions.
+ *
+ * @param {File|Blob} file
+ * @param {object} opts
+ * @param {number} opts.targetWidth
+ * @param {number} opts.targetHeight
+ * @param {number} opts.quality
+ * @param {string} opts.background
+ * @param {number} opts.paddingPercent - 0..0.4
+ * @returns {Promise<string>} normalized JPEG data URL
+ */
+export function normalizeLogoImage(file, opts = {}) {
+  const {
+    targetWidth = 1000,
+    targetHeight = 280,
+    quality = 0.88,
+    background = '#ffffff',
+    paddingPercent = 0.08,
+  } = opts
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = targetWidth
+        canvas.height = targetHeight
+        const ctx = canvas.getContext('2d')
+
+        const pad = Math.max(0, Math.min(0.4, Number(paddingPercent) || 0))
+        const innerW = targetWidth * (1 - pad * 2)
+        const innerH = targetHeight * (1 - pad * 2)
+        const scale = Math.min(innerW / img.width, innerH / img.height)
+        const drawW = Math.max(1, Math.round(img.width * scale))
+        const drawH = Math.max(1, Math.round(img.height * scale))
+        const dx = Math.round((targetWidth - drawW) / 2)
+        const dy = Math.round((targetHeight - drawH) / 2)
+
+        ctx.fillStyle = background
+        ctx.fillRect(0, 0, targetWidth, targetHeight)
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        ctx.drawImage(img, dx, dy, drawW, drawH)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.onerror = () => reject(new Error('Failed to load logo image'))
+      img.src = e.target.result
+    }
+    reader.onerror = () => reject(new Error('Failed to read logo image'))
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
  * Compress a base64 data URL string (for re-compressing existing images).
  * @param {string} dataUrl - Existing base64 data URL
  * @param {object} opts - Same as compressImage opts

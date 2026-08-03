@@ -97,14 +97,32 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
   useEffect(() => { api.profile.get().then(setProfile).catch(() => {}) }, [])
   useEffect(() => {
     const presetId = Number(valuation?.bankPresetId)
-    if (!presetId) {
-      setBankPreset(null)
-      return
-    }
     api.presets.banks()
-      .then((rows) => setBankPreset(rows.find((row) => Number(row.id) === presetId) || null))
+      .then((rows) => {
+        const byId = presetId ? rows.find((row) => Number(row.id) === presetId) : null
+        if (byId) {
+          setBankPreset(byId)
+          return
+        }
+
+        const wantedBank = String(valuation?.customer?.bankName || '').trim().toLowerCase()
+        const wantedBranch = String(valuation?.branch || valuation?.customer?.branch || '').trim().toLowerCase()
+        if (!wantedBank) {
+          setBankPreset(null)
+          return
+        }
+
+        const fallback = rows.find((row) => {
+          const rowBank = String(row.bankName || '').trim().toLowerCase()
+          const rowBranch = String(row.branch || '').trim().toLowerCase()
+          if (rowBank !== wantedBank) return false
+          return wantedBranch ? rowBranch === wantedBranch : true
+        }) || null
+
+        setBankPreset(fallback)
+      })
       .catch(() => setBankPreset(null))
-  }, [valuation?.bankPresetId])
+  }, [valuation?.bankPresetId, valuation?.branch, valuation?.customer?.bankName, valuation?.customer?.branch])
 
   const measureRef = useRef(null)
   const [tick, setTick] = useState(0)

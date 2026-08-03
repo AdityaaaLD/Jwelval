@@ -61,6 +61,7 @@ export const valuations = sqliteTable('valuations', {
   jewelleryPhoto: text('jewellery_photo'),
   ornamentPhotos: text('ornament_photos'),
   applicationId: text('application_id'),
+  bankPresetId: integer('bank_preset_id'),
   goldLoanRegisterNo: text('gold_loan_register_no'),
   goldPacketsNo: text('gold_packets_no'),
   renewalDate: text('renewal_date'),
