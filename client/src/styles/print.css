@@ -187,7 +187,7 @@
 
 .dc-cert-footer-rules {
   min-width: 0;
-  padding: 4px 6px;
+  padding: 4px 6px 5px;
   border-right: 1px solid #000;
 }
 
@@ -225,27 +225,7 @@
 }
 
 .dc-cert-text p:last-child {
-  margin-bottom: 0;
-}
-
-@media screen and (max-width: 840px) {
-  .dc-cert-footer-rules {
-    padding: 3px 4px;
-  }
-
-  .dc-cert-footer-logo-wrap {
-    padding: 3px;
-  }
-
-  .dc-bank-logo {
-    width: 38mm;
-    max-height: 16mm;
-  }
-
-  .dc-cert-text {
-    font-size: 9px;
-    line-height: 1.35;
-  }
+  margin-bottom: 1px;
 }
 
 /* Page 2 — KYC Documents (own records only, never in the shared PDF) */
