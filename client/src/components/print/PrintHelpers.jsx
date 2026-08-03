@@ -106,11 +106,33 @@ const DEFAULT_RULES = `I hereby certify that value of the above jewels is not le
 I also certify that the fineness / purity weights and valuation rates given above are correct.
 Further, I declare that the applicant is / are not my relative / associate etc., and I also do not have any interest whatsoever in the gold ornaments / jewellery that have been assessed / appraised by me.`
 
+function normalizeRulesLines(text) {
+  const raw = String(text || '').replace(/\r/g, '').trim()
+  if (!raw) return []
+
+  // Explicit separators from bank presets (one line per rule).
+  if (raw.includes('||')) {
+    return raw.split('||').map((line) => line.trim()).filter(Boolean)
+  }
+
+  // Respect manual line breaks if user already formatted them.
+  if (raw.includes('\n')) {
+    return raw.split('\n').map((line) => line.trim()).filter(Boolean)
+  }
+
+  // Otherwise split into readable sentence lines.
+  return raw
+    .split(/(?<=[.!?])\s+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+}
+
 export function CertificateRules({ valuation, className = 'certificate-rules' }) {
   const text = valuation?.certificateRules || DEFAULT_RULES
+  const lines = normalizeRulesLines(text)
   return (
     <div className={className}>
-      {text.split('\n').filter(Boolean).map((line, i) => <p key={i}>{line}</p>)}
+      {lines.map((line, i) => <p key={i}>{line}</p>)}
     </div>
   )
 }

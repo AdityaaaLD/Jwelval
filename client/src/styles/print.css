@@ -178,24 +178,46 @@
 
 .dc-cert-footer {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 10px;
+  column-gap: 0;
+  width: 100%;
 }
 
 .dc-cert-footer-rules {
   min-width: 0;
+  padding-right: 8mm;
 }
 
 .dc-cert-footer-logo-wrap {
+  justify-self: end;
   align-self: start;
+  margin-right: 0;
 }
 
 .dc-bank-logo {
-  width: 100mm;
+  width: 46mm;
   max-height: 20mm;
   object-fit: contain;
   display: block;
+}
+
+.dc-cert-text {
+  margin: 0;
+  font-size: 9.5px;
+  line-height: 1.42;
+  text-align: left;
+}
+
+.dc-cert-text p {
+  margin: 0 0 2px;
+  text-indent: 0;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.dc-cert-text p:last-child {
+  margin-bottom: 0;
 }
 /* Page 2 — KYC Documents (own records only, never in the shared PDF) */
 .dc-page2 { page-break-before: always; }
