@@ -171,8 +171,9 @@
 }
 
 .dc-cert-footer-cell {
-  border: 0 !important;
-  padding: 4px 0 0 !important;
+  border: 1px solid #000 !important;
+  border-top: 0 !important;
+  padding: 0 !important;
   background: #fff !important;
 }
 
@@ -186,10 +187,16 @@
 
 .dc-cert-footer-rules {
   min-width: 0;
-  padding-right: 8mm;
+  padding: 4px 6px;
+  border-right: 1px solid #000;
 }
 
 .dc-cert-footer-logo-wrap {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  min-height: 100%;
+  padding: 4px;
   justify-self: end;
   align-self: start;
   margin-right: 0;
@@ -200,6 +207,10 @@
   max-height: 20mm;
   object-fit: contain;
   display: block;
+  border: 1px solid #000;
+  padding: 1.2mm;
+  box-sizing: border-box;
+  background: #fff;
 }
 
 .dc-cert-text {
@@ -219,6 +230,27 @@
 .dc-cert-text p:last-child {
   margin-bottom: 0;
 }
+
+@media screen and (max-width: 840px) {
+  .dc-cert-footer-rules {
+    padding: 3px 4px;
+  }
+
+  .dc-cert-footer-logo-wrap {
+    padding: 3px;
+  }
+
+  .dc-bank-logo {
+    width: 38mm;
+    max-height: 16mm;
+  }
+
+  .dc-cert-text {
+    font-size: 9px;
+    line-height: 1.35;
+  }
+}
+
 /* Page 2 — KYC Documents (own records only, never in the shared PDF) */
 .dc-page2 { page-break-before: always; }
 .dc-kyc-notice {
