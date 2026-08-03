@@ -87,7 +87,7 @@ function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight }) {
  * on-screen preview and in Print / Save PDF so the appraiser keeps it for their
  * own records, but it is never rendered into the PDF that gets shared.
  */
-export default function PrintDigitalCert({ valuation, includeKyc = true }) {
+export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseUrl = '' }) {
   const customer = valuation.customer || {}
   const items = valuation.items || []
   const aadharFrontDoc = valuation.aadharPhotoDoc || customer.aadharPhoto || ''
@@ -138,6 +138,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
   }), { units: 0, gross: 0, net: 0, value: 0 })
 
   const reportDateTime = resolveReportDateTime(valuation)
+  const qrVerifyLink = verificationUrl(valuation.valuationNumber, { baseUrl: qrBaseUrl })
   const empanelmentId = bankPreset?.empanelmentId || valuation?.empanelmentId || ''
   const bankName = bankPreset?.bankName || customer.bankName || 'Bank of Maharashtra'
   const branchName = valuation.branch || bankPreset?.branch || customer.branch || '-'
@@ -177,7 +178,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true }) {
           </div>
         )}
         <div className="dc-header-qr-badge">
-          <QrImage text={verificationUrl(valuation.valuationNumber)} className="dc-header-qr-image" />
+          <QrImage text={qrVerifyLink} className="dc-header-qr-image" qrOptions={{ width: 360, margin: 2 }} />
           <p>Scan &amp; Verify</p>
         </div>
         <p className="dc-header-line" style={{ fontSize: '18px', letterSpacing: '1px', color: '#b8860b' }}><b>{(profile?.business_name || 'JEWELLERS').toUpperCase()}</b></p>

@@ -62,6 +62,7 @@ export default function PrintRender() {
   const [searchParams] = useSearchParams()
   // The shared/bank copy is rendered with ?kyc=0 so the KYC sheet is left out.
   const includeKyc = searchParams.get('kyc') !== '0'
+  const qrBaseUrl = searchParams.get('qrBase') || ''
   const [valuation, setValuation] = useState(null)
   const [failed, setFailed] = useState('')
 
@@ -107,7 +108,7 @@ export default function PrintRender() {
     <div id="print-portal" className="print-overlay">
       <div className="print-preview-scroll">
         <div className="print-preview-center">
-          <PrintDigitalCert valuation={valuation} includeKyc={includeKyc} />
+          <PrintDigitalCert valuation={valuation} includeKyc={includeKyc} qrBaseUrl={qrBaseUrl} />
         </div>
       </div>
     </div>,

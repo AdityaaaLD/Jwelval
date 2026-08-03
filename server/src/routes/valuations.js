@@ -22,6 +22,18 @@ function printBaseUrl() {
     : 'http://127.0.0.1:5173'
 }
 
+function verificationBaseUrl() {
+  const explicit = String(process.env.QR_VERIFY_BASE_URL || process.env.PUBLIC_APP_URL || '').trim()
+  if (explicit) return explicit.replace(/\/+$/, '')
+
+  const fromCors = String(process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)[0]
+
+  return fromCors ? fromCors.replace(/\/+$/, '') : ''
+}
+
 for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN bank_gold_rate_per_gram REAL',
   'ALTER TABLE valuations ADD COLUMN loan_ltv REAL',
@@ -161,7 +173,11 @@ router.get('/:id/pdf', async (req, res) => {
   // This PDF is the copy that gets shared with the bank, so the borrower's KYC
   // sheet is left out unless it is explicitly asked for.
   const includeKyc = String(req.query.includeKyc || '') === '1'
-  const url = `${printBaseUrl()}/print/valuation/${id}?kyc=${includeKyc ? '1' : '0'}`
+  const printUrl = new URL(`${printBaseUrl()}/print/valuation/${id}`)
+  printUrl.searchParams.set('kyc', includeKyc ? '1' : '0')
+  const qrBase = verificationBaseUrl()
+  if (qrBase) printUrl.searchParams.set('qrBase', qrBase)
+  const url = printUrl.toString()
   const startedAt = Date.now()
 
   try {
