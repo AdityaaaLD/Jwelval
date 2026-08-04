@@ -165,8 +165,8 @@
 }
 
 .dc-header-logo-image {
-  width: 100%;
-  height: 100%;
+  width: 120%;
+  height: 120%;
   object-fit: contain;
 }
 
@@ -202,8 +202,8 @@
 }
 
 .dc-bank-logo {
-  width: 46mm;
-  max-height: 20mm;
+  width: 59.8mm;
+  max-height: 26mm;
   object-fit: contain;
   display: block;
   background: #fff;
