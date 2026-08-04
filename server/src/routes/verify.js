@@ -3,6 +3,54 @@ import { sqlite } from '../db/client.js'
 
 const router = Router()
 
+function normalizeUrl(raw) {
+  return String(raw || '').trim().replace(/\/+$/, '')
+}
+
+function isLoopbackUrl(raw) {
+  try {
+    const host = new URL(raw).hostname.toLowerCase()
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1'
+  } catch {
+    return false
+  }
+}
+
+function requestBaseUrl(req) {
+  const xfProto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim()
+  const xfHost = String(req.headers['x-forwarded-host'] || '').split(',')[0].trim()
+  const proto = xfProto || req.protocol || 'http'
+  const host = xfHost || req.get('host') || ''
+  if (!host) return ''
+  return normalizeUrl(`${proto}://${host}`)
+}
+
+function pickBestBaseUrl(candidates) {
+  const urls = candidates.map(normalizeUrl).filter(Boolean)
+  const nonLoopback = urls.filter((url) => !isLoopbackUrl(url))
+  if (nonLoopback.length) {
+    const https = nonLoopback.find((url) => url.startsWith('https://'))
+    return https || nonLoopback[0]
+  }
+  return urls[0] || ''
+}
+
+function verificationBaseUrl(req) {
+  const explicit = normalizeUrl(process.env.QR_VERIFY_BASE_URL || process.env.PUBLIC_APP_URL || '')
+  if (explicit) return explicit
+
+  const corsOrigins = String(process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((origin) => normalizeUrl(origin))
+    .filter(Boolean)
+
+  return pickBestBaseUrl([requestBaseUrl(req), ...corsOrigins])
+}
+
+router.get('/base-url', (req, res) => {
+  res.json({ baseUrl: verificationBaseUrl(req) })
+})
+
 router.get('/:number', (req, res) => {
   const row = sqlite.prepare(`
     SELECT v.valuation_number AS valuationNumber, v.valuation_date AS valuationDate,

@@ -91,6 +91,7 @@ export const api = {
     series: () => request('/sell-bills/series'),
     createSeries: (data) => request('/sell-bills/series', { method: 'POST', body: data }),
   },
+  verifyBaseUrl: () => request('/verify/base-url'),
   verify: (number) => request(`/verify/${encodeURIComponent(number)}`),
 
   ocr: {

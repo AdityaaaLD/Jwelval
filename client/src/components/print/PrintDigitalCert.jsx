@@ -94,7 +94,26 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
   const aadharBackDoc = customer.aadharPhotoBack || ''
   const [profile, setProfile] = useState(null)
   const [bankPreset, setBankPreset] = useState(null)
+  const [resolvedQrBaseUrl, setResolvedQrBaseUrl] = useState('')
   useEffect(() => { api.profile.get().then(setProfile).catch(() => {}) }, [])
+  useEffect(() => {
+    const explicit = String(qrBaseUrl || '').trim()
+    if (explicit) {
+      setResolvedQrBaseUrl(explicit)
+      return
+    }
+    let alive = true
+    api.verifyBaseUrl()
+      .then((data) => {
+        if (!alive) return
+        setResolvedQrBaseUrl(String(data?.baseUrl || '').trim())
+      })
+      .catch(() => {
+        if (!alive) return
+        setResolvedQrBaseUrl('')
+      })
+    return () => { alive = false }
+  }, [qrBaseUrl])
   useEffect(() => {
     const presetId = Number(valuation?.bankPresetId)
     api.presets.banks()
@@ -138,7 +157,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
   }), { units: 0, gross: 0, net: 0, value: 0 })
 
   const reportDateTime = resolveReportDateTime(valuation)
-  const qrVerifyLink = verificationUrl(valuation.valuationNumber, { baseUrl: qrBaseUrl })
+  const qrVerifyLink = verificationUrl(valuation.valuationNumber, { baseUrl: resolvedQrBaseUrl || qrBaseUrl })
   const empanelmentId = bankPreset?.empanelmentId || valuation?.empanelmentId || ''
   const bankName = bankPreset?.bankName || customer.bankName || 'Bank of Maharashtra'
   const branchName = valuation.branch || bankPreset?.branch || customer.branch || '-'
