@@ -283,20 +283,23 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     </div>
   )
 
+  const certFooter = (
+    <div className="dc-cert-footer-box">
+      <div className="dc-cert-footer">
+        <div className="dc-cert-footer-rules">
+          <CertificateRules valuation={valuation} className="dc-cert-text" />
+        </div>
+        {bankPreset?.bankLogo && (
+          <div className="dc-cert-footer-logo-wrap">
+            <img src={bankPreset.bankLogo} alt="Bank Logo" className="dc-bank-logo" />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
   const runningFoot = (
     <div className="dc-running-foot">
-      <div className="dc-cert-footer-box">
-        <div className="dc-cert-footer">
-          <div className="dc-cert-footer-rules">
-            <CertificateRules valuation={valuation} className="dc-cert-text" />
-          </div>
-          {bankPreset?.bankLogo && (
-            <div className="dc-cert-footer-logo-wrap">
-              <img src={bankPreset.bankLogo} alt="Bank Logo" className="dc-bank-logo" />
-            </div>
-          )}
-        </div>
-      </div>
       <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
     </div>
   )
@@ -396,14 +399,15 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
 
     const head = root.querySelector('.dc-running-head')
     const foot = root.querySelector('.dc-running-foot')
+    const certFooterBox = root.querySelector('.dc-cert-footer-box')
     const thead = root.querySelector('thead')
     const rows = Array.from(root.querySelectorAll('tbody > tr'))
-    if (!head || !foot || !thead || !rows.length) return undefined
+    if (!head || !foot || !certFooterBox || !thead || !rows.length) return undefined
 
     const rowHeights = rows.map((row) => row.offsetHeight)
     setPages(paginateRows(rowHeights, {
       headerHeight: head.offsetHeight,
-      footerHeight: foot.offsetHeight,
+      footerHeight: foot.offsetHeight + certFooterBox.offsetHeight,
       theadHeight: thead.offsetHeight,
     }))
     setStage(STAGE_DONE)
@@ -432,6 +436,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
                 {tableHead}
                 <tbody>{bodyRows}</tbody>
               </table>
+              {certFooter}
             </div>
             {runningFoot}
           </article>
@@ -447,6 +452,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
               {tableHead}
               <tbody>{rowIndexes.map((index) => bodyRows[index])}</tbody>
             </table>
+            {certFooter}
           </div>
           {runningFoot}
         </article>
