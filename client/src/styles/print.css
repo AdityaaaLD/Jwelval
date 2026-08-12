@@ -126,8 +126,8 @@
 .dc-signature { margin-top: 12px; }
 .dc-signature p { margin: 0; }
 .dc-sign-space { height: 18mm; }
-.digital-cert .signature-grid { margin-top: 2px; padding-top: 6mm; gap: 6px; }
-.digital-cert .signature-box { min-height: 12mm; font-size: 9.8px; padding-top: 2px; }
+.digital-cert .signature-grid { margin-top: 2px; padding-top: 10mm; gap: 6px; }
+.digital-cert .signature-box { min-height: 18mm; font-size: 9.8px; padding-top: 2px; }
 
 .dc-header-qr-badge {
   position: absolute;
