@@ -59,8 +59,8 @@ function onImagesSettled(root, callback) {
  * here means every page gets the full header, the column headers and the
  * signature footer, with the footer pinned to the bottom edge.
  */
-function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight }) {
-  const capacity = USABLE_PX - headerHeight - footerHeight - theadHeight
+function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight, reservedHeight = 0 }) {
+  const capacity = USABLE_PX - headerHeight - footerHeight - theadHeight - reservedHeight
   if (!Number.isFinite(capacity) || capacity <= 0) return [rowHeights.map((_, i) => i)]
 
   const pages = []
@@ -329,35 +329,31 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     </thead>
   )
 
-  // Every row that has to be distributed over the pages, in printed order.
-  const bodyRows = useMemo(() => {
-    const rows = items.map((item, index) => (
-      <tr key={`item-${item.id || index}`}>
-        <td>{index + 1}</td>
-        <td className="dc-td-left">{item.description}</td>
-        <td>{item.remarks || '-'}</td>
-        <td>{num(item.noOfUnits, 2)}</td>
-        <td>{num(item.grossWeightGm, 2)}</td>
-        <td>{num(item.netWeightGm, 2)}</td>
-        <td>{item.purityCarat || 22}K</td>
-        <td>{num(item.approxValueInr, 2)}</td>
-      </tr>
-    ))
+  // Ornament item rows to be distributed over pages.
+  const bodyRows = useMemo(() => items.map((item, index) => (
+    <tr key={`item-${item.id || index}`}>
+      <td>{index + 1}</td>
+      <td className="dc-td-left">{item.description}</td>
+      <td>{item.remarks || '-'}</td>
+      <td>{num(item.noOfUnits, 2)}</td>
+      <td>{num(item.grossWeightGm, 2)}</td>
+      <td>{num(item.netWeightGm, 2)}</td>
+      <td>{item.purityCarat || 22}K</td>
+      <td>{num(item.approxValueInr, 2)}</td>
+    </tr>
+  )), [items])
 
-    rows.push(
-      <tr key="totals" className="dc-total-row">
-        <td colSpan="2"><b>Total Market Value</b></td>
-        <td></td>
-        <td><b>{num(totals.units, 2)}</b></td>
-        <td><b>{num(totals.gross, 2)}</b></td>
-        <td><b>{num(totals.net, 2)}</b></td>
-        <td></td>
-        <td><b>{num(totals.value, 2)}</b></td>
-      </tr>
-    )
-
-    return rows
-  }, [items, totals.units, totals.gross, totals.net, totals.value])
+  const totalRow = (
+    <tr key="totals" className="dc-total-row">
+      <td colSpan="2"><b>Total Market Value</b></td>
+      <td></td>
+      <td><b>{num(totals.units, 2)}</b></td>
+      <td><b>{num(totals.gross, 2)}</b></td>
+      <td><b>{num(totals.net, 2)}</b></td>
+      <td></td>
+      <td><b>{num(totals.value, 2)}</b></td>
+    </tr>
+  )
 
   /* Re-measure only when something that changes the layout actually changes.
      Keying on object identity would restart the measure pass on every parent
@@ -402,13 +398,17 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     const certFooterBox = root.querySelector('.dc-cert-footer-box')
     const thead = root.querySelector('thead')
     const rows = Array.from(root.querySelectorAll('tbody > tr'))
-    if (!head || !foot || !certFooterBox || !thead || !rows.length) return undefined
+    const totalRowNode = root.querySelector('tr.dc-total-row')
+    if (!head || !foot || !certFooterBox || !thead || !totalRowNode) return undefined
 
-    const rowHeights = rows.map((row) => row.offsetHeight)
+    const rowHeights = rows
+      .filter((row) => !row.classList.contains('dc-total-row'))
+      .map((row) => row.offsetHeight)
     setPages(paginateRows(rowHeights, {
       headerHeight: head.offsetHeight,
       footerHeight: foot.offsetHeight + certFooterBox.offsetHeight,
       theadHeight: thead.offsetHeight,
+      reservedHeight: totalRowNode.offsetHeight,
     }))
     setStage(STAGE_DONE)
     return undefined
@@ -434,7 +434,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
               <table className={`dc-table dc-paged-table${colWidths ? ' dc-table-fixed' : ''}`}>
                 {colGroup}
                 {tableHead}
-                <tbody>{bodyRows}</tbody>
+                <tbody>{bodyRows}{totalRow}</tbody>
               </table>
               {certFooter}
             </div>
@@ -450,7 +450,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
             <table className="dc-table dc-paged-table dc-table-fixed">
               {colGroup}
               {tableHead}
-              <tbody>{rowIndexes.map((index) => bodyRows[index])}</tbody>
+              <tbody>{rowIndexes.map((index) => bodyRows[index])}{totalRow}</tbody>
             </table>
             {certFooter}
           </div>
