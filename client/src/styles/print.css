@@ -155,8 +155,8 @@
   position: absolute;
   top: 4px;
   left: 6px;
-  width: 72px;
-  height: 56px;
+  width: 22mm;
+  height: 20mm;
   border: 1px solid #d4d4d8;
   background: #fff;
   display: grid;
@@ -165,8 +165,8 @@
 }
 
 .dc-header-logo-image {
-  width: 120%;
-  height: 120%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
@@ -207,6 +207,13 @@
   object-fit: contain;
   display: block;
   background: #fff;
+}
+
+@media screen and (max-width: 840px) {
+  .dc-bank-logo {
+    width: 66mm;
+    max-height: 30mm;
+  }
 }
 
 .dc-cert-text {
