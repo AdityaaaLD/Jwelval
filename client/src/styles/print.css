@@ -170,11 +170,10 @@
   object-fit: contain;
 }
 
-.dc-cert-footer-cell {
-  border: 1px solid #000 !important;
-  border-top: 0 !important;
-  padding: 0 !important;
-  background: #fff !important;
+.dc-cert-footer-box {
+  border: 1px solid #000;
+  border-top: 0;
+  background: #fff;
 }
 
 .dc-cert-footer {

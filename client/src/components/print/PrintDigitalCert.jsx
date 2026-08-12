@@ -285,6 +285,18 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
 
   const runningFoot = (
     <div className="dc-running-foot">
+      <div className="dc-cert-footer-box">
+        <div className="dc-cert-footer">
+          <div className="dc-cert-footer-rules">
+            <CertificateRules valuation={valuation} className="dc-cert-text" />
+          </div>
+          {bankPreset?.bankLogo && (
+            <div className="dc-cert-footer-logo-wrap">
+              <img src={bankPreset.bankLogo} alt="Bank Logo" className="dc-bank-logo" />
+            </div>
+          )}
+        </div>
+      </div>
       <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
     </div>
   )
@@ -341,25 +353,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
       </tr>
     )
 
-    rows.push(
-      <tr key="cert-footer" className="dc-cert-footer-row">
-        <td colSpan={COLS} className="dc-cert-footer-cell">
-          <div className="dc-cert-footer">
-            <div className="dc-cert-footer-rules">
-              <CertificateRules valuation={valuation} className="dc-cert-text" />
-            </div>
-            {bankPreset?.bankLogo && (
-              <div className="dc-cert-footer-logo-wrap">
-                <img src={bankPreset.bankLogo} alt="Bank Logo" className="dc-bank-logo" />
-              </div>
-            )}
-          </div>
-        </td>
-      </tr>
-    )
-
     return rows
-  }, [items, totals.units, totals.gross, totals.net, totals.value, valuation, bankPreset?.bankLogo])
+  }, [items, totals.units, totals.gross, totals.net, totals.value])
 
   /* Re-measure only when something that changes the layout actually changes.
      Keying on object identity would restart the measure pass on every parent
