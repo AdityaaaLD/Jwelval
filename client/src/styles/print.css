@@ -118,7 +118,7 @@
 .dc-table-fixed { table-layout: fixed; }
 .dc-running-head { flex: 0 0 auto; padding-bottom: 3px; }
 .dc-running-foot { flex: 0 0 auto; }
-.dc-page-body { flex: 1 1 auto; min-height: 0; }
+.dc-page-body { flex: 0 0 auto; min-height: 0; }
 .dc-total-row td { font-weight: 700; }
 /* Off-screen sizing pass used to work out where the page breaks fall. */
 .dc-measure { position: absolute; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
