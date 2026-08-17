@@ -157,7 +157,7 @@
   left: 6px;
   width: 22mm;
   height: 20mm;
-  border: 1px solid #d4d4d8;
+  border: 0;
   background: #fff;
   display: grid;
   place-items: center;
@@ -165,8 +165,8 @@
 }
 
 .dc-header-logo-image {
-  width: 100%;
-  height: 100%;
+  width: 95%;
+  height: 95%;
   object-fit: contain;
 }
 
@@ -201,14 +201,14 @@
   align-items: center;
   justify-content: flex-end;
   align-self: stretch;
-  padding: 4px;
+  padding: 1px 1px 1px 0;
   justify-self: end;
   margin-right: 0;
 }
 
 .dc-bank-logo {
-  width: 59.8mm;
-  max-height: 26mm;
+  width: 72mm;
+  max-height: 30mm;
   object-fit: contain;
   display: block;
   background: #fff;
@@ -216,17 +216,17 @@
 
 @media screen and (max-width: 840px) {
   .dc-header-box {
-    padding: 4px 106px 4px 102px;
+    padding: 4px 106px 4px 116px;
   }
 
   .dc-header-logo-badge {
-    width: 26mm;
-    height: 24mm;
+    width: 30mm;
+    height: 28mm;
   }
 
   .dc-bank-logo {
-    width: 66mm;
-    max-height: 30mm;
+    width: 78mm;
+    max-height: 31mm;
   }
 }
 
