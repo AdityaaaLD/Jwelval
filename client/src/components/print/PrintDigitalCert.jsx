@@ -237,7 +237,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
           <p><b>From,</b></p>
           <p><b>Business Name:</b> {profile?.business_name || '-'}</p>
           <p><b>Proprietor Name:</b> {profile?.appraiser_name || '-'}</p>
-          <p><b>Empanelment ID:</b> {empanelmentId || '-'}</p>
+          <p><b>Appraiser ID:</b> {empanelmentId || '-'}</p>
         </div>
         <div className="dc-party-to-photos">
           <div className="dc-party-to">
