@@ -12,7 +12,10 @@ const COLS = 8
    can never spill into a blank one. Mirrors `.print-page.digital-cert` in
    print.css — both must stay in sync. */
 const PAGE_HEIGHT_MM = 296.9
-const PAGE_PAD_Y_MM = 12
+/* 6mm top + 14mm bottom — the extra bottom padding keeps the signature row
+   clear of the printer's non-printable bottom edge. Must stay in sync with the
+   `.print-page.digital-cert` padding in print.css. */
+const PAGE_PAD_Y_MM = 20
 const mmToPx = (mm) => (mm * 96) / 25.4
 /* Heights are read with offsetHeight, which is integer-rounded, so leave a few
    pixels of slack rather than risk overflowing a sheet. */
@@ -394,7 +397,11 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     }
 
     const head = root.querySelector('.dc-running-head')
-    const foot = root.querySelector('.dc-running-foot')
+    /* Measure the signature grid's intrinsic height, not `.dc-running-foot`:
+       the wrapper has flex:1 and grows to fill the sheet during the off-screen
+       measure pass, which would massively over-reserve footer space and force
+       rows onto a new page even when the sheet is nearly empty. */
+    const foot = root.querySelector('.signature-grid')
     const certFooterBox = root.querySelector('.dc-cert-footer-box')
     const thead = root.querySelector('thead')
     const rows = Array.from(root.querySelectorAll('tbody > tr'))
