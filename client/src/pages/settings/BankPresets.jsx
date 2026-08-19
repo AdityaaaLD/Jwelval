@@ -45,10 +45,10 @@ export default function BankPresets() {
     if (!file) return
     try {
       const compressed = await normalizeLogoImage(file, {
-        targetWidth: 1400,
-        targetHeight: 320,
+        targetWidth: 1800,
+        targetHeight: 420,
         quality: 0.9,
-        paddingPercent: 0.06,
+        paddingPercent: 0.005,
       })
       setForm((f) => ({ ...f, bankLogo: compressed }))
     } catch {

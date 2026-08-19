@@ -75,10 +75,10 @@ export default function AppraiserProfile() {
     if (!file) return
     try {
       const compressed = await normalizeLogoImage(file, {
-        targetWidth: 640,
-        targetHeight: 420,
+        targetWidth: 760,
+        targetHeight: 520,
         quality: 0.9,
-        paddingPercent: 0.08,
+        paddingPercent: 0.01,
       })
       setForm((f) => ({ ...f, logoPhoto: compressed }))
     } catch {
