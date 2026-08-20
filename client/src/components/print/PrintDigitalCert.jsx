@@ -210,8 +210,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
         <p className="dc-header-line" style={{ fontSize: '18px', letterSpacing: '1px', color: '#b8860b' }}><b>{(profile?.business_name || 'JEWELLERS').toUpperCase()}</b></p>
         <p className="dc-header-line" style={{ color: '#b91c1c' }}>Proprietor, {profile?.appraiser_name || ''}, {profile?.qualification || 'Government Approved Gold Appaisal'}</p>
         {profile?.organization && <p className="dc-header-line" style={{ color: '#b91c1c' }}>({profile.organization})</p>}
-        <p className="dc-header-line" style={{ color: '#b91c1c' }}>{profile?.address || ''}</p>
         {profile?.cert_number && <p className="dc-header-line" style={{ color: '#b91c1c' }}>No. {profile.cert_number}</p>}
+        <p className="dc-header-line" style={{ color: '#b91c1c' }}>{profile?.address || ''}</p>
         <p className="dc-header-line dc-header-contact" style={{ color: '#b91c1c' }}>
           {profile?.mobile && <span>Mob: {profile.mobile}</span>}
           {profile?.whatsapp_number && (
