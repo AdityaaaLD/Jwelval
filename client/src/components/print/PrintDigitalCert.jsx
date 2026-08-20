@@ -179,11 +179,15 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
 
   /* Rates and loan figures shown above the ornament table. Entries with no
      value are dropped so the grid never prints an empty label. */
+  const ltvLoanAmount = Number(totalMarketValue) > 0 && Number(valuation.loanLtv) > 0
+    ? Math.round(totalMarketValue * (Number(valuation.loanLtv) / 100) * 100) / 100
+    : 0
   const metaEntries = [
     valuation.loanType && ['Loan Type', valuation.loanType],
     Number(valuation.tenureMonths) > 0 && ['Tenure (Months)', `${num(valuation.tenureMonths, 0)}`],
     valuation.rateOfInterest != null && ['Rate of Interest', `${num(valuation.rateOfInterest, 2)}%`],
     Number(valuation.loanLtv) > 0 && ['LTV', `${num(valuation.loanLtv, 0)}%`],
+    Number(ltvLoanAmount) > 0 && ['Loan Amount (as per LTV)', inr(ltvLoanAmount)],
     Number(valuation.goldRate22k) > 0 && ['Market Gold Rate (22K)', `${inr(valuation.goldRate22k)}/gm`],
     Number(valuation.bankGoldRatePerGram) > 0 && ['Bank Gold Rate', `${inr(valuation.bankGoldRatePerGram)}/gm`],
     Number(totalMarketValue) > 0 && ['Total Market Value', inr(totalMarketValue)],

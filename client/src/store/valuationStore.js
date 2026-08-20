@@ -97,6 +97,7 @@ const deriveForm = (form) => {
     items,
     marketValue,
     bankRecommendedValue: bankVal,
+    ltvLoan,
     suggestedLoan,
   }
 }
