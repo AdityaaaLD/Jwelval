@@ -1,6 +1,6 @@
 {
   "name": "jewelval",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "JewelVal — full-stack jewellery valuation management app.",
   "engines": {
