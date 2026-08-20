@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { eq, and, desc } from 'drizzle-orm'
 import { db, sqlite } from '../db/client.js'
 import { sellBills, sellBillItems, customers, billSeries } from '../db/schema.js'
+import { ensureDefaultBillSeriesForUser } from '../lib/defaultBillSeries.js'
 
 const router = Router()
 
@@ -44,6 +45,7 @@ router.get('/', async (req, res) => {
 
 router.get('/series', (req, res) => {
   const userId = req.user.id
+  ensureDefaultBillSeriesForUser(userId)
   res.json(sqlite.prepare('SELECT id, series_name AS seriesName, prefix, current_number AS currentNumber, number_of_digits AS numberOfDigits FROM bill_series WHERE user_id = ? ORDER BY id').all(userId))
 })
 

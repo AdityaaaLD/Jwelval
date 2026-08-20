@@ -7,6 +7,7 @@ import { sendEmail } from '../mailer.js'
 import { logEvent, logErrorEvent } from '../lib/logger.js'
 import { DEFAULT_ORNAMENTS } from '../lib/defaultOrnaments.js'
 import { ensureDefaultValuationSeriesForUser } from '../lib/defaultValuationSeries.js'
+import { ensureDefaultBillSeriesForUser } from '../lib/defaultBillSeries.js'
 
 const router = Router()
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
@@ -536,13 +537,8 @@ function seedDefaultsForUser(userId, now) {
   // Ensure at least one default series per supported format exists for this user
   ensureDefaultValuationSeriesForUser(userId, now)
 
-  // Default bill series
-  const hasBillSeries = sqlite.prepare('SELECT id FROM bill_series WHERE user_id = ? LIMIT 1').get(userId)
-  if (!hasBillSeries) {
-    sqlite.prepare(
-      'INSERT INTO bill_series (series_name, prefix, current_number, number_of_digits, user_id, created_at) VALUES (?, ?, 0, 3, ?, ?)'
-    ).run('SELL-2025', '', userId, now)
-  }
+  // Default bill series for the current year
+  ensureDefaultBillSeriesForUser(userId, now)
 }
 
 // Admin-only: create a new user account
