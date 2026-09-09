@@ -29,6 +29,25 @@
   .badge-draft   { @apply badge bg-yellow-100 text-yellow-800; }
   .badge-printed { @apply badge bg-green-100 text-green-800; }
   .badge-locked  { @apply badge bg-red-100 text-red-800; }
+
+  /* --- Compact "paper form" primitives (valuation entry, mobile/tablet-first) --- */
+  /* A bordered sheet block that visually echoes the printed certificate. */
+  .sheet        { @apply rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden; }
+  /* Shaded strip header inside a sheet, like the report's section rows. */
+  .sheet-strip  { @apply flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2; }
+  .sheet-title  { @apply text-[11px] font-semibold uppercase tracking-wide text-slate-500; }
+  .sheet-body   { @apply p-3; }
+
+  /* Compact field: tiny label sitting directly on top of a dense input. */
+  .field-c      { @apply flex flex-col gap-0.5; }
+  .label-c      { @apply text-[11px] font-medium leading-tight text-slate-500; }
+  /* Dense input variant — keeps 16px font on mobile to stop iOS zoom, but tighter padding. */
+  .input-c      { @apply block w-full min-w-0 rounded-md border border-slate-300 bg-white px-2.5 py-2 text-[15px] leading-tight shadow-sm focus:border-gold-500 focus:ring-1 focus:ring-gold-500 focus:outline-none disabled:bg-slate-100 disabled:text-slate-500 sm:text-sm; }
+
+  /* Snapshot chips (pinned verify bar). */
+  .snap-cell    { @apply flex flex-col; }
+  .snap-key     { @apply text-[10px] font-medium uppercase tracking-wide text-slate-400; }
+  .snap-val     { @apply text-sm font-semibold text-slate-900 leading-tight truncate; }
 }
 
 /* Date inputs: prevent overflow on mobile */
