@@ -48,6 +48,31 @@
   .snap-cell    { @apply flex flex-col; }
   .snap-key     { @apply text-[10px] font-medium uppercase tracking-wide text-slate-400; }
   .snap-val     { @apply text-sm font-semibold text-slate-900 leading-tight truncate; }
+
+  /* --- Ornaments spreadsheet grid ---
+     Bounded scroll box with a pinned header + totals row and frozen Sr/Description
+     columns, so a long item list never pushes the page down and stays trackable. */
+  .orn-table { border-collapse: separate; border-spacing: 0; min-width: 752px; }
+  .orn-th {
+    position: sticky; top: 0; z-index: 20;
+    background: #f1f5f9;
+    padding: 0.45rem 0.4rem;
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: #64748b; text-align: center; white-space: nowrap;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .orn-td { padding: 0.2rem 0.3rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  .orn-tf {
+    position: sticky; bottom: 0; z-index: 20;
+    background: #f1f5f9;
+    padding: 0.5rem 0.4rem;
+    font-size: 12px; font-weight: 700; color: #334155; text-align: center; white-space: nowrap;
+    border-top: 1px solid #e2e8f0;
+  }
+  .orn-sticky-l0 { position: sticky; left: 0; background: #fff; z-index: 10; }
+  .orn-sticky-l1 { position: sticky; left: 34px; background: #fff; z-index: 10; border-right: 1px solid #e2e8f0; }
+  .orn-th.orn-sticky-l0, .orn-th.orn-sticky-l1,
+  .orn-tf.orn-sticky-l0, .orn-tf.orn-sticky-l1 { z-index: 30; background: #f1f5f9; }
 }
 
 /* Date inputs: prevent overflow on mobile */

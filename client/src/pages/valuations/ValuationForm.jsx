@@ -65,6 +65,7 @@ export default function ValuationForm() {
   const [cropSession, setCropSession] = useState(null)
   const [snapshotOpen, setSnapshotOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [tab, setTab] = useState('details')
   const customerDetailCacheRef = useRef({})
   const lastItemRef = useRef(null)
   const { form, dirty, reset, hydrate, setField, setItem, addItem, removeItem, markClean, payload } = useValuationStore()
@@ -174,14 +175,15 @@ export default function ValuationForm() {
   }
 
   const save = async (preview = false) => {
-    if (!form.customerId) return toast.error('Select a customer.')
-    if (!form.bankPresetId) return toast.error('Select a bank format.')
-    if (!String(form.branch || '').trim()) return toast.error('Branch is required.')
-    if (!form.jewelleryPhoto) return toast.error('Jewellery photo is required.')
-    if (!Number(form.goldRate22k)) return toast.error('Enter the 22K gold rate.')
+    // On any validation error, jump to the tab that holds the offending field so the fix is one tap away.
+    if (!form.customerId) { setTab('details'); return toast.error('Select a customer.') }
+    if (!form.bankPresetId) { setTab('details'); return toast.error('Select a bank format.') }
+    if (!String(form.branch || '').trim()) { setTab('details'); return toast.error('Branch is required.') }
+    if (!Number(form.goldRate22k)) { setTab('details'); return toast.error('Enter the 22K gold rate.') }
     if (!form.items.some((item) => item.description && Number(item.netWeightGm) > 0)) {
-      return toast.error('Add at least one ornament item.')
+      setTab('items'); return toast.error('Add at least one ornament item.')
     }
+    if (!form.jewelleryPhoto) { setTab('finish'); return toast.error('Jewellery photo is required.') }
 
     const data = payload()
     if (!data.seriesId && preferredSeries?.id) {
@@ -370,6 +372,28 @@ export default function ValuationForm() {
         </div>
       )}
 
+      {/* Step tabs — split the form into short, trackable screens so it never becomes one long scroll. */}
+      <div className="sticky top-[46px] z-10 -mx-4 grid grid-cols-3 gap-1 border-b border-slate-200 bg-slate-50/95 px-4 py-1.5 backdrop-blur sm:mx-0 sm:rounded-lg sm:border sm:p-1">
+        {[
+          { key: 'details', label: 'Details' },
+          { key: 'items', label: `Ornaments${form.items.length ? ` (${form.items.length})` : ''}` },
+          { key: 'finish', label: 'Loan & Photos' },
+        ].map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`rounded-md px-2 py-2 text-xs font-semibold transition-colors sm:text-sm ${
+              tab === t.key ? 'bg-gold-500 text-ink-900 shadow-sm' : 'text-slate-500 hover:bg-white hover:text-slate-800'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ===================== DETAILS TAB ===================== */}
+      {tab === 'details' && (<>
       {/* Document — who & which certificate */}
       <div className="sheet">
         <div className="sheet-strip"><span className="sheet-title">Document</span></div>
@@ -539,173 +563,102 @@ export default function ValuationForm() {
         </div>
       </div>
 
+      </>)}
+
+      {/* ===================== ORNAMENTS TAB ===================== */}
+      {tab === 'items' && (
       <div className="sheet">
         <div className="sheet-strip">
-          <span className="sheet-title">Ornaments</span>
-          <span className="text-[11px] font-semibold text-gold-700">{inr(totals.value)}</span>
+          <span className="sheet-title">Ornaments ({form.items.length})</span>
+          <button type="button" className="btn-primary py-1 text-xs" onClick={addItemAndFocus} disabled={disabled}>
+            <Plus size={14} /> Add
+          </button>
         </div>
 
-        {/* Mobile / small-tablet card layout — dense, one tap per field */}
-        <div className="md:hidden divide-y divide-slate-200">
-          {form.items.map((item, index) => (
-            <div
-              key={index}
-              ref={index === form.items.length - 1 ? lastItemRef : null}
-              className="space-y-2 p-3"
-            >
-              <div className="flex items-center gap-2">
-                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-500">{index + 1}</span>
-                <div className="flex-1">
-                  <OrnamentInput value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
-                </div>
-                <button type="button" className="btn-ghost shrink-0 px-2 text-red-500" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
-                  <Trash2 size={16} />
-                </button>
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                <div className="field-c">
-                  <label className="label-c">Units</label>
-                  <input type="number" inputMode="numeric" className="input-c px-2 text-center" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} />
-                </div>
-                <div className="field-c">
-                  <label className="label-c">Gross g</label>
-                  <input type="number" inputMode="decimal" step="0.001" className="input-c px-2 text-center" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} />
-                </div>
-                <div className="field-c">
-                  <label className="label-c">Net g</label>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.001"
-                    className="input-c px-2 text-center"
-                    value={item.netWeightGm}
-                    onChange={(e) => setItem(index, 'netWeightGm', e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && index === form.items.length - 1) { e.preventDefault(); addItemAndFocus() } }}
-                    disabled={disabled}
-                  />
-                </div>
-                <div className="field-c">
-                  <label className="label-c">Karat</label>
-                  <input type="number" inputMode="decimal" className="input-c px-2 text-center" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} step="0.1" placeholder="22" />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <select className="input-c flex-1 py-1.5 text-xs" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
-                  <option value="">Remarks — Select —</option>
-                  {REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-                </select>
-                <span className="shrink-0 rounded-md bg-gold-50 px-2.5 py-1.5 text-sm font-semibold text-slate-900">{inr(item.approxValueInr)}</span>
-              </div>
-              {item.remarks === 'Others' && (
-                <input className="input-c text-xs" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
-              )}
-            </div>
-          ))}
-          <div className="grid grid-cols-4 gap-2 bg-slate-50 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-700">
-            <span>Units<br /><span className="text-sm">{totals.units}</span></span>
-            <span>Gross<br /><span className="text-sm">{num(totals.gross, 3)}</span></span>
-            <span>Net<br /><span className="text-sm">{num(totals.net, 3)}</span></span>
-            <span>Total<br /><span className="text-sm text-gold-700">{inr(totals.value)}</span></span>
-          </div>
-        </div>
-
-        {/* Tablet / desktop table layout — mirrors the printed certificate grid */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="min-w-[700px] w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-              <tr className="text-[9px] text-slate-400 normal-case tracking-normal">
-                <th className="px-2 pt-2 pb-0"></th>
-                <th className="px-2 pt-2 pb-0">Description of jewels / Ornaments</th>
-                <th className="px-2 pt-2 pb-0"></th>
-                <th className="px-2 pt-2 pb-0">No. of jewels</th>
-                <th className="px-2 pt-2 pb-0">Gross weight incl. wax, stones etc.</th>
-                <th className="px-2 pt-2 pb-0">Equiv. weight of carat jewellery</th>
-                <th className="px-2 pt-2 pb-0">Purity</th>
-                <th className="px-2 pt-2 pb-0 text-right">Approx Value (BJA 22K rate)</th>
-                <th className="px-2 pt-2 pb-0"></th>
-              </tr>
+        {/* Single spreadsheet-style grid used on every screen. The table body scrolls inside a
+            bounded box (header + totals stay pinned) so adding 20 rows never pushes the page down,
+            and it scrolls horizontally on narrow screens with the Sr+Description columns frozen left. */}
+        <div className="orn-scroll overflow-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+          <table className="orn-table w-full text-sm">
+            <thead>
               <tr>
-                <th className="px-2 py-2" style={{ width: 40 }}>Sr</th>
-                <th className="px-2 py-2" style={{ minWidth: 170 }}>Description</th>
-                <th className="px-2 py-2" style={{ minWidth: 130 }}>Remarks</th>
-                <th className="px-2 py-2" style={{ width: 74 }}>Units</th>
-                <th className="px-2 py-2" style={{ width: 100 }}>Gross Wt (gm)</th>
-                <th className="px-2 py-2" style={{ width: 100 }}>Net Wt (gm)</th>
-                <th className="px-2 py-2" style={{ width: 74 }}>Karat</th>
-                <th className="px-2 py-2 text-right" style={{ width: 120 }}>Approx Value</th>
-                <th className="px-2 py-2" style={{ width: 40 }}></th>
+                <th className="orn-th orn-sticky-l0" style={{ width: 34, minWidth: 34 }}>#</th>
+                <th className="orn-th orn-sticky-l1 text-left" style={{ width: 150, minWidth: 150 }}>Description</th>
+                <th className="orn-th text-left" style={{ width: 130, minWidth: 130 }}>Remarks</th>
+                <th className="orn-th" style={{ width: 62, minWidth: 62 }}>Units</th>
+                <th className="orn-th" style={{ width: 84, minWidth: 84 }}>Gross g</th>
+                <th className="orn-th" style={{ width: 84, minWidth: 84 }}>Net g</th>
+                <th className="orn-th" style={{ width: 60, minWidth: 60 }}>Karat</th>
+                <th className="orn-th text-right" style={{ width: 108, minWidth: 108 }}>Value</th>
+                <th className="orn-th" style={{ width: 40, minWidth: 40 }}></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody>
               {form.items.map((item, index) => (
-                <tr key={index} ref={index === form.items.length - 1 ? lastItemRef : null}>
-                  <td className="px-2 py-1.5 text-slate-500">{index + 1}</td>
-                  <td className="px-2 py-1.5">
+                <tr key={index} ref={index === form.items.length - 1 ? lastItemRef : null} className="odd:bg-white even:bg-slate-50/40">
+                  <td className="orn-td orn-sticky-l0 text-center text-xs font-semibold text-slate-400">{index + 1}</td>
+                  <td className="orn-td orn-sticky-l1">
                     <OrnamentInput value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
                   </td>
-                  <td className="px-2 py-1.5">
+                  <td className="orn-td">
                     <select className="input-c text-xs" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
-                      <option value="">— Select —</option>
+                      <option value="">—</option>
                       {REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
                     </select>
                     {item.remarks === 'Others' && (
                       <input className="input-c mt-1 text-xs" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
                     )}
                   </td>
-                  <td className="px-2 py-1.5"><input type="number" inputMode="numeric" className="input-c text-center" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} /></td>
-                  <td className="px-2 py-1.5"><input type="number" inputMode="decimal" step="0.001" className="input-c text-center" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} /></td>
-                  <td className="px-2 py-1.5">
+                  <td className="orn-td"><input type="number" inputMode="numeric" className="input-c px-1 text-center" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} /></td>
+                  <td className="orn-td"><input type="number" inputMode="decimal" step="0.001" className="input-c px-1 text-center" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} /></td>
+                  <td className="orn-td">
                     <input
                       type="number"
                       inputMode="decimal"
                       step="0.001"
-                      className="input-c text-center"
+                      className="input-c px-1 text-center"
                       value={item.netWeightGm}
                       onChange={(e) => setItem(index, 'netWeightGm', e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter' && index === form.items.length - 1) { e.preventDefault(); addItemAndFocus() } }}
                       disabled={disabled}
                     />
                   </td>
-                  <td className="px-2 py-1.5">
-                    <input
-                      type="number"
-                      className="input-c text-center"
-                      value={item.purityCarat}
-                      onChange={(e) => setItem(index, 'purityCarat', e.target.value)}
-                      disabled={disabled}
-                      step="0.1"
-                      placeholder="22"
-                    />
-                  </td>
-                  <td className="px-2 py-1.5 text-right font-medium">{inr(item.approxValueInr)}</td>
-                  <td className="px-2 py-1.5 text-right">
-                    <button type="button" className="btn-ghost px-2" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
-                      <Trash2 size={16} />
+                  <td className="orn-td"><input type="number" className="input-c px-1 text-center" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} step="0.1" placeholder="22" /></td>
+                  <td className="orn-td text-right font-medium tabular-nums">{inr(item.approxValueInr)}</td>
+                  <td className="orn-td text-center">
+                    <button type="button" className="text-red-500 disabled:opacity-40" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
+                      <Trash2 size={15} />
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-slate-50 text-sm font-semibold">
+            <tfoot>
               <tr>
-                <td className="px-2 py-2.5" colSpan="3">Total</td>
-                <td className="px-2 py-2.5 text-center">{totals.units}</td>
-                <td className="px-2 py-2.5 text-center">{num(totals.gross, 3)}</td>
-                <td className="px-2 py-2.5 text-center">{num(totals.net, 3)}</td>
-                <td className="px-2 py-2.5"></td>
-                <td className="px-2 py-2.5 text-right text-gold-700">{inr(totals.value)}</td>
-                <td></td>
+                <td className="orn-tf orn-sticky-l0"></td>
+                <td className="orn-tf orn-sticky-l1 text-left">Total</td>
+                <td className="orn-tf"></td>
+                <td className="orn-tf text-center">{totals.units}</td>
+                <td className="orn-tf text-center tabular-nums">{num(totals.gross, 3)}</td>
+                <td className="orn-tf text-center tabular-nums">{num(totals.net, 3)}</td>
+                <td className="orn-tf"></td>
+                <td className="orn-tf text-right tabular-nums text-gold-700">{inr(totals.value)}</td>
+                <td className="orn-tf"></td>
               </tr>
             </tfoot>
           </table>
         </div>
-        <div className="border-t border-slate-200 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 p-3">
+          <p className="text-[11px] text-slate-400">Tip: press Enter in a row’s “Net g” to jump to the next row. Scroll sideways to see all columns.</p>
           <button type="button" className="btn-secondary w-full sm:w-auto" onClick={addItemAndFocus} disabled={disabled}>
             <Plus size={16} /> Add Ornament
           </button>
-          <p className="mt-1.5 text-center text-[11px] text-slate-400 sm:text-left">Tip: press Enter in the last “Net g” field to add the next row.</p>
         </div>
       </div>
+      )}
+
+      {/* ===================== LOAN & PHOTOS TAB ===================== */}
+      {tab === 'finish' && (<>
 
       {/* Valuation & loan figures */}
       <div className="sheet">
@@ -775,6 +728,7 @@ export default function ValuationForm() {
           </div>
         </div>
       </div>
+      </>)}
 
       {/* Sticky action bar — always reachable so there is no scroll-to-save */}
       <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur sm:mx-0 sm:rounded-lg sm:border sm:px-3 sm:shadow-sm">
