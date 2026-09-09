@@ -2,7 +2,7 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "npm install --workspaces --include-workspace-root && npm run build"
+    "buildCommand": "PUPPETEER_SKIP_DOWNLOAD=true npm install --workspaces --include-workspace-root && npm run build"
   },
   "deploy": {
     "startCommand": "NODE_ENV=production DB_PATH=/data/jewelval.db node server/src/index.js",

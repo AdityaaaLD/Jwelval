@@ -97,14 +97,22 @@ function resolveExecutablePath(puppeteer) {
 
 async function loadPuppeteer() {
   if (!puppeteerPromise) {
-    puppeteerPromise = import('puppeteer')
+    puppeteerPromise = import('puppeteer-core')
+      .catch(async (coreError) => {
+        // Backward-compatible fallback for environments still using `puppeteer`.
+        try {
+          return await import('puppeteer')
+        } catch (fullError) {
+          const wrapped = new Error('PDF engine is not installed on the server.')
+          wrapped.code = 'PDF_ENGINE_MISSING'
+          wrapped.cause = { coreError, fullError }
+          throw wrapped
+        }
+      })
       .then((mod) => mod.default || mod)
       .catch((error) => {
         puppeteerPromise = null
-        const wrapped = new Error('PDF engine is not installed on the server.')
-        wrapped.code = 'PDF_ENGINE_MISSING'
-        wrapped.cause = error
-        throw wrapped
+        throw error
       })
   }
   return puppeteerPromise

@@ -15,7 +15,7 @@
     "start": "node server/src/index.js",
     "setup": "npm --prefix server run db:migrate",
     "seed:demo": "npm --prefix server run db:seed",
-    "render:build": "npm install && npm run build"
+    "render:build": "PUPPETEER_SKIP_DOWNLOAD=true npm install && npm run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
