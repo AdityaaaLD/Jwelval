@@ -34,12 +34,15 @@ function OrnamentInput({ value, onChange, disabled, ornaments }) {
     const r = el.getBoundingClientRect()
     const spaceBelow = window.innerHeight - r.bottom
     const openUp = spaceBelow < 240 && r.top > spaceBelow
+    // Match the field, but keep a readable min width and never overflow the screen edge.
+    const width = Math.min(Math.max(r.width, 220), window.innerWidth - 16)
+    const left = Math.min(Math.max(8, r.left), window.innerWidth - width - 8)
     setPos({
-      left: r.left,
-      width: r.width,
+      left,
+      width,
       top: openUp ? undefined : r.bottom + 4,
       bottom: openUp ? window.innerHeight - r.top + 4 : undefined,
-      maxHeight: Math.min(240, Math.max(140, openUp ? r.top - 8 : spaceBelow - 8)),
+      maxHeight: Math.min(260, Math.max(140, openUp ? r.top - 8 : spaceBelow - 8)),
     })
   }
 
@@ -618,29 +621,29 @@ export default function ValuationForm() {
           </button>
         </div>
 
-        {/* Single spreadsheet-style grid used on every screen. It scrolls horizontally as one
-            smooth strip (Sr + Description stay frozen on the left for context); rows flow down the
-            page within this dedicated tab so sideways swiping never fights vertical scrolling. */}
+        {/* Spreadsheet-style grid. The whole table (Description included) scrolls together as one
+            smooth horizontal strip; rows flow down the page within this dedicated tab so sideways
+            swiping never fights vertical scrolling. */}
         <div className="orn-scroll">
-          <table className="orn-table w-full text-sm">
+          <table className="orn-table text-sm">
             <thead>
               <tr>
-                <th className="orn-th orn-sticky-l0" style={{ width: 34, minWidth: 34 }}>#</th>
-                <th className="orn-th orn-sticky-l1 text-left" style={{ width: 150, minWidth: 150 }}>Description</th>
-                <th className="orn-th text-left" style={{ width: 130, minWidth: 130 }}>Remarks</th>
-                <th className="orn-th" style={{ width: 62, minWidth: 62 }}>Units</th>
-                <th className="orn-th" style={{ width: 84, minWidth: 84 }}>Gross g</th>
-                <th className="orn-th" style={{ width: 84, minWidth: 84 }}>Net g</th>
-                <th className="orn-th" style={{ width: 60, minWidth: 60 }}>Karat</th>
-                <th className="orn-th text-right" style={{ width: 108, minWidth: 108 }}>Value</th>
-                <th className="orn-th" style={{ width: 40, minWidth: 40 }}></th>
+                <th className="orn-th" style={{ width: 32, minWidth: 32 }}>#</th>
+                <th className="orn-th text-left" style={{ width: 180, minWidth: 180 }}>Description</th>
+                <th className="orn-th text-left" style={{ width: 140, minWidth: 140 }}>Remarks</th>
+                <th className="orn-th" style={{ width: 70, minWidth: 70 }}>Units</th>
+                <th className="orn-th" style={{ width: 90, minWidth: 90 }}>Gross g</th>
+                <th className="orn-th" style={{ width: 90, minWidth: 90 }}>Net g</th>
+                <th className="orn-th" style={{ width: 64, minWidth: 64 }}>Karat</th>
+                <th className="orn-th text-right" style={{ width: 116, minWidth: 116 }}>Value</th>
+                <th className="orn-th" style={{ width: 44, minWidth: 44 }}></th>
               </tr>
             </thead>
             <tbody>
               {form.items.map((item, index) => (
-                <tr key={index} ref={index === form.items.length - 1 ? lastItemRef : null} className="odd:bg-white even:bg-slate-50/40">
-                  <td className="orn-td orn-sticky-l0 text-center text-xs font-semibold text-slate-400">{index + 1}</td>
-                  <td className="orn-td orn-sticky-l1">
+                <tr key={index} ref={index === form.items.length - 1 ? lastItemRef : null} className="odd:bg-white even:bg-slate-50/50">
+                  <td className="orn-td text-center text-xs font-semibold text-slate-400">{index + 1}</td>
+                  <td className="orn-td">
                     <OrnamentInput value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
                   </td>
                   <td className="orn-td">
@@ -667,7 +670,7 @@ export default function ValuationForm() {
                     />
                   </td>
                   <td className="orn-td"><input type="number" className="input-c px-1 text-center" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} step="0.1" placeholder="22" /></td>
-                  <td className="orn-td text-right font-medium tabular-nums">{inr(item.approxValueInr)}</td>
+                  <td className="orn-td text-right font-medium tabular-nums whitespace-nowrap">{inr(item.approxValueInr)}</td>
                   <td className="orn-td text-center">
                     <button type="button" className="text-red-500 disabled:opacity-40" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
                       <Trash2 size={15} />
@@ -678,21 +681,21 @@ export default function ValuationForm() {
             </tbody>
             <tfoot>
               <tr>
-                <td className="orn-tf orn-sticky-l0"></td>
-                <td className="orn-tf orn-sticky-l1 text-left">Total</td>
+                <td className="orn-tf"></td>
+                <td className="orn-tf text-left">Total</td>
                 <td className="orn-tf"></td>
                 <td className="orn-tf text-center">{totals.units}</td>
                 <td className="orn-tf text-center tabular-nums">{num(totals.gross, 3)}</td>
                 <td className="orn-tf text-center tabular-nums">{num(totals.net, 3)}</td>
                 <td className="orn-tf"></td>
-                <td className="orn-tf text-right tabular-nums text-gold-700">{inr(totals.value)}</td>
+                <td className="orn-tf text-right tabular-nums whitespace-nowrap text-gold-700">{inr(totals.value)}</td>
                 <td className="orn-tf"></td>
               </tr>
             </tfoot>
           </table>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 p-3">
-          <p className="text-[11px] text-slate-400">Tip: press Enter in a row’s “Net g” to jump to the next row. Scroll sideways to see all columns.</p>
+          <p className="text-[11px] text-slate-400">Tip: press Enter in a row’s “Net g” to jump to the next row. Swipe the table sideways to reach every column.</p>
           <button type="button" className="btn-secondary w-full sm:w-auto" onClick={addItemAndFocus} disabled={disabled}>
             <Plus size={16} /> Add Ornament
           </button>
