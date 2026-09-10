@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Camera, ChevronDown, Copy, Eye, Plus, Printer, Receipt, Save, Trash2, Upload } from 'lucide-react'
@@ -16,7 +17,8 @@ const LOAN_TYPES = ['', 'Gold Loan', 'Agri Gold Loan', 'Housing Loan', 'Personal
 function OrnamentInput({ value, onChange, disabled, ornaments }) {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState('')
-  const ref = useRef(null)
+  const inputRef = useRef(null)
+  const [pos, setPos] = useState(null)
 
   const filtered = useMemo(() => {
     const q = (filter || value || '').toLowerCase()
@@ -24,25 +26,66 @@ function OrnamentInput({ value, onChange, disabled, ornaments }) {
     return ornaments.filter((o) => o.name.toLowerCase().includes(q))
   }, [filter, value, ornaments])
 
+  // Position the dropdown in a fixed-position portal so it floats above the page
+  // (and is never clipped by the ornaments table's horizontal scroll container).
+  const computePos = () => {
+    const el = inputRef.current
+    if (!el) return
+    const r = el.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - r.bottom
+    const openUp = spaceBelow < 240 && r.top > spaceBelow
+    setPos({
+      left: r.left,
+      width: r.width,
+      top: openUp ? undefined : r.bottom + 4,
+      bottom: openUp ? window.innerHeight - r.top + 4 : undefined,
+      maxHeight: Math.min(240, Math.max(140, openUp ? r.top - 8 : spaceBelow - 8)),
+    })
+  }
+
+  const openMenu = () => { computePos(); setOpen(true) }
+
+  useEffect(() => {
+    if (!open) return
+    const update = () => computePos()
+    // capture=true so we also react to the inner table scroll, not just window scroll
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <input
-        className="input"
+        ref={inputRef}
+        className="input-c"
         value={value}
         disabled={disabled}
-        onChange={(e) => { onChange(e.target.value); setFilter(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
+        onChange={(e) => { onChange(e.target.value); setFilter(e.target.value); openMenu() }}
+        onFocus={openMenu}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder="Type ornament..."
       />
-      {open && filtered.length > 0 && (
-        <ul className="absolute left-0 top-full z-30 mt-1 max-h-40 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg text-sm">
-          {filtered.slice(0, 12).map((o) => (
-            <li key={o.id} className="cursor-pointer px-3 py-1.5 hover:bg-slate-100" onMouseDown={() => { onChange(o.name); setOpen(false) }}>
+      {open && pos && filtered.length > 0 && createPortal(
+        <ul
+          style={{ position: 'fixed', left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width, maxHeight: pos.maxHeight, zIndex: 70 }}
+          className="overflow-auto rounded-md border border-slate-200 bg-white text-sm shadow-xl"
+        >
+          {filtered.slice(0, 40).map((o) => (
+            <li
+              key={o.id}
+              className="cursor-pointer px-3 py-2 hover:bg-gold-50 active:bg-gold-100"
+              onMouseDown={(e) => { e.preventDefault(); onChange(o.name); setOpen(false) }}
+            >
               {o.name}
             </li>
           ))}
-        </ul>
+        </ul>,
+        document.body
       )}
     </div>
   )
@@ -575,10 +618,10 @@ export default function ValuationForm() {
           </button>
         </div>
 
-        {/* Single spreadsheet-style grid used on every screen. The table body scrolls inside a
-            bounded box (header + totals stay pinned) so adding 20 rows never pushes the page down,
-            and it scrolls horizontally on narrow screens with the Sr+Description columns frozen left. */}
-        <div className="orn-scroll overflow-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+        {/* Single spreadsheet-style grid used on every screen. It scrolls horizontally as one
+            smooth strip (Sr + Description stay frozen on the left for context); rows flow down the
+            page within this dedicated tab so sideways swiping never fights vertical scrolling. */}
+        <div className="orn-scroll">
           <table className="orn-table w-full text-sm">
             <thead>
               <tr>

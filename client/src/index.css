@@ -50,9 +50,21 @@
   .snap-val     { @apply text-sm font-semibold text-slate-900 leading-tight truncate; }
 
   /* --- Ornaments spreadsheet grid ---
-     Bounded scroll box with a pinned header + totals row and frozen Sr/Description
-     columns, so a long item list never pushes the page down and stays trackable. */
-  .orn-table { border-collapse: separate; border-spacing: 0; min-width: 752px; }
+     One smooth horizontal-scroll strip with frozen Sr/Description columns; rows flow down
+     the page so sideways swiping never competes with vertical scrolling. */
+  .orn-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f1f5f9;
+  }
+  .orn-scroll::-webkit-scrollbar { height: 12px; }
+  .orn-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+  .orn-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 6px; border: 3px solid #f1f5f9; }
+  .orn-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  .orn-table { border-collapse: separate; border-spacing: 0; min-width: 700px; }
   .orn-th {
     position: sticky; top: 0; z-index: 20;
     background: #f1f5f9;
