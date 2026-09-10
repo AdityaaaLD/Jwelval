@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
-import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Camera, ChevronDown, Copy, Eye, Plus, Printer, Receipt, Save, Trash2, Upload } from 'lucide-react'
@@ -14,81 +13,46 @@ const lockedStatus = (status) => status === 'PRINTED' || status === 'LOCKED'
 
 const LOAN_TYPES = ['', 'Gold Loan', 'Agri Gold Loan', 'Housing Loan', 'Personal Loan', 'Vehicle Loan', 'Business Loan', 'Others']
 
-function OrnamentInput({ value, onChange, disabled, ornaments }) {
-  const [open, setOpen] = useState(false)
-  const [filter, setFilter] = useState('')
-  const inputRef = useRef(null)
-  const [pos, setPos] = useState(null)
+const OTHER_VALUE = '__other__'
 
-  const filtered = useMemo(() => {
-    const q = (filter || value || '').toLowerCase()
-    if (!q) return ornaments
-    return ornaments.filter((o) => o.name.toLowerCase().includes(q))
-  }, [filter, value, ornaments])
-
-  // Position the dropdown in a fixed-position portal so it floats above the page
-  // (and is never clipped by the ornaments table's horizontal scroll container).
-  const computePos = () => {
-    const el = inputRef.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    const spaceBelow = window.innerHeight - r.bottom
-    const openUp = spaceBelow < 240 && r.top > spaceBelow
-    // Match the field, but keep a readable min width and never overflow the screen edge.
-    const width = Math.min(Math.max(r.width, 220), window.innerWidth - 16)
-    const left = Math.min(Math.max(8, r.left), window.innerWidth - width - 8)
-    setPos({
-      left,
-      width,
-      top: openUp ? undefined : r.bottom + 4,
-      bottom: openUp ? window.innerHeight - r.top + 4 : undefined,
-      maxHeight: Math.min(260, Math.max(140, openUp ? r.top - 8 : spaceBelow - 8)),
-    })
-  }
-
-  const openMenu = () => { computePos(); setOpen(true) }
+// Description picker built on a native <select> (same clean, never-clipped OS picker as Remarks).
+// Choosing "Other (type)…" reveals a free-text field for names not in the ornament master list.
+function DescriptionField({ value, onChange, disabled, ornaments }) {
+  const names = useMemo(() => ornaments.map((o) => o.name), [ornaments])
+  const [other, setOther] = useState(Boolean(value) && !names.includes(value))
 
   useEffect(() => {
-    if (!open) return
-    const update = () => computePos()
-    // capture=true so we also react to the inner table scroll, not just window scroll
-    window.addEventListener('scroll', update, true)
-    window.addEventListener('resize', update)
-    return () => {
-      window.removeEventListener('scroll', update, true)
-      window.removeEventListener('resize', update)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
+    // Auto-detect custom values (e.g. loaded from an existing valuation); leave empty values alone
+    // so the free-text box stays open while the user is typing a brand-new name.
+    if (value && !names.includes(value)) setOther(true)
+    else if (value && names.includes(value)) setOther(false)
+  }, [value, names])
 
   return (
-    <div className="relative">
-      <input
-        ref={inputRef}
+    <div>
+      <select
         className="input-c"
-        value={value}
+        value={other ? OTHER_VALUE : value}
         disabled={disabled}
-        onChange={(e) => { onChange(e.target.value); setFilter(e.target.value); openMenu() }}
-        onFocus={openMenu}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Type ornament..."
-      />
-      {open && pos && filtered.length > 0 && createPortal(
-        <ul
-          style={{ position: 'fixed', left: pos.left, top: pos.top, bottom: pos.bottom, width: pos.width, maxHeight: pos.maxHeight, zIndex: 70 }}
-          className="overflow-auto rounded-md border border-slate-200 bg-white text-sm shadow-xl"
-        >
-          {filtered.slice(0, 40).map((o) => (
-            <li
-              key={o.id}
-              className="cursor-pointer px-3 py-2 hover:bg-gold-50 active:bg-gold-100"
-              onMouseDown={(e) => { e.preventDefault(); onChange(o.name); setOpen(false) }}
-            >
-              {o.name}
-            </li>
-          ))}
-        </ul>,
-        document.body
+        onChange={(e) => {
+          const v = e.target.value
+          if (v === OTHER_VALUE) { setOther(true); onChange('') }
+          else { setOther(false); onChange(v) }
+        }}
+      >
+        <option value="">Select ornament…</option>
+        {ornaments.map((o) => <option key={o.id} value={o.name}>{o.name}</option>)}
+        <option value={OTHER_VALUE}>Other (type)…</option>
+      </select>
+      {other && (
+        <input
+          className="input-c mt-1"
+          placeholder="Type ornament name…"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          autoFocus
+        />
       )}
     </div>
   )
@@ -216,7 +180,7 @@ export default function ValuationForm() {
   const addItemAndFocus = () => {
     addItem()
     requestAnimationFrame(() => {
-      lastItemRef.current?.querySelector('input')?.focus()
+      lastItemRef.current?.querySelector('select, input')?.focus()
     })
   }
 
@@ -621,84 +585,82 @@ export default function ValuationForm() {
           </button>
         </div>
 
-        {/* Spreadsheet-style grid. The whole table (Description included) scrolls together as one
-            smooth horizontal strip; rows flow down the page within this dedicated tab so sideways
-            swiping never fights vertical scrolling. */}
-        <div className="orn-scroll">
-          <table className="orn-table text-sm">
-            <thead>
-              <tr>
-                <th className="orn-th" style={{ width: 32, minWidth: 32 }}>#</th>
-                <th className="orn-th text-left" style={{ width: 180, minWidth: 180 }}>Description</th>
-                <th className="orn-th text-left" style={{ width: 140, minWidth: 140 }}>Remarks</th>
-                <th className="orn-th" style={{ width: 70, minWidth: 70 }}>Units</th>
-                <th className="orn-th" style={{ width: 90, minWidth: 90 }}>Gross g</th>
-                <th className="orn-th" style={{ width: 90, minWidth: 90 }}>Net g</th>
-                <th className="orn-th" style={{ width: 64, minWidth: 64 }}>Karat</th>
-                <th className="orn-th text-right" style={{ width: 116, minWidth: 116 }}>Value</th>
-                <th className="orn-th" style={{ width: 44, minWidth: 44 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {form.items.map((item, index) => (
-                <tr key={index} ref={index === form.items.length - 1 ? lastItemRef : null} className="odd:bg-white even:bg-slate-50/50">
-                  <td className="orn-td text-center text-xs font-semibold text-slate-400">{index + 1}</td>
-                  <td className="orn-td">
-                    <OrnamentInput value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
-                  </td>
-                  <td className="orn-td">
-                    <select className="input-c text-xs" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
-                      <option value="">—</option>
-                      {REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                    {item.remarks === 'Others' && (
-                      <input className="input-c mt-1 text-xs" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
-                    )}
-                  </td>
-                  <td className="orn-td"><input type="number" inputMode="numeric" className="input-c px-1 text-center" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} /></td>
-                  <td className="orn-td"><input type="number" inputMode="decimal" step="0.001" className="input-c px-1 text-center" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} /></td>
-                  <td className="orn-td">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.001"
-                      className="input-c px-1 text-center"
-                      value={item.netWeightGm}
-                      onChange={(e) => setItem(index, 'netWeightGm', e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && index === form.items.length - 1) { e.preventDefault(); addItemAndFocus() } }}
-                      disabled={disabled}
-                    />
-                  </td>
-                  <td className="orn-td"><input type="number" className="input-c px-1 text-center" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} step="0.1" placeholder="22" /></td>
-                  <td className="orn-td text-right font-medium tabular-nums whitespace-nowrap">{inr(item.approxValueInr)}</td>
-                  <td className="orn-td text-center">
-                    <button type="button" className="text-red-500 disabled:opacity-40" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
-                      <Trash2 size={15} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td className="orn-tf"></td>
-                <td className="orn-tf text-left">Total</td>
-                <td className="orn-tf"></td>
-                <td className="orn-tf text-center">{totals.units}</td>
-                <td className="orn-tf text-center tabular-nums">{num(totals.gross, 3)}</td>
-                <td className="orn-tf text-center tabular-nums">{num(totals.net, 3)}</td>
-                <td className="orn-tf"></td>
-                <td className="orn-tf text-right tabular-nums whitespace-nowrap text-gold-700">{inr(totals.value)}</td>
-                <td className="orn-tf"></td>
-              </tr>
-            </tfoot>
-          </table>
+        {/* Compact item blocks. Every field of a row fits within the screen width — no horizontal
+            scroll — and items stack vertically inside this dedicated tab. */}
+        <div className="divide-y divide-slate-100">
+          {form.items.map((item, index) => (
+            <div key={index} ref={index === form.items.length - 1 ? lastItemRef : null} className="p-3">
+              <div className="flex items-center gap-2">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">{index + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <DescriptionField value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
+                </div>
+                <button type="button" className="shrink-0 p-1.5 text-red-500 disabled:opacity-40" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+
+              <div className="mt-2 grid grid-cols-4 gap-2">
+                <div className="field-c">
+                  <label className="label-c">Units</label>
+                  <input type="number" inputMode="numeric" className="input-c px-1.5 text-center" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} />
+                </div>
+                <div className="field-c">
+                  <label className="label-c">Gross g</label>
+                  <input type="number" inputMode="decimal" step="0.001" className="input-c px-1.5 text-center" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} />
+                </div>
+                <div className="field-c">
+                  <label className="label-c">Net g</label>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.001"
+                    className="input-c px-1.5 text-center"
+                    value={item.netWeightGm}
+                    onChange={(e) => setItem(index, 'netWeightGm', e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && index === form.items.length - 1) { e.preventDefault(); addItemAndFocus() } }}
+                    disabled={disabled}
+                  />
+                </div>
+                <div className="field-c">
+                  <label className="label-c">Karat</label>
+                  <input type="number" className="input-c px-1.5 text-center" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} step="0.1" placeholder="22" />
+                </div>
+              </div>
+
+              <div className="mt-2 flex items-end gap-2">
+                <div className="field-c min-w-0 flex-1">
+                  <label className="label-c">Remarks</label>
+                  <select className="input-c" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
+                    <option value="">— Select —</option>
+                    {REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="label-c">Value</div>
+                  <div className="rounded-md bg-gold-50 px-2.5 py-2 text-sm font-semibold tabular-nums text-slate-900">{inr(item.approxValueInr)}</div>
+                </div>
+              </div>
+              {item.remarks === 'Others' && (
+                <input className="input-c mt-2" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
+              )}
+            </div>
+          ))}
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 p-3">
-          <p className="text-[11px] text-slate-400">Tip: press Enter in a row’s “Net g” to jump to the next row. Swipe the table sideways to reach every column.</p>
-          <button type="button" className="btn-secondary w-full sm:w-auto" onClick={addItemAndFocus} disabled={disabled}>
+
+        {/* Running totals — always visible at the end, and mirrored in the pinned snapshot bar */}
+        <div className="grid grid-cols-4 gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500">
+          <span>Items<br /><span className="text-sm text-slate-900">{totals.units}</span></span>
+          <span>Gross<br /><span className="text-sm tabular-nums text-slate-900">{num(totals.gross, 3)}</span></span>
+          <span>Net<br /><span className="text-sm tabular-nums text-slate-900">{num(totals.net, 3)}</span></span>
+          <span>Total<br /><span className="text-sm tabular-nums text-gold-700">{inr(totals.value)}</span></span>
+        </div>
+
+        <div className="flex flex-col gap-2 border-t border-slate-200 p-3">
+          <button type="button" className="btn-secondary w-full" onClick={addItemAndFocus} disabled={disabled}>
             <Plus size={16} /> Add Ornament
           </button>
+          <p className="text-center text-[11px] text-slate-400">Tip: press Enter in a row’s “Net g” to add the next ornament.</p>
         </div>
       </div>
       )}
