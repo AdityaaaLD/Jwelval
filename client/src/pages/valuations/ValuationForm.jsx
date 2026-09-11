@@ -585,64 +585,58 @@ export default function ValuationForm() {
           </button>
         </div>
 
-        {/* Compact item blocks. Every field of a row fits within the screen width — no horizontal
-            scroll — and items stack vertically inside this dedicated tab. */}
+        {/* Compact 2-line item blocks — every field fits the screen width (no horizontal scroll)
+            and each item stays short so 20+ ornaments remain trackable. */}
         <div className="divide-y divide-slate-100">
           {form.items.map((item, index) => (
-            <div key={index} ref={index === form.items.length - 1 ? lastItemRef : null} className="p-3">
-              <div className="flex items-center gap-2">
-                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">{index + 1}</span>
+            <div key={index} ref={index === form.items.length - 1 ? lastItemRef : null} className="px-2 py-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-500">{index + 1}</span>
                 <div className="min-w-0 flex-1">
                   <DescriptionField value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
                 </div>
-                <button type="button" className="shrink-0 p-1.5 text-red-500 disabled:opacity-40" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
-                  <Trash2 size={16} />
+                <span className="shrink-0 rounded bg-gold-50 px-1.5 py-1 text-xs font-semibold tabular-nums text-slate-900">{inr(item.approxValueInr)}</span>
+                <button type="button" className="shrink-0 p-1 text-red-500 disabled:opacity-40" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
+                  <Trash2 size={15} />
                 </button>
               </div>
 
-              <div className="mt-2 grid grid-cols-4 gap-2">
-                <div className="field-c">
+              <div className="mt-1 grid grid-cols-12 gap-1.5">
+                <div className="field-c col-span-2">
                   <label className="label-c">Units</label>
-                  <input type="number" inputMode="numeric" className="input-c px-1.5 text-center" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} />
+                  <input type="number" inputMode="numeric" className="input-c px-1 py-1.5 text-center" value={item.noOfUnits} onChange={(e) => setItem(index, 'noOfUnits', e.target.value)} disabled={disabled} />
                 </div>
-                <div className="field-c">
-                  <label className="label-c">Gross g</label>
-                  <input type="number" inputMode="decimal" step="0.001" className="input-c px-1.5 text-center" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} />
+                <div className="field-c col-span-2">
+                  <label className="label-c">Gross</label>
+                  <input type="number" inputMode="decimal" step="0.001" className="input-c px-1 py-1.5 text-center" value={item.grossWeightGm} onChange={(e) => setItem(index, 'grossWeightGm', e.target.value)} disabled={disabled} />
                 </div>
-                <div className="field-c">
-                  <label className="label-c">Net g</label>
+                <div className="field-c col-span-2">
+                  <label className="label-c">Net</label>
                   <input
                     type="number"
                     inputMode="decimal"
                     step="0.001"
-                    className="input-c px-1.5 text-center"
+                    className="input-c px-1 py-1.5 text-center"
                     value={item.netWeightGm}
                     onChange={(e) => setItem(index, 'netWeightGm', e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && index === form.items.length - 1) { e.preventDefault(); addItemAndFocus() } }}
                     disabled={disabled}
                   />
                 </div>
-                <div className="field-c">
+                <div className="field-c col-span-2">
                   <label className="label-c">Karat</label>
-                  <input type="number" className="input-c px-1.5 text-center" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} step="0.1" placeholder="22" />
+                  <input type="number" className="input-c px-1 py-1.5 text-center" value={item.purityCarat} onChange={(e) => setItem(index, 'purityCarat', e.target.value)} disabled={disabled} step="0.1" placeholder="22" />
                 </div>
-              </div>
-
-              <div className="mt-2 flex items-end gap-2">
-                <div className="field-c min-w-0 flex-1">
+                <div className="field-c col-span-4">
                   <label className="label-c">Remarks</label>
-                  <select className="input-c" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
+                  <select className="input-c px-1 py-1.5 text-xs" value={item.remarks} onChange={(e) => setItem(index, 'remarks', e.target.value)} disabled={disabled}>
                     <option value="">— Select —</option>
                     {REMARK_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 </div>
-                <div className="shrink-0 text-right">
-                  <div className="label-c">Value</div>
-                  <div className="rounded-md bg-gold-50 px-2.5 py-2 text-sm font-semibold tabular-nums text-slate-900">{inr(item.approxValueInr)}</div>
-                </div>
               </div>
               {item.remarks === 'Others' && (
-                <input className="input-c mt-2" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
+                <input className="input-c mt-1" placeholder="Enter remark..." value={item.remarksCustom} onChange={(e) => setItem(index, 'remarksCustom', e.target.value)} disabled={disabled} />
               )}
             </div>
           ))}

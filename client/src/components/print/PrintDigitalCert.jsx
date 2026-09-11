@@ -228,12 +228,12 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
       </header>
 
       <div className="dc-row-box dc-row-split">
-        <span>Application ID: {valuation.applicationId || ''}{valuation.goldLoanRegisterNo ? ` | Gold Loan Register No.: ${valuation.goldLoanRegisterNo}` : ''}</span>
+        <span>Application ID: {valuation.applicationId || ''} <span className="dc-borrower-sep">|</span> Gold Loan Register No.: {valuation.goldLoanRegisterNo || ''}</span>
         <span>Date: {dateStr} {timeStr}</span>
       </div>
       <div className="dc-row-box dc-row-split">
-        <span>Certificate No: {valuation.valuationNumber}{valuation.goldPacketsNo ? ` | Gold Packets No.: ${valuation.goldPacketsNo}` : ''}</span>
-        <span>Renewal Date: {renewalDateStr || '-'}</span>
+        <span>Certificate No: {valuation.valuationNumber} <span className="dc-borrower-sep">|</span> Gold Packets No.: {valuation.goldPacketsNo || ''}</span>
+        <span>Renewal Date: {renewalDateStr || ''}</span>
       </div>
 
       <div className="dc-row-box dc-parties dc-parties-with-photos">
@@ -272,9 +272,9 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
 
       <div className="dc-row-box dc-borrower">
         <p><b>Borrower Name:</b> {customer.name} <span className="dc-borrower-sep">|</span> <b>Aadhaar No:</b> {borrowerAadhar} <span className="dc-borrower-sep">|</span> <b>Borrower Mob. No:</b> {customer.mobile || '-'}</p>
+        <p><b>Address:</b> {customer.address || ''}</p>
         <p>
-          {(valuation.acNo || customer.savingsAcNo) && <><b>A/C No:</b> {valuation.acNo || customer.savingsAcNo} <span className="dc-borrower-sep">|</span> </>}
-          <b>Bank:</b> {bankName}, <b>Branch:</b> {branchName}
+          <b>A/C No:</b> {valuation.acNo || customer.savingsAcNo || ''} <span className="dc-borrower-sep">|</span> <b>Bank:</b> {bankName}, <b>Branch:</b> {branchName}
         </p>
       </div>
 
