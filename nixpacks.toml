@@ -11,6 +11,11 @@ nixPkgs = [
   "liberation_ttf",
   "dejavu_fonts",
 ]
+# Chromium + its runtime libraries come entirely from Nix (above), which uses a
+# reliable binary cache. Force apt packages to empty so the build never runs the
+# flaky `apt-get install ... chromium` step (it intermittently fails when the
+# build host can't reach archive.ubuntu.com), which broke deploys.
+aptPkgs = []
 
 [variables]
 # Puppeteer uses the Chromium provided by Nix instead of downloading its own.
