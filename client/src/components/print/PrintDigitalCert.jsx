@@ -228,12 +228,12 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
       </header>
 
       <div className="dc-row-box dc-row-split">
-        <span>Application ID: {valuation.applicationId || ''} <span className="dc-borrower-sep">|</span> Gold Loan Register No.: {valuation.goldLoanRegisterNo || ''}</span>
+        <span>Application ID: {valuation.applicationId || <span className="dc-blank" />} <span className="dc-borrower-sep">|</span> Gold Loan Register No.: {valuation.goldLoanRegisterNo || <span className="dc-blank" />}</span>
         <span>Date: {dateStr} {timeStr}</span>
       </div>
       <div className="dc-row-box dc-row-split">
-        <span>Certificate No: {valuation.valuationNumber} <span className="dc-borrower-sep">|</span> Gold Packets No.: {valuation.goldPacketsNo || ''}</span>
-        <span>Renewal Date: {renewalDateStr || ''}</span>
+        <span>Certificate No: {valuation.valuationNumber} <span className="dc-borrower-sep">|</span> Gold Packets No.: {valuation.goldPacketsNo || <span className="dc-blank" />}</span>
+        <span>Renewal Date: {renewalDateStr || <span className="dc-blank dc-blank-wide" />}</span>
       </div>
 
       <div className="dc-row-box dc-parties dc-parties-with-photos">

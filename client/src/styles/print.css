@@ -51,6 +51,10 @@
 .dc-parties p { margin: 1px 0; }
 .dc-borrower p { margin: 1px 0; }
 .dc-borrower-sep { margin: 0 6px; font-weight: 600; }
+/* Writable blank line for fields left empty on purpose (renewal date, packet no.,
+   register no., application id) so the printout has room to fill them in by pen. */
+.dc-blank { display: inline-block; min-width: 120px; border-bottom: 1px solid #000; height: 0.95em; vertical-align: -2px; }
+.dc-blank-wide { min-width: 150px; }
 /* Rates and loan figures. Three columns rather than four: a quarter-width cell
    is too narrow for "Bank Loan Amount: Rs. 63,000.00", which pushed
    the amount onto a second line. At a third of the width every label and its
