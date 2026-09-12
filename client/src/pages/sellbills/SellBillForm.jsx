@@ -24,6 +24,7 @@ export default function SellBillForm() {
     valuationId: '',
     billDate: new Date().toISOString().slice(0, 10),
     withGst: true,
+    gstRate: 3,
     advance: 0,
     paymentMode: 'Cash',
     items: [blankItem()],
@@ -64,6 +65,7 @@ export default function SellBillForm() {
         valuationId: String(b.valuationId || ''),
         billDate: b.billDate || '',
         withGst: (b.gstPercent || 0) > 0,
+        gstRate: (b.gstPercent || 0) > 0 ? b.gstPercent : 3,
         advance: b.advance || 0,
         paymentMode: b.paymentMode || 'Cash',
         items: b.items?.length ? b.items.map((it) => ({
@@ -83,7 +85,7 @@ export default function SellBillForm() {
   const removeItem = (index) => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== index) }))
 
   const subtotal = form.items.reduce((s, it) => s + (Number(it.amount) || 0), 0)
-  const gstPercent = form.withGst ? 3 : 0
+  const gstPercent = form.withGst ? (Number(form.gstRate) || 0) : 0
   const gstAmount = +(subtotal * gstPercent / 100).toFixed(2)
   const total = +(subtotal + gstAmount).toFixed(2)
   const balance = +(total - (Number(form.advance) || 0)).toFixed(2)
@@ -186,10 +188,27 @@ export default function SellBillForm() {
             <p className="text-lg font-semibold">{inr(subtotal)}</p>
           </div>
           <div>
-            <label className="flex items-center gap-2 cursor-pointer text-sm">
-              <input type="checkbox" checked={form.withGst} onChange={(e) => setField('withGst', e.target.checked)} disabled={isView} className="h-4 w-4 rounded border-slate-300" />
-              With GST (3%)
-            </label>
+            <div className="flex items-center gap-2 text-sm">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" checked={form.withGst} onChange={(e) => setField('withGst', e.target.checked)} disabled={isView} className="h-4 w-4 rounded border-slate-300" />
+                With GST
+              </label>
+              {form.withGst && (
+                <span className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    className="input w-16 py-1 text-right"
+                    value={form.gstRate}
+                    onChange={(e) => setField('gstRate', e.target.value)}
+                    disabled={isView}
+                  />
+                  <span>%</span>
+                </span>
+              )}
+            </div>
             {form.withGst && <p className="mt-1 text-xs text-slate-500">GST: {inr(gstAmount)}</p>}
           </div>
           <div>
