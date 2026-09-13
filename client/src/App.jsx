@@ -26,6 +26,7 @@ import Login from './pages/Login'
 import Subscribe from './pages/Subscribe'
 import ManageUsers from './pages/admin/ManageUsers'
 import PrintRender from './pages/PrintRender'
+import SellBillRender from './pages/SellBillRender'
 
 function AppShell({ children }) {
   return (
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/subscribe" element={<Subscribe />} />
           <Route path="/verify/:number" element={<VerifyCertificate />} />
           <Route path="/print/valuation/:id" element={<PrintRender />} />
+          <Route path="/print/sell-bill/:id" element={<SellBillRender />} />
 
           <Route path="/dashboard" element={<AppShell><Dashboard /></AppShell>} />
           <Route path="/customers" element={<AppShell><CustomerList /></AppShell>} />

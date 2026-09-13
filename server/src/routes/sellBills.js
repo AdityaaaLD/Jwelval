@@ -3,8 +3,21 @@ import { eq, and, desc } from 'drizzle-orm'
 import { db, sqlite } from '../db/client.js'
 import { sellBills, sellBillItems, customers, billSeries } from '../db/schema.js'
 import { ensureDefaultBillSeriesForUser } from '../lib/defaultBillSeries.js'
+import { renderUrlToPdf } from '../lib/pdfRenderer.js'
+import { logEvent, logErrorEvent } from '../lib/logger.js'
 
 const router = Router()
+
+const PDF_REQUEST_TIMEOUT_MS = Number(process.env.PDF_REQUEST_TIMEOUT_MS || 120000)
+
+function printBaseUrl() {
+  const configured = String(process.env.PDF_BASE_URL || '').trim()
+  if (configured) return configured.replace(/\/+$/, '')
+  const port = parseInt(process.env.PORT || '3001', 10)
+  return process.env.NODE_ENV === 'production'
+    ? `http://127.0.0.1:${port}`
+    : 'http://127.0.0.1:5173'
+}
 
 function reserveNextBillNumber(seriesId) {
   const series = sqlite.prepare('SELECT * FROM bill_series WHERE id = ?').get(seriesId)
@@ -64,6 +77,38 @@ router.get('/:id', async (req, res) => {
   const [bill] = await db.select().from(sellBills).where(and(eq(sellBills.id, id), eq(sellBills.userId, userId)))
   if (!bill) return res.status(404).json({ error: 'Not found' })
   res.json(await hydrateBill(bill))
+})
+
+router.get('/:id/pdf', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  const userId = req.user.id
+  const [bill] = await db.select().from(sellBills).where(and(eq(sellBills.id, id), eq(sellBills.userId, userId)))
+  if (!bill) return res.status(404).json({ error: 'NOT_FOUND', message: 'Sell bill not found.' })
+
+  req.setTimeout(PDF_REQUEST_TIMEOUT_MS)
+  res.setTimeout(PDF_REQUEST_TIMEOUT_MS)
+
+  const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+  const url = `${printBaseUrl()}/print/sell-bill/${id}`
+  const startedAt = Date.now()
+
+  try {
+    const pdf = await renderUrlToPdf({ url, authToken: token })
+    const safeName = String(bill.billNumber || `sell-bill-${id}`).replace(/[^a-z0-9-_]+/gi, '_')
+    logEvent('SELL_BILL_PDF_GENERATED', { billId: id, bytes: pdf.length, ms: Date.now() - startedAt })
+    res.setHeader('Content-Type', 'application/pdf')
+    res.setHeader('Content-Length', String(pdf.length))
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}.pdf"`)
+    res.setHeader('Cache-Control', 'no-store')
+    return res.end(pdf)
+  } catch (error) {
+    logErrorEvent('SELL_BILL_PDF_FAILED', error, { billId: id, url, ms: Date.now() - startedAt })
+    const status = error.code === 'PDF_BROWSER_MISSING' || error.code === 'PDF_ENGINE_MISSING' ? 503 : 500
+    return res.status(status).json({
+      error: error.code || 'PDF_FAILED',
+      message: 'Could not generate the PDF right now. Please try again.',
+    })
+  }
 })
 
 router.post('/', async (req, res) => {

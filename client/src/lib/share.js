@@ -62,6 +62,53 @@ export async function fetchValuationPdf({ valuationId, fileBaseName, signal }) {
   return { blob: pdfBlob, file, filename }
 }
 
+/**
+ * Same as fetchValuationPdf, but for a sell bill. The server renders the bill
+ * with the real Chrome print engine so the shared PDF matches the on-screen copy.
+ */
+export async function fetchSellBillPdf({ billId, fileBaseName, signal }) {
+  if (!billId) throw new Error('Sell bill must be saved before it can be shared.')
+
+  const token = localStorage.getItem(TOKEN_KEY)
+  const res = await fetch(`/api/sell-bills/${billId}/pdf`, {
+    method: 'GET',
+    headers: {
+      Accept: PDF_MIME,
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    signal,
+  })
+
+  if (!res.ok) {
+    let message = 'Could not generate the PDF. Please try again.'
+    try {
+      const payload = await res.json()
+      if (payload?.message) message = payload.message
+    } catch {
+      // non-JSON error body, keep the default message
+    }
+    if (res.status === 401) message = 'Your session expired. Please login again.'
+    const error = new Error(message)
+    error.status = res.status
+    throw error
+  }
+
+  const blob = await res.blob()
+  if (!blob || blob.size < 1024) throw new Error('The generated PDF was empty. Please try again.')
+
+  const filename = makeFilename(fileBaseName)
+  const pdfBlob = blob.type === PDF_MIME ? blob : new Blob([blob], { type: PDF_MIME })
+
+  let file = null
+  try {
+    file = new File([pdfBlob], filename, { type: PDF_MIME })
+  } catch {
+    file = null
+  }
+
+  return { blob: pdfBlob, file, filename }
+}
+
 function canShareFile(file) {
   if (!file) return false
   if (typeof navigator.share !== 'function') return false
