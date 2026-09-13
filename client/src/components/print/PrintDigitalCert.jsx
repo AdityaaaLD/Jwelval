@@ -271,10 +271,20 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
       </div>
 
       <div className="dc-row-box dc-borrower">
-        <p><b>Borrower Name:</b> {customer.name} <span className="dc-borrower-sep">|</span> <b>Aadhaar No:</b> {borrowerAadhar} <span className="dc-borrower-sep">|</span> <b>Borrower Mob. No:</b> {customer.mobile || '-'}</p>
+        <p>
+          <span className="dc-kv"><b>Borrower Name:</b> {customer.name}</span>
+          <span className="dc-borrower-sep">|</span>
+          <span className="dc-kv"><b>Aadhaar No:</b> {borrowerAadhar}</span>
+          <span className="dc-borrower-sep">|</span>
+          <span className="dc-kv"><b>Borrower Mob. No:</b> {customer.mobile || '-'}</span>
+        </p>
         <p><b>Address:</b> {customer.address || ''}</p>
         <p>
-          <b>A/C No:</b> {valuation.acNo || customer.savingsAcNo || ''} <span className="dc-borrower-sep">|</span> <b>Bank:</b> {bankName}, <b>Branch:</b> {branchName}
+          <span className="dc-kv"><b>A/C No:</b> {valuation.acNo || customer.savingsAcNo || ''}</span>
+          <span className="dc-borrower-sep">|</span>
+          <span className="dc-kv"><b>Bank:</b> {bankName}</span>
+          <span className="dc-borrower-sep">|</span>
+          <span className="dc-kv"><b>Branch:</b> {branchName}</span>
         </p>
       </div>
 

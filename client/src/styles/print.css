@@ -51,6 +51,9 @@
 .dc-parties p { margin: 1px 0; }
 .dc-borrower p { margin: 1px 0; }
 .dc-borrower-sep { margin: 0 6px; font-weight: 600; }
+/* Keep each "Label: value" pair together so a value never wraps away from its
+   label; wrapping happens only between pairs. */
+.dc-kv { display: inline-block; white-space: nowrap; }
 /* Writable blank line for fields left empty on purpose (renewal date, packet no.,
    register no., application id) so the printout has room to fill them in by pen. */
 .dc-blank { display: inline-block; min-width: 120px; border-bottom: 1px solid #000; height: 0.95em; vertical-align: -2px; }
@@ -62,12 +65,14 @@
 .dc-loan-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: baseline;
-  gap: 1px 10px;
+  align-items: start;
+  gap: 2px 14px;
   font-size: 11.3px;
-  line-height: 1.32;
+  line-height: 1.3;
 }
-.dc-meta-cell { white-space: nowrap; }
+/* Allow long figures to wrap inside their own column instead of overflowing into
+   the next one (which caused the labels/values to overlap). */
+.dc-meta-cell { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
 
 /* Contact line in the red letterhead block. */
 .dc-header-contact {
