@@ -102,6 +102,7 @@
 .dc-cert-text p { margin: 0; }
 .dc-photo-box { border: 1px solid #000; padding: 2px; text-align: center; background: #fff; }
 .dc-photo-box img { width: 34mm; height: 29mm; object-fit: cover; display: block; }
+.dc-photo-box img.dc-jewellery-photo { object-fit: contain; background: #fff; }
 .dc-photo-box p { margin: 2px 0 0; font-size: 8.1px; font-weight: 600; line-height: 1.15; }
 .dc-parties-with-photos { align-items: stretch; }
 .dc-party-from { padding-right: 5px; border-right: 1px solid #000; }

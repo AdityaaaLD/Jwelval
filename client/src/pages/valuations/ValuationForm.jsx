@@ -228,11 +228,11 @@ export default function ValuationForm() {
     reader.readAsDataURL(file)
   })
 
-  const openCropper = async (file, title, onApply) => {
+  const openCropper = async (file, title, onApply, options = {}) => {
     if (!file) return
     try {
       const src = await readFileAsDataUrl(file)
-      setCropSession({ src, title, onApply })
+      setCropSession({ src, title, onApply, ...options })
     } catch {
       toast.error('Unable to open image editor.')
     }
@@ -295,7 +295,7 @@ export default function ValuationForm() {
           capture="environment"
           className="sr-only"
           disabled={disabled}
-          onChange={(e) => openCropper(e.target.files?.[0], `Crop ${label}`, (dataUrl) => loadPhoto(field, dataUrl))}
+          onChange={(e) => openCropper(e.target.files?.[0], `Adjust ${label}`, (dataUrl) => loadPhoto(field, dataUrl), { preserveFullImage: field === 'jewelleryPhoto' })}
         />
       </label>
     </div>
@@ -712,7 +712,7 @@ export default function ValuationForm() {
           <span className="sheet-title">Jewellery Photos <span className="text-red-500">*</span></span>
           <label className={`btn-secondary py-1 text-xs ${disabled ? 'pointer-events-none opacity-50' : ''}`}>
             <Camera size={14} /> Add
-            <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={disabled} onChange={(e) => openCropper(e.target.files?.[0], 'Crop Ornament Photo', addOrnamentPhoto)} />
+            <input type="file" accept="image/*" capture="environment" className="sr-only" disabled={disabled} onChange={(e) => openCropper(e.target.files?.[0], 'Adjust Ornament Photo', addOrnamentPhoto, { preserveFullImage: true })} />
           </label>
         </div>
         <div className="sheet-body">
@@ -793,6 +793,7 @@ export default function ValuationForm() {
         open={Boolean(cropSession)}
         title={cropSession?.title || 'Adjust Image'}
         src={cropSession?.src || ''}
+        preserveFullImage={Boolean(cropSession?.preserveFullImage)}
         onCancel={() => setCropSession(null)}
         onApply={handleCropApply}
       />

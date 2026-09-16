@@ -16,6 +16,7 @@ export default function ImageCropModal({
   src,
   onCancel,
   onApply,
+  preserveFullImage = false,
 }) {
   const imageRef = useRef(null)
   const frameRef = useRef(null)
@@ -61,8 +62,10 @@ export default function ImageCropModal({
     const isSwap = quarterTurns % 2 === 1
     const sourceWidth = isSwap ? naturalSize.height : naturalSize.width
     const sourceHeight = isSwap ? naturalSize.width : naturalSize.height
-    return Math.max(frameSize.width / sourceWidth, frameSize.height / sourceHeight)
-  }, [naturalSize, frameSize, rotation])
+    const scaleX = frameSize.width / sourceWidth
+    const scaleY = frameSize.height / sourceHeight
+    return preserveFullImage ? Math.min(scaleX, scaleY) : Math.max(scaleX, scaleY)
+  }, [naturalSize, frameSize, rotation, preserveFullImage])
 
   const displaySize = useMemo(() => {
     const width = naturalSize.width * baseScale * zoom
@@ -137,8 +140,8 @@ export default function ImageCropModal({
   if (!open || !src) return null
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/70 p-4 backdrop-blur-sm">
-      <div className="mx-auto flex h-full max-w-3xl items-center justify-center">
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 p-3 backdrop-blur-sm sm:p-4">
+      <div className="mx-auto flex min-h-full max-w-3xl items-start justify-center py-2 sm:items-center">
         <div className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
@@ -194,6 +197,9 @@ export default function ImageCropModal({
               />
             </div>
           </div>
+          {preserveFullImage && (
+            <p className="mt-2 text-center text-xs font-medium text-slate-600">The complete jewellery photo will be preserved. Empty frame space will remain white.</p>
+          )}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
@@ -215,52 +221,56 @@ export default function ImageCropModal({
                 ))}
               </select>
             </div>
-            <div>
-              <label className="label">Zoom ({zoom.toFixed(2)}x)</label>
-              <input
-                type="range"
-                min="1"
-                max="4"
-                step="0.01"
-                className="w-full"
-                value={zoom}
-                onChange={(e) => setZoom(Number(e.target.value))}
-                disabled={applying}
-              />
-            </div>
-            <div>
-              <label className="label">Horizontal Position</label>
-              <input
-                type="range"
-                min={-maxOffset.x}
-                max={maxOffset.x}
-                step="1"
-                className="w-full"
-                value={offset.x}
-                onChange={(e) => setOffset((prev) => ({ ...prev, x: Number(e.target.value) }))}
-                disabled={applying || maxOffset.x === 0}
-              />
-            </div>
-            <div>
-              <label className="label">Vertical Position</label>
-              <input
-                type="range"
-                min={-maxOffset.y}
-                max={maxOffset.y}
-                step="1"
-                className="w-full"
-                value={offset.y}
-                onChange={(e) => setOffset((prev) => ({ ...prev, y: Number(e.target.value) }))}
-                disabled={applying || maxOffset.y === 0}
-              />
-            </div>
+            {!preserveFullImage && (
+              <>
+                <div>
+                  <label className="label">Zoom ({zoom.toFixed(2)}x)</label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="4"
+                    step="0.01"
+                    className="w-full"
+                    value={zoom}
+                    onChange={(e) => setZoom(Number(e.target.value))}
+                    disabled={applying}
+                  />
+                </div>
+                <div>
+                  <label className="label">Horizontal Position</label>
+                  <input
+                    type="range"
+                    min={-maxOffset.x}
+                    max={maxOffset.x}
+                    step="1"
+                    className="w-full"
+                    value={offset.x}
+                    onChange={(e) => setOffset((prev) => ({ ...prev, x: Number(e.target.value) }))}
+                    disabled={applying || maxOffset.x === 0}
+                  />
+                </div>
+                <div>
+                  <label className="label">Vertical Position</label>
+                  <input
+                    type="range"
+                    min={-maxOffset.y}
+                    max={maxOffset.y}
+                    step="1"
+                    className="w-full"
+                    value={offset.y}
+                    onChange={(e) => setOffset((prev) => ({ ...prev, y: Number(e.target.value) }))}
+                    disabled={applying || maxOffset.y === 0}
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button type="button" className="btn-secondary" onClick={onCancel} disabled={applying}>Cancel</button>
             <button type="button" className="btn-secondary" onClick={applyOriginal} disabled={applying}>Use Original</button>
             <button type="button" className="btn-primary" onClick={applyCrop} disabled={applying}>
-              <Check size={16} /> {applying ? 'Applying...' : 'Apply Crop'}
+              <Check size={16} /> {applying ? 'Applying...' : preserveFullImage ? 'Use Full Photo' : 'Apply Crop'}
             </button>
           </div>
         </div>

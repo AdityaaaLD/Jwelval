@@ -261,7 +261,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
               )}
               {valuation.jewelleryPhoto && (
                 <div className="dc-photo-box dc-inline-photo-box">
-                  <img src={valuation.jewelleryPhoto} alt="Jewellery" />
+                  <img src={valuation.jewelleryPhoto} alt="Jewellery" className="dc-jewellery-photo" />
                   <p>Jewellery Photo</p>
                 </div>
               )}
