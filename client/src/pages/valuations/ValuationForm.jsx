@@ -17,7 +17,7 @@ const OTHER_VALUE = '__other__'
 
 // Description picker built on a native <select> (same clean, never-clipped OS picker as Remarks).
 // Choosing "Other (type)…" reveals a free-text field for names not in the ornament master list.
-function DescriptionField({ value, onChange, disabled, ornaments }) {
+function DescriptionField({ value, onChange, disabled, ornaments, active }) {
   const names = useMemo(() => ornaments.map((o) => o.name), [ornaments])
   const [other, setOther] = useState(Boolean(value) && !names.includes(value))
 
@@ -51,7 +51,7 @@ function DescriptionField({ value, onChange, disabled, ornaments }) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
-          autoFocus
+          autoFocus={active}
         />
       )}
     </div>
@@ -77,6 +77,7 @@ export default function ValuationForm() {
   const [moreOpen, setMoreOpen] = useState(false)
   const [tab, setTab] = useState('details')
   const customerDetailCacheRef = useRef({})
+  const loadKeyRef = useRef('')
   const lastItemRef = useRef(null)
   const { form, dirty, reset, hydrate, setField, setItem, addItem, removeItem, markClean, payload } = useValuationStore()
   const preferredSeries = useMemo(
@@ -87,6 +88,8 @@ export default function ValuationForm() {
     () => customers.find((c) => String(c.id) === String(form.customerId)) || null,
     [customers, form.customerId]
   )
+  const searchKey = searchParams.toString()
+  const initialCustomerId = searchParams.get('customer_id') || ''
 
   const handleValuationDateInput = (value) => {
     if (value === '') {
@@ -113,10 +116,13 @@ export default function ValuationForm() {
         customerDetailCacheRef.current[customerId] = customer
       }
 
+      const currentForm = useValuationStore.getState().form
+      if (String(currentForm.customerId) !== String(customerId)) return
+
       setField('personPhoto', customer.customerPhoto || '')
       setField('aadharPhotoDoc', customer.aadharPhoto || '')
       setField('panPhoto', customer.panPhoto || '')
-      setField('acNo', customer.savingsAcNo || '')
+      if (!currentForm.acNo) setField('acNo', customer.savingsAcNo || '')
     } catch {
       toast.error('Unable to load customer photos.')
     } finally {
@@ -125,26 +131,46 @@ export default function ValuationForm() {
   }
 
   useEffect(() => {
-    Promise.all([api.customers.list(), api.series.list(), api.presets.banks(), api.rates.get(), api.ornaments.list()]).then(([customerRows, seriesRows, presetRows, rate, ornRows]) => {
-      setCustomers(customerRows)
-      setSeries(seriesRows)
-      setBankPresets(presetRows)
-      setOrnaments(ornRows)
-      if (!isEdit) {
-        reset()
-        const customerId = searchParams.get('customer_id')
-        if (customerId) {
-          setField('customerId', customerId)
-          syncCustomerIdentityPhotos(customerId)
+    const loadKey = isEdit ? `edit:${id}` : `new:${searchKey}`
+    if (loadKeyRef.current === loadKey) return undefined
+    loadKeyRef.current = loadKey
+
+    let cancelled = false
+    if (!isEdit) reset()
+
+    Promise.all([api.customers.list(), api.series.list(), api.presets.banks(), api.rates.get(), api.ornaments.list()])
+      .then(([customerRows, seriesRows, presetRows, rate, ornRows]) => {
+        if (cancelled) return
+        setCustomers(customerRows)
+        setSeries(seriesRows)
+        setBankPresets(presetRows)
+        setOrnaments(ornRows)
+        if (isEdit) return
+
+        let currentForm = useValuationStore.getState().form
+        if (initialCustomerId && !currentForm.customerId) {
+          setField('customerId', initialCustomerId)
+          syncCustomerIdentityPhotos(initialCustomerId)
         }
-        if (rate.goldRate22k) {
+
+        currentForm = useValuationStore.getState().form
+        if (rate.goldRate22k && !currentForm.goldRate22k) {
           setField('goldRate22k', rate.goldRate22k)
         }
+
+        currentForm = useValuationStore.getState().form
         const preferred = seriesRows.find((s) => s.formatType === 'DIGITAL_CERT') || seriesRows[0]
-        if (preferred?.id) setField('seriesId', String(preferred.id))
-      }
-    })
-  }, [isEdit, reset, searchParams, setField])
+        if (preferred?.id && !currentForm.seriesId) setField('seriesId', String(preferred.id))
+      })
+      .catch(() => {
+        if (!cancelled) toast.error('Unable to load valuation form options. Please refresh and try again.')
+      })
+
+    return () => {
+      cancelled = true
+      if (loadKeyRef.current === loadKey) loadKeyRef.current = ''
+    }
+  }, [id, initialCustomerId, isEdit, reset, searchKey, setField])
 
   useEffect(() => {
     if (!isEdit) return
@@ -403,7 +429,7 @@ export default function ValuationForm() {
       </div>
 
       {/* ===================== DETAILS TAB ===================== */}
-      {tab === 'details' && (<>
+      <div className={tab === 'details' ? 'contents' : 'hidden'} aria-hidden={tab !== 'details'}>
       {/* Document — who & which certificate */}
       <div className="sheet">
         <div className="sheet-strip"><span className="sheet-title">Document</span></div>
@@ -413,6 +439,10 @@ export default function ValuationForm() {
             <select className="input-c" value={form.customerId} onChange={(e) => {
               const cId = e.target.value
               setField('customerId', cId)
+              setField('personPhoto', '')
+              setField('aadharPhotoDoc', '')
+              setField('panPhoto', '')
+              setField('acNo', '')
               syncCustomerIdentityPhotos(cId)
             }} disabled={disabled || isEdit}>
               <option value="">Choose customer</option>
@@ -425,7 +455,7 @@ export default function ValuationForm() {
           </div>
           <div className="field-c col-span-2">
             <label className="label-c">Bank Format <span className="text-red-500">*</span></label>
-            <select className="input-c" onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
+            <select className="input-c" value={String(form.bankPresetId || '')} onChange={(e) => applyPreset(e.target.value)} disabled={disabled}>
               <option value="">Select bank format</option>
               {bankPresets.map((preset) => <option key={preset.id} value={preset.id}>{preset.bankName} - {preset.branch}</option>)}
             </select>
@@ -573,10 +603,10 @@ export default function ValuationForm() {
         </div>
       </div>
 
-      </>)}
+      </div>
 
       {/* ===================== ORNAMENTS TAB ===================== */}
-      {tab === 'items' && (
+      <div className={tab === 'items' ? 'block' : 'hidden'} aria-hidden={tab !== 'items'}>
       <div className="sheet">
         <div className="sheet-strip">
           <span className="sheet-title">Ornaments ({form.items.length})</span>
@@ -593,7 +623,7 @@ export default function ValuationForm() {
               <div className="flex items-center gap-1.5">
                 <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-slate-100 text-[11px] font-semibold text-slate-500">{index + 1}</span>
                 <div className="min-w-0 flex-1">
-                  <DescriptionField value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} />
+                  <DescriptionField value={item.description} onChange={(v) => setItem(index, 'description', v)} disabled={disabled} ornaments={ornaments} active={tab === 'items'} />
                 </div>
                 <span className="shrink-0 rounded bg-gold-50 px-1.5 py-1 text-xs font-semibold tabular-nums text-slate-900">{inr(item.approxValueInr)}</span>
                 <button type="button" className="shrink-0 p-1 text-red-500 disabled:opacity-40" onClick={() => removeItem(index)} disabled={disabled || form.items.length === 1}>
@@ -657,10 +687,10 @@ export default function ValuationForm() {
           <p className="text-center text-[11px] text-slate-400">Tip: press Enter in a row’s “Net g” to add the next ornament.</p>
         </div>
       </div>
-      )}
+      </div>
 
       {/* ===================== LOAN & PHOTOS TAB ===================== */}
-      {tab === 'finish' && (<>
+      <div className={tab === 'finish' ? 'contents' : 'hidden'} aria-hidden={tab !== 'finish'}>
 
       {/* Valuation & loan figures */}
       <div className="sheet">
@@ -730,7 +760,7 @@ export default function ValuationForm() {
           </div>
         </div>
       </div>
-      </>)}
+      </div>
 
       {/* Sticky action bar — always reachable so there is no scroll-to-save */}
       <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur sm:mx-0 sm:rounded-lg sm:border sm:px-3 sm:shadow-sm">
