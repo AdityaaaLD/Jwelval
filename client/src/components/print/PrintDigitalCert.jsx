@@ -271,19 +271,17 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
       </div>
 
       <div className="dc-row-box dc-borrower">
-        <p>
+        <p className="dc-borrower-line">
           <span className="dc-kv"><b>Borrower Name:</b> {customer.name}</span>
-          <span className="dc-borrower-sep">|</span>
           <span className="dc-kv"><b>Aadhaar No:</b> {borrowerAadhar}</span>
-          <span className="dc-borrower-sep">|</span>
           <span className="dc-kv"><b>Borrower Mob. No:</b> {customer.mobile || '-'}</span>
+          <span className="dc-kv"><b>Alternate Mob. No:</b> {customer.alternateMobile || '-'}</span>
         </p>
-        <p><b>Address:</b> {customer.address || ''}</p>
-        <p>
+        <p><b>Aadhaar Address:</b> {customer.address || '-'}</p>
+        <p><b>Current Address:</b> {customer.currentAddress || customer.address || '-'}</p>
+        <p className="dc-borrower-line">
           <span className="dc-kv"><b>A/C No:</b> {valuation.acNo || customer.savingsAcNo || ''}</span>
-          <span className="dc-borrower-sep">|</span>
           <span className="dc-kv"><b>Bank:</b> {bankName}</span>
-          <span className="dc-borrower-sep">|</span>
           <span className="dc-kv"><b>Branch:</b> {branchName}</span>
         </p>
       </div>
@@ -471,7 +469,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
             <table className="dc-table dc-paged-table dc-table-fixed">
               {colGroup}
               {tableHead}
-              <tbody>{rowIndexes.map((index) => bodyRows[index])}{totalRow}</tbody>
+              <tbody>{rowIndexes.map((index) => bodyRows[index])}{pageIndex === pages.length - 1 && totalRow}</tbody>
             </table>
             {certFooter}
           </div>

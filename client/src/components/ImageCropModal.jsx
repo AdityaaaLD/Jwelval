@@ -140,12 +140,12 @@ export default function ImageCropModal({
   if (!open || !src) return null
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/70 p-3 backdrop-blur-sm sm:p-4">
-      <div className="mx-auto flex min-h-full max-w-3xl items-start justify-center py-2 sm:items-center">
-        <div className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-2xl sm:p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-            <button type="button" className="btn-ghost" onClick={onCancel} disabled={applying}>
+    <div className="fixed inset-0 z-[100] h-[100dvh] overflow-hidden bg-slate-900/70 backdrop-blur-sm sm:p-4">
+      <div className="mx-auto flex h-full max-w-3xl items-stretch justify-center sm:items-center">
+        <div className="flex h-full w-full flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-xl sm:border sm:border-slate-200">
+          <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
+            <h2 className="text-base font-semibold text-slate-900 sm:text-lg">{title}</h2>
+            <button type="button" className="btn-ghost" onClick={onCancel} disabled={applying} aria-label="Close image editor">
               <X size={18} />
             </button>
           </div>
@@ -160,7 +160,8 @@ export default function ImageCropModal({
             }}
           />
 
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 sm:p-3">
             <div
               ref={frameRef}
               className="relative mx-auto w-full max-w-[420px] overflow-hidden rounded-md bg-slate-200"
@@ -265,8 +266,9 @@ export default function ImageCropModal({
               </>
             )}
           </div>
+          </div>
 
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-200 bg-white px-3 py-3 sm:flex-row sm:justify-end sm:px-5">
             <button type="button" className="btn-secondary" onClick={onCancel} disabled={applying}>Cancel</button>
             <button type="button" className="btn-secondary" onClick={applyOriginal} disabled={applying}>Use Original</button>
             <button type="button" className="btn-primary" onClick={applyCrop} disabled={applying}>

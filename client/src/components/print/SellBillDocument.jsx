@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../lib/api'
 import { inr } from '../../lib/format'
-import { LetterheadSubheader } from './PrintHelpers'
+import WhatsAppMark from '../WhatsAppMark'
 
 /**
  * The printable sell-bill document (no toolbar). Shared by the on-screen print
@@ -25,12 +25,28 @@ export default function SellBillDocument({ bill }) {
     <article className="sb-page">
       {/* ── Header ── */}
       <header className="sb-header">
-        <h1 className="sb-business-name">{businessName}</h1>
-        <LetterheadSubheader profile={profile} />
-        <div className="sb-header-meta">
-          {profile?.mobile && <span>Mob: {profile.mobile}</span>}
-          {profile?.email && <span>Email: {profile.email}</span>}
-          {profile?.gstn && <span>GSTN: {profile.gstn}</span>}
+        <div className="sb-letterhead-grid">
+          <div className="sb-header-logo-wrap">
+            {profile?.logo_photo && <img src={profile.logo_photo} alt="Shop Logo" className="sb-header-logo" />}
+          </div>
+          <div className="sb-letterhead-content">
+            <h1 className="sb-business-name">{businessName}</h1>
+            <p>Proprietor, {profile?.appraiser_name || ''}, {profile?.qualification || 'Government Approved Gold Appaisal'}</p>
+            {profile?.organization && <p>({profile.organization})</p>}
+            {profile?.cert_number && <p>No. {profile.cert_number}</p>}
+            {profile?.address && <p>{profile.address}</p>}
+            <div className="sb-header-meta">
+              {profile?.mobile && <span>Mob: {profile.mobile}</span>}
+              {profile?.whatsapp_number && (
+                <span className="sb-header-whatsapp"><WhatsAppMark className="sb-whatsapp-icon" />{profile.whatsapp_number}</span>
+              )}
+              {profile?.email && <span>{profile.email}</span>}
+              {profile?.gstn && <span>GSTN: {profile.gstn}</span>}
+            </div>
+            {profile?.bank_account_number && <p>Bank A/C: {profile.bank_account_number}</p>}
+            {profile?.empanelment_id && <p>(Digital ID of Empanelment: {profile.empanelment_id})</p>}
+          </div>
+          <div aria-hidden="true" />
         </div>
       </header>
 
@@ -44,8 +60,9 @@ export default function SellBillDocument({ bill }) {
         <div className="sb-info-left">
           <p className="sb-info-label">Bill To</p>
           <p className="sb-customer-name">{customer.name || '—'}</p>
-          {customer.mobile && <p>Mo: {customer.mobile}</p>}
-          {customer.address && <p>{customer.address}</p>}
+          <p>Mobile: {customer.mobile || '—'} | Alternate: {customer.alternateMobile || '—'}</p>
+          <p>Aadhaar Address: {customer.address || '—'}</p>
+          <p>Current Address: {customer.currentAddress || customer.address || '—'}</p>
           {customer.aadharNumber && <p>Aadhar: {customer.aadharNumber}</p>}
         </div>
         <div className="sb-info-right">

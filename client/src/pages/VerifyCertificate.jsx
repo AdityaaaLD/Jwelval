@@ -30,6 +30,8 @@ export default function VerifyCertificate() {
               <div><dt className="text-slate-500">Date</dt><dd className="font-semibold">{data.valuationDate}</dd></div>
               <div><dt className="text-slate-500">Customer</dt><dd className="font-semibold">{data.customerName}</dd></div>
               <div><dt className="text-slate-500">Valuer</dt><dd className="font-semibold">{data.valuerName || '-'}</dd></div>
+              <div><dt className="text-slate-500">Branch Name</dt><dd className="font-semibold">{data.branchName || '-'}</dd></div>
+              <div><dt className="text-slate-500">Branch Code</dt><dd className="font-semibold">{data.branchCode || '-'}</dd></div>
               <div><dt className="text-slate-500">Status</dt><dd className="font-semibold">{data.status}</dd></div>
               <div><dt className="text-slate-500">Printed At</dt><dd className="font-semibold">{formatPrintedAt(data.printedAt)}</dd></div>
             </dl>

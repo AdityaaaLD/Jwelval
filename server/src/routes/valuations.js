@@ -99,6 +99,8 @@ function buildCustomerSnapshot(customerRow = {}) {
     mobile: customerRow.mobile || '',
     alternateMobile: customerRow.alternateMobile || customerRow.alternate_mobile || '',
     address: customerRow.address || '',
+    currentAddress: customerRow.currentAddress || customerRow.current_address || '',
+    currentAddressDifferent: Boolean(customerRow.currentAddressDifferent ?? customerRow.current_address_different),
     aadharNumber: customerRow.aadharNumber || customerRow.aadhar_number || '',
     savingsAcNo: customerRow.savingsAcNo || customerRow.savings_ac_no || '',
     bankName: customerRow.bankName || customerRow.bank_name || '',
@@ -131,10 +133,10 @@ async function hydrate(valuationRow) {
     .from(payments)
     .where(eq(payments.valuationId, valuationRow.id))
   const snapshotCustomer = parseCustomerSnapshot(valuationRow.customerSnapshot)
-  const [liveCustomer] = snapshotCustomer
-    ? [null]
-    : await db.select().from(customers).where(eq(customers.id, valuationRow.customerId))
-  const customer = snapshotCustomer || liveCustomer || null
+  const [liveCustomer] = await db.select().from(customers).where(eq(customers.id, valuationRow.customerId))
+  const customer = snapshotCustomer
+    ? { ...(liveCustomer || {}), ...snapshotCustomer }
+    : liveCustomer || null
   const [series] = await db.select().from(valuationSeries).where(eq(valuationSeries.id, valuationRow.seriesId))
   let ornamentPhotos = []
   try { ornamentPhotos = JSON.parse(valuationRow.ornamentPhotos || '[]') } catch {}

@@ -55,7 +55,7 @@ router.get('/:number', (req, res) => {
   const row = sqlite.prepare(`
     SELECT v.valuation_number AS valuationNumber, v.valuation_date AS valuationDate,
            v.status, v.printed_at AS printedAt, v.format_type AS formatType,
-           v.user_id AS userId,
+           v.branch AS branchName, v.branch_code AS branchCode, v.user_id AS userId,
            c.name AS customerName, c.customer_code AS customerCode
     FROM valuations v
     JOIN customers c ON c.id = v.customer_id
