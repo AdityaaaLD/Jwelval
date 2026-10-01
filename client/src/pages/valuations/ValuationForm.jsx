@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, Camera, ChevronDown, Copy, Eye, Plus, Printer, Receipt, Save, Trash2, Upload } from 'lucide-react'
+import { ArrowLeft, Camera, ChevronDown, Copy, Eye, Plus, Printer, Receipt, RefreshCw, Save, Trash2, Upload } from 'lucide-react'
 import { api } from '../../lib/api'
 import { formatDateDMY, inr, maskAadhar, num, parseDateInputToISO } from '../../lib/format'
 import { compressDataUrl } from '../../lib/imageCompress'
@@ -71,6 +71,7 @@ export default function ValuationForm() {
   const [printOpen, setPrintOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [renewing, setRenewing] = useState(false)
   const [customerMediaLoading, setCustomerMediaLoading] = useState(false)
   const [cropSession, setCropSession] = useState(null)
   const [snapshotOpen, setSnapshotOpen] = useState(false)
@@ -348,9 +349,14 @@ export default function ValuationForm() {
         <div className="flex items-center gap-2 min-w-0">
           <Link to="/valuations" className="btn-secondary shrink-0"><ArrowLeft size={16} /> <span className="hidden sm:inline">Back</span></Link>
           <div className="min-w-0">
-            <h1 className="truncate text-lg font-semibold text-slate-950 sm:text-xl">
-              {valuation?.valuationNumber || 'New Valuation'}
-            </h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="truncate text-lg font-semibold text-slate-950 sm:text-xl">
+                {valuation?.valuationNumber || 'New Valuation'}
+              </h1>
+              {Number(valuation?.renewalNumber) > 0 && (
+                <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">Renewal #{valuation.renewalNumber}</span>
+              )}
+            </div>
             <p className="hidden text-xs text-slate-500 sm:block">Gold valuation certificate for bank submission.</p>
           </div>
         </div>
@@ -784,6 +790,28 @@ export default function ValuationForm() {
             }}
           >
             <Trash2 size={16} /> <span className="hidden sm:inline">{deleting ? 'Deleting...' : 'Delete Draft'}</span>
+          </button>
+        )}
+        {valuation?.status === 'DRAFT' && valuation?.duplicateOfId && !Number(valuation?.renewalNumber) && (
+          <button
+            type="button"
+            className="btn-secondary text-blue-700"
+            disabled={renewing}
+            onClick={async () => {
+              if (!window.confirm('Mark this duplicate as a renewed valuation? This is internal tracking only and will not appear on the printed report.')) return
+              setRenewing(true)
+              try {
+                const renewed = await api.valuations.markRenewed(valuation.id)
+                setValuation(renewed)
+                toast.success(`Marked as Renewal #${renewed.renewalNumber}.`)
+              } catch (err) {
+                toast.error(err.message || 'Failed to mark valuation as renewed.')
+              } finally {
+                setRenewing(false)
+              }
+            }}
+          >
+            <RefreshCw size={16} /> {renewing ? 'Marking...' : 'Mark as Renewed'}
           </button>
         )}
         {valuation && <button type="button" className="btn-secondary" onClick={async () => {

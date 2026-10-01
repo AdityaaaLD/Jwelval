@@ -164,6 +164,10 @@ router.get('/', async (req, res) => {
       branch: valuations.branch,
       marketValue: valuations.marketValue,
       valuationFee: valuations.valuationFee,
+      renewalDate: valuations.renewalDate,
+      duplicateOfId: valuations.duplicateOfId,
+      renewalRootId: valuations.renewalRootId,
+      renewalNumber: valuations.renewalNumber,
       status: valuations.status,
       customerSnapshot: valuations.customerSnapshot,
     })
@@ -175,11 +179,20 @@ router.get('/', async (req, res) => {
     ? sqlite.prepare(`SELECT id, customer_code, name, mobile FROM customers WHERE id IN (${ids.map(() => '?').join(',')})`).all(...ids)
     : []
   const byId = Object.fromEntries(custs.map((c) => [c.id, c]))
+  const renewalCounts = new Map()
+  rows.forEach((v) => {
+    if (Number(v.renewalNumber) <= 0 || !v.renewalRootId) return
+    const rootId = Number(v.renewalRootId)
+    renewalCounts.set(rootId, Math.max(renewalCounts.get(rootId) || 0, Number(v.renewalNumber)))
+  })
   res.json(rows.map((v) => {
     const snapshot = parseCustomerSnapshot(v.customerSnapshot)
     const { customerSnapshot, ...rest } = v
+    const renewalCount = renewalCounts.get(Number(v.renewalRootId) || Number(v.id)) || 0
     return {
       ...rest,
+      hasRenewal: Number(v.renewalNumber) < renewalCount,
+      renewalCount,
       customerName: snapshot?.name || byId[v.customerId]?.name || '',
       customerCode: snapshot?.customerCode || byId[v.customerId]?.customer_code || '',
     }
@@ -534,6 +547,9 @@ router.post('/:id/duplicate', async (req, res) => {
     goldLoanRegisterNo: full.goldLoanRegisterNo || '',
     goldPacketsNo: full.goldPacketsNo || '',
     renewalDate: full.renewalDate || null,
+    duplicateOfId: source.id,
+    renewalRootId: null,
+    renewalNumber: 0,
     tenureMonths: full.tenureMonths != null ? Number(full.tenureMonths) : null,
     goldRate22k: Number(full.goldRate22k),
     goldRate24k: Number(full.goldRate24k),
@@ -559,6 +575,55 @@ router.post('/:id/duplicate', async (req, res) => {
   }).returning()
   await db.insert(valuationItems).values(derived.map((it, i) => ({ ...it, srNo: i + 1, valuationId: created.id })))
   res.status(201).json(await hydrate(created))
+})
+
+router.post('/:id/mark-renewed', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  const userId = req.user.id
+  const now = new Date().toISOString()
+
+  try {
+    const markRenewed = sqlite.transaction(() => {
+      const target = sqlite.prepare('SELECT * FROM valuations WHERE id = ? AND user_id = ?').get(id, userId)
+      if (!target) throw Object.assign(new Error('Valuation not found.'), { status: 404, code: 'NOT_FOUND' })
+      if (Number(target.renewal_number) > 0) return target
+      if (target.status !== 'DRAFT') {
+        throw Object.assign(new Error('Only an editable draft can be marked as renewed.'), { status: 409, code: 'DOCUMENT_LOCKED' })
+      }
+      if (!target.duplicate_of_id) {
+        throw Object.assign(new Error('Duplicate a valuation before marking it as renewed.'), { status: 400, code: 'NOT_A_DUPLICATE' })
+      }
+
+      const source = sqlite.prepare('SELECT * FROM valuations WHERE id = ? AND user_id = ?').get(target.duplicate_of_id, userId)
+      if (!source || Number(source.customer_id) !== Number(target.customer_id)) {
+        throw Object.assign(new Error('The source valuation for this renewal is unavailable.'), { status: 409, code: 'INVALID_RENEWAL_SOURCE' })
+      }
+
+      const rootId = Number(source.renewal_root_id) || Number(source.id)
+      const next = sqlite.prepare(`
+        SELECT COALESCE(MAX(renewal_number), 0) + 1 AS n
+        FROM valuations
+        WHERE user_id = ? AND renewal_root_id = ?
+      `).get(userId, rootId).n
+
+      sqlite.prepare(`
+        UPDATE valuations
+        SET renewal_root_id = ?, renewal_number = ?, updated_at = ?
+        WHERE id = ? AND user_id = ? AND renewal_number = 0
+      `).run(rootId, next, now, id, userId)
+
+      return sqlite.prepare('SELECT * FROM valuations WHERE id = ? AND user_id = ?').get(id, userId)
+    })
+
+    markRenewed.immediate()
+    const [updated] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
+    return res.json(await hydrate(updated))
+  } catch (error) {
+    return res.status(error.status || 500).json({
+      error: error.code || 'RENEWAL_FAILED',
+      message: error.message || 'Valuation could not be marked as renewed.',
+    })
+  }
 })
 
 router.post('/:id/mark-printed', async (req, res) => {

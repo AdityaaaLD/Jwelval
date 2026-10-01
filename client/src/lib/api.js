@@ -119,6 +119,7 @@ export const api = {
     create:      (d)      => request('/valuations', { method: 'POST', body: d }),
     update:      (id, d)  => request(`/valuations/${id}`, { method: 'PUT', body: d }),
     markPrinted: (id)     => request(`/valuations/${id}/mark-printed`, { method: 'POST' }),
+    markRenewed: (id)     => request(`/valuations/${id}/mark-renewed`, { method: 'POST' }),
     duplicate:   (id, d)  => request(`/valuations/${id}/duplicate`, { method: 'POST', body: d || {} }),
     remove:      (id)     => request(`/valuations/${id}`, { method: 'DELETE' }),
   },

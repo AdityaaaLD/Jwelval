@@ -274,6 +274,9 @@ for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN gold_loan_register_no TEXT',
   'ALTER TABLE valuations ADD COLUMN gold_packets_no TEXT',
   'ALTER TABLE valuations ADD COLUMN renewal_date TEXT',
+  'ALTER TABLE valuations ADD COLUMN duplicate_of_id INTEGER',
+  'ALTER TABLE valuations ADD COLUMN renewal_root_id INTEGER',
+  'ALTER TABLE valuations ADD COLUMN renewal_number INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE valuations ADD COLUMN tenure_months INTEGER',
   'ALTER TABLE valuations ADD COLUMN bank_preset_id INTEGER',
   'ALTER TABLE bank_presets ADD COLUMN bank_logo TEXT',
@@ -282,6 +285,14 @@ for (const stmt of [
     if (!String(error.message).includes('duplicate column name')) throw error
   }
 }
+
+sqlite.exec(`
+  CREATE INDEX IF NOT EXISTS idx_valuations_duplicate_of ON valuations(duplicate_of_id);
+  CREATE INDEX IF NOT EXISTS idx_valuations_renewal_root ON valuations(renewal_root_id);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_valuations_renewal_sequence
+    ON valuations(user_id, renewal_root_id, renewal_number)
+    WHERE renewal_root_id IS NOT NULL AND renewal_number > 0;
+`)
 
 // Backfill payments.user_id from valuations
 try {

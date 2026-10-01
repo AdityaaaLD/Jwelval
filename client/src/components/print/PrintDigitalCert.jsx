@@ -177,23 +177,25 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     hour12: true,
   })
 
-  /* Rates and loan figures shown above the ornament table. Entries with no
-     value are dropped so the grid never prints an empty label. */
+  /* Fixed 3×4 paper-style grid. Empty values keep their position and render a
+     writable line so the appraiser can complete them by hand after printing. */
   const ltvLoanAmount = Number(totalMarketValue) > 0 && Number(valuation.loanLtv) > 0
     ? Math.round(totalMarketValue * (Number(valuation.loanLtv) / 100) * 100) / 100
     : 0
   const metaEntries = [
-    valuation.loanType && ['Loan Type', valuation.loanType],
-    Number(valuation.tenureMonths) > 0 && ['Tenure (Months)', `${num(valuation.tenureMonths, 0)}`],
-    valuation.rateOfInterest != null && ['Rate of Interest', `${num(valuation.rateOfInterest, 2)}%`],
-    Number(valuation.loanLtv) > 0 && ['LTV', `${num(valuation.loanLtv, 0)}%`],
-    Number(ltvLoanAmount) > 0 && ['Loan Amount (as per LTV)', inr(ltvLoanAmount)],
-    Number(valuation.goldRate22k) > 0 && ['Market Gold Rate (22K)', `${inr(valuation.goldRate22k)}/gm`],
-    Number(valuation.bankGoldRatePerGram) > 0 && ['Bank Gold Rate', `${inr(valuation.bankGoldRatePerGram)}/gm`],
-    Number(totalMarketValue) > 0 && ['Total Market Value', inr(totalMarketValue)],
-    Number(valuation.loanAmount) > 0 && ['Loan Amount', inr(valuation.loanAmount)],
-    Number(valuation.bankRecommendedValue) > 0 && ['Bank Loan Amount', inr(valuation.bankRecommendedValue)],
-  ].filter(Boolean)
+    ['Loan Type', valuation.loanType || ''],
+    ['Bank Gold Rate', Number(valuation.bankGoldRatePerGram) > 0 ? `${inr(valuation.bankGoldRatePerGram)}/gm` : ''],
+    ['Amount as per Bank Rate', Number(valuation.bankRecommendedValue) > 0 ? inr(valuation.bankRecommendedValue) : ''],
+    ['Rate of Interest', valuation.rateOfInterest !== '' && valuation.rateOfInterest != null ? `${num(valuation.rateOfInterest, 2)}%` : ''],
+    ['Market Gold Rate', Number(valuation.goldRate22k) > 0 ? `${inr(valuation.goldRate22k)}/gm` : ''],
+    ['Amount as per Market Rate', Number(totalMarketValue) > 0 ? inr(totalMarketValue) : ''],
+    ['Tenure (Months)', Number(valuation.tenureMonths) > 0 ? `${num(valuation.tenureMonths, 0)}` : ''],
+    ['Total Gross Weight', Number(totals.gross) > 0 ? `${num(totals.gross, 2)} gm` : ''],
+    ['Loan Amount (as per LTV)', Number(ltvLoanAmount) > 0 ? inr(ltvLoanAmount) : ''],
+    ['LTV', Number(valuation.loanLtv) > 0 ? `${num(valuation.loanLtv, 0)}%` : ''],
+    ['Total Net Weight', Number(totals.net) > 0 ? `${num(totals.net, 2)} gm` : ''],
+    ['Sanction Loan Amount', Number(valuation.loanAmount) > 0 ? inr(valuation.loanAmount) : ''],
+  ]
 
   const runningHead = (
     <div className="dc-running-head">
@@ -291,7 +293,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
       <div className="dc-row-box dc-loan-meta">
         {metaEntries.map(([label, value]) => (
           <span className="dc-meta-cell" key={label}>
-            <b>{label}:</b> {value}
+            <b>{label}:</b>
+            {value ? <span>{value}</span> : <span className="dc-meta-blank" />}
           </span>
         ))}
       </div>
