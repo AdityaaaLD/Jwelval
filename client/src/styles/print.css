@@ -132,6 +132,7 @@
 .dc-table-fixed { table-layout: fixed; }
 .dc-running-head { flex: 0 0 auto; padding-bottom: 3px; }
 .dc-running-foot { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.dc-footer-cluster { flex: 0 0 auto; }
 .dc-page-body { flex: 0 0 auto; min-height: 0; }
 .dc-total-row td { font-weight: 700; }
 /* Off-screen sizing pass used to work out where the page breaks fall. */
@@ -140,8 +141,8 @@
 .dc-signature { margin-top: 12px; }
 .dc-signature p { margin: 0; }
 .dc-sign-space { height: 18mm; }
-.digital-cert .signature-grid { margin-top: 0; padding-top: 10mm; gap: 6px; }
-.digital-cert .signature-box { min-height: 18mm; font-size: 9.8px; padding-top: 2px; }
+.digital-cert .signature-grid { margin-top: 0; padding-top: 3mm; gap: 6px; }
+.digital-cert .signature-box { min-height: 16mm; font-size: 9.8px; padding-top: 2px; }
 
 .dc-header-qr-badge {
   position: absolute;

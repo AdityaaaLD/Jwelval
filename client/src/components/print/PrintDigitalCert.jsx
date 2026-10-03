@@ -59,30 +59,47 @@ function onImagesSettled(root, callback) {
  * of the page (our letterhead block is ~37%), and a `position: fixed` running
  * header gets clamped into the page content box, so it overlaps the flowing
  * rows instead of sitting in the reserved margin. Measuring and paginating
- * here means every page gets the full header, the column headers and the
- * signature footer, with the footer pinned to the bottom edge.
+ * here means every page gets the full header and column headers, while the
+ * rules/logo/signature footer is reserved only on the final page.
  */
 function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight, reservedHeight = 0 }) {
-  const capacity = USABLE_PX - headerHeight - footerHeight - theadHeight - reservedHeight
-  if (!Number.isFinite(capacity) || capacity <= 0) return [rowHeights.map((_, i) => i)]
+  const pageCapacity = USABLE_PX - headerHeight - theadHeight
+  const finalPageCapacity = pageCapacity - footerHeight - reservedHeight
+  if (!Number.isFinite(pageCapacity) || pageCapacity <= 0) return [rowHeights.map((_, i) => i)]
+  if (!rowHeights.length) return [[]]
+
+  // Fill the final page from the end first because only that page carries the
+  // totals, certificate rules/logo and signatures. Earlier pages can use their
+  // full body height for ornament rows.
+  const finalPage = []
+  let finalUsed = 0
+  let splitAt = rowHeights.length
+  while (splitAt > 0) {
+    const index = splitAt - 1
+    const height = rowHeights[index]
+    if (finalPage.length && finalUsed + height > finalPageCapacity) break
+    finalPage.unshift(index)
+    finalUsed += height
+    splitAt = index
+    if (finalUsed >= finalPageCapacity) break
+  }
 
   const pages = []
   let current = []
   let used = 0
-
-  rowHeights.forEach((height, index) => {
-    // Always keep at least one row per page, otherwise an oversized row loops.
-    if (current.length && used + height > capacity) {
+  for (let index = 0; index < splitAt; index += 1) {
+    const height = rowHeights[index]
+    if (current.length && used + height > pageCapacity) {
       pages.push(current)
       current = []
       used = 0
     }
     current.push(index)
     used += height
-  })
-
+  }
   if (current.length) pages.push(current)
-  return pages.length ? pages : [[]]
+  pages.push(finalPage)
+  return pages
 }
 
 /**
@@ -318,7 +335,10 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
 
   const runningFoot = (
     <div className="dc-running-foot">
-      <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
+      <div className="dc-footer-cluster">
+        {certFooter}
+        <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
+      </div>
     </div>
   )
 
@@ -412,23 +432,21 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     }
 
     const head = root.querySelector('.dc-running-head')
-    /* Measure the signature grid's intrinsic height, not `.dc-running-foot`:
+    /* Measure the footer cluster's intrinsic height, not `.dc-running-foot`:
        the wrapper has flex:1 and grows to fill the sheet during the off-screen
-       measure pass, which would massively over-reserve footer space and force
-       rows onto a new page even when the sheet is nearly empty. */
-    const foot = root.querySelector('.signature-grid')
-    const certFooterBox = root.querySelector('.dc-cert-footer-box')
+       measure pass, which would massively over-reserve footer space. */
+    const footerCluster = root.querySelector('.dc-footer-cluster')
     const thead = root.querySelector('thead')
     const rows = Array.from(root.querySelectorAll('tbody > tr'))
     const totalRowNode = root.querySelector('tr.dc-total-row')
-    if (!head || !foot || !certFooterBox || !thead || !totalRowNode) return undefined
+    if (!head || !footerCluster || !thead || !totalRowNode) return undefined
 
     const rowHeights = rows
       .filter((row) => !row.classList.contains('dc-total-row'))
       .map((row) => row.offsetHeight)
     setPages(paginateRows(rowHeights, {
       headerHeight: head.offsetHeight,
-      footerHeight: foot.offsetHeight + certFooterBox.offsetHeight,
+      footerHeight: footerCluster.offsetHeight,
       theadHeight: thead.offsetHeight,
       reservedHeight: totalRowNode.offsetHeight,
     }))
@@ -458,7 +476,6 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
                 {tableHead}
                 <tbody>{bodyRows}{totalRow}</tbody>
               </table>
-              {certFooter}
             </div>
             {runningFoot}
           </article>
@@ -474,9 +491,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
               {tableHead}
               <tbody>{rowIndexes.map((index) => bodyRows[index])}{pageIndex === pages.length - 1 && totalRow}</tbody>
             </table>
-            {certFooter}
           </div>
-          {runningFoot}
+          {pageIndex === pages.length - 1 && runningFoot}
         </article>
       ))}
 
