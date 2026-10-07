@@ -286,14 +286,6 @@ for (const stmt of [
   }
 }
 
-sqlite.exec(`
-  CREATE INDEX IF NOT EXISTS idx_valuations_duplicate_of ON valuations(duplicate_of_id);
-  CREATE INDEX IF NOT EXISTS idx_valuations_renewal_root ON valuations(renewal_root_id);
-  CREATE UNIQUE INDEX IF NOT EXISTS idx_valuations_renewal_sequence
-    ON valuations(user_id, renewal_root_id, renewal_number)
-    WHERE renewal_root_id IS NOT NULL AND renewal_number > 0;
-`)
-
 // Backfill payments.user_id from valuations
 try {
   const hasUserId = sqlite.prepare("PRAGMA table_info('payments')").all().some(c => c.name === 'user_id')
@@ -427,16 +419,42 @@ try {
   `)
 } catch (e) { console.log('[migrate] user_id assignment skipped:', e.message) }
 
-// Fallback: if table rebuild failed but UNIQUE indexes exist as separate indexes, drop them
+// Per-user UNIQUE indexes this app creates on purpose; never dropped below.
+const INTENTIONAL_UNIQUE_INDEXES = new Set(['idx_valuations_renewal_sequence'])
+
+// Fallback: if table rebuild failed but legacy global UNIQUE indexes exist as separate indexes, drop them
 try {
   const indexes = sqlite.prepare("SELECT name, tbl_name FROM sqlite_master WHERE type='index' AND sql LIKE '%UNIQUE%'").all()
   for (const idx of indexes) {
+    if (INTENTIONAL_UNIQUE_INDEXES.has(idx.name)) continue
     if (['customers', 'valuations', 'sell_bills'].includes(idx.tbl_name)) {
       try { sqlite.exec(`DROP INDEX IF EXISTS "${idx.name}"`) } catch (e2) { /* ignore */ }
       console.log(`[migrate] dropped UNIQUE index ${idx.name} on ${idx.tbl_name}`)
     }
   }
 } catch (e) { /* ignore */ }
+
+// Renewal indexes are created after the legacy table rebuild/cleanup above,
+// which would otherwise drop them on every start.
+sqlite.exec(`
+  CREATE INDEX IF NOT EXISTS idx_valuations_duplicate_of ON valuations(duplicate_of_id);
+  CREATE INDEX IF NOT EXISTS idx_valuations_renewal_root ON valuations(renewal_root_id);
+`)
+try {
+  sqlite.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_valuations_renewal_sequence
+      ON valuations(user_id, renewal_root_id, renewal_number)
+      WHERE renewal_root_id IS NOT NULL AND renewal_number > 0;
+  `)
+} catch (e) {
+  // Existing data is never rewritten; report the conflicting chains instead of failing startup.
+  const dupes = sqlite.prepare(`
+    SELECT user_id, renewal_root_id, renewal_number, COUNT(*) AS n FROM valuations
+    WHERE renewal_root_id IS NOT NULL AND renewal_number > 0
+    GROUP BY user_id, renewal_root_id, renewal_number HAVING n > 1
+  `).all()
+  console.log('[migrate] renewal uniqueness index not created:', e.message, JSON.stringify(dupes))
+}
 
 // Add remarks column to valuation_items
 try { sqlite.exec(`ALTER TABLE valuation_items ADD COLUMN remarks TEXT`) } catch (e) { /* already exists */ }
