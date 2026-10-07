@@ -5,6 +5,10 @@ import { CertificateRules, SignatureGrid, resolveReportDateTime } from './PrintH
 import QrImage from '../QrImage'
 import WhatsAppMark from '../WhatsAppMark'
 import { verificationUrl } from '../../lib/qr'
+import '@fontsource/arimo/400.css'
+import '@fontsource/arimo/500.css'
+import '@fontsource/arimo/600.css'
+import '@fontsource/arimo/700.css'
 
 const COLS = 8
 
@@ -21,6 +25,20 @@ const mmToPx = (mm) => (mm * 96) / 25.4
    pixels of slack rather than risk overflowing a sheet. */
 const SAFETY_PX = 6
 const USABLE_PX = mmToPx(PAGE_HEIGHT_MM - PAGE_PAD_Y_MM) - SAFETY_PX
+
+/* The certificate is laid out in Arimo (metric-compatible with Arial) bundled
+   with the app, so the browser preview and the server-rendered PDF wrap text
+   identically. Load every weight up front before measuring row heights. */
+const CERT_FONT_WEIGHTS = ['400', '500', '600', '700']
+let certFontsPromise = null
+function loadCertFonts() {
+  if (!certFontsPromise) {
+    certFontsPromise = typeof document !== 'undefined' && document.fonts?.load
+      ? Promise.all(CERT_FONT_WEIGHTS.map((w) => document.fonts.load(`${w} 12px Arimo`, 'Aa1₹'))).then(() => true, () => true)
+      : Promise.resolve(true)
+  }
+  return certFontsPromise
+}
 
 /* Measurement runs in two stages: first with the table in automatic layout to
    learn the natural column widths, then with those widths locked in so the row
@@ -66,8 +84,8 @@ function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight, res
   // Every page carries the rules/logo + signatures footer; only the final page adds the totals row.
   const pageCapacity = USABLE_PX - headerHeight - theadHeight - footerHeight
   const finalExtra = reservedHeight
-  if (!Number.isFinite(pageCapacity) || pageCapacity <= 0) return [rowHeights.map((_, i) => i)]
-  if (!rowHeights.length) return [[]]
+  if (!Number.isFinite(pageCapacity) || pageCapacity <= 0) return { pages: [rowHeights.map((_, i) => i)], fills: [0] }
+  if (!rowHeights.length) return { pages: [[]], fills: [Math.max(0, pageCapacity - finalExtra)] }
 
   // Fill pages forward so each page is used completely before moving on.
   const pages = []
@@ -95,7 +113,15 @@ function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight, res
   }
   if (current.length) pages.push(current)
   if (moved.length) pages.push(moved)
-  return pages
+
+  // Leftover height on each page becomes an empty ruled row so the table
+  // always runs straight into the rules/logo block with no blank gap.
+  const fills = pages.map((page, pageIndex) => {
+    const rowsHeight = page.reduce((sum, i) => sum + rowHeights[i], 0)
+    const extra = pageIndex === pages.length - 1 ? finalExtra : 0
+    return Math.max(0, Math.floor(pageCapacity - rowsHeight - extra))
+  })
+  return { pages, fills }
 }
 
 /**
@@ -164,6 +190,13 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
   const [stage, setStage] = useState(STAGE_COLUMNS)
   const [colWidths, setColWidths] = useState(null)
   const [pages, setPages] = useState(null)
+  const [fontsReady, setFontsReady] = useState(false)
+  const pagesRef = useRef(null)
+  useEffect(() => {
+    let alive = true
+    loadCertFonts().then(() => { if (alive) setFontsReady(true) })
+    return () => { alive = false }
+  }, [])
 
   const totals = items.reduce((acc, item) => ({
     units: acc.units + (Number(item.noOfUnits) || 0),
@@ -414,6 +447,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     const root = measureRef.current
     if (!root) return undefined
 
+    // Row heights depend on the certificate font, so never measure with a fallback.
+    if (!fontsReady) return undefined
     // Photos and the QR code change the header height, so wait for them.
     if (!allImagesReady(root)) {
       return onImagesSettled(root, () => setTick((value) => value + 1))
@@ -437,18 +472,23 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     const totalRowNode = root.querySelector('tr.dc-total-row')
     if (!head || !signCluster || !thead || !totalRowNode) return undefined
 
+    // Fractional heights: integer offsetHeight rounding adds up over many rows.
+    // The mobile preview is CSS-scaled, so convert back to unscaled layout px.
+    const sheet = root.querySelector('article')
+    const scale = sheet.getBoundingClientRect().width / sheet.offsetWidth || 1
+    const height = (node) => node.getBoundingClientRect().height / scale
     const rowHeights = rows
       .filter((row) => !row.classList.contains('dc-total-row'))
-      .map((row) => row.offsetHeight)
+      .map(height)
     setPages(paginateRows(rowHeights, {
-      headerHeight: head.offsetHeight,
-      footerHeight: signCluster.offsetHeight,
-      theadHeight: thead.offsetHeight,
-      reservedHeight: totalRowNode.offsetHeight,
+      headerHeight: height(head),
+      footerHeight: height(signCluster),
+      theadHeight: height(thead),
+      reservedHeight: height(totalRowNode),
     }))
     setStage(STAGE_DONE)
     return undefined
-  }, [stage, tick, bodyRows, profile])
+  }, [stage, tick, bodyRows, profile, fontsReady])
 
   const colGroup = colWidths
     ? <colgroup>{colWidths.map((width, index) => <col key={index} style={{ width: `${width}px` }} />)}</colgroup>
@@ -456,8 +496,25 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
 
   const measuring = stage !== STAGE_DONE || !pages
 
+  /* Final correction on the real pages: stretch each filler row so the table
+     meets the rules/logo box exactly (borders overlap by 1px), absorbing the
+     measurement safety margin and any sub-pixel drift. */
+  useLayoutEffect(() => {
+    if (measuring || !pagesRef.current) return
+    pagesRef.current.querySelectorAll('article.dc-cert-page').forEach((sheet) => {
+      const filler = sheet.querySelector('.dc-filler-row')
+      const table = sheet.querySelector('table')
+      const box = sheet.querySelector('.dc-cert-footer-box')
+      if (!filler || !table || !box) return
+      const scale = sheet.getBoundingClientRect().width / sheet.offsetWidth || 1
+      const gap = (box.getBoundingClientRect().top - table.getBoundingClientRect().bottom) / scale
+      const current = filler.getBoundingClientRect().height / scale
+      filler.style.height = `${Math.max(0, current + gap + 1)}px`
+    })
+  }, [measuring, pages])
+
   return (
-    <div>
+    <div ref={pagesRef} data-dc-ready={measuring ? 'false' : 'true'}>
       {/* Certificate pages are sized by us, so the sheet itself carries no
           margin — `.print-page.digital-cert` supplies the printed border. */}
       <style data-dc-page-rule="true">{'@page { size: A4; margin: 0; }'}</style>
@@ -478,14 +535,20 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
         </div>
       )}
 
-      {!measuring && pages.map((rowIndexes, pageIndex) => (
+      {!measuring && pages.pages.map((rowIndexes, pageIndex) => (
         <article key={`cert-page-${pageIndex}`} className="print-page digital-cert dc-certificate dc-cert-page">
           {runningHead}
           <div className="dc-page-body">
             <table className="dc-table dc-paged-table dc-table-fixed">
               {colGroup}
               {tableHead}
-              <tbody>{rowIndexes.map((index) => bodyRows[index])}{pageIndex === pages.length - 1 && totalRow}</tbody>
+              <tbody>
+                {rowIndexes.map((index) => bodyRows[index])}
+                <tr className="dc-filler-row" aria-hidden="true" style={{ height: `${pages.fills[pageIndex]}px` }}>
+                  {Array.from({ length: COLS }, (_, i) => <td key={i} />)}
+                </tr>
+                {pageIndex === pages.pages.length - 1 && totalRow}
+              </tbody>
             </table>
           </div>
           {runningFoot}

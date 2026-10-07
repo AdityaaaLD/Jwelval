@@ -31,8 +31,12 @@
 .receipt-upi { display: flex; align-items: center; gap: 10px; margin-top: 12px; border: 1px solid #111827; padding: 6px; }
 
 /* DIGITAL_CERT format — matches client screenshot exactly */
-.print-page.digital-cert { padding: 6mm 6.5mm; }
-.digital-cert { font-size: 12.3px; line-height: 1.34; font-weight: 500; }
+/* Screen preview uses the exact printed sheet geometry (see @media print and
+   PAGE_HEIGHT_MM / PAGE_PAD_Y_MM in PrintDigitalCert.jsx) so preview == PDF. */
+.print-page.digital-cert { padding: 6mm 6.5mm 7mm 6.5mm; }
+.print-page.digital-cert.dc-cert-page { height: 296.9mm; min-height: 0; overflow: hidden; }
+.digital-cert { font-family: Arimo, Arial, Helvetica, sans-serif; font-size: 12.3px; line-height: 1.34; font-weight: 500; }
+.dc-filler-row td { padding: 0 !important; }
 .dc-header-box { position: relative; border: 1px solid #000; padding: 4px 95px 4px 132px; text-align: center; }
 .dc-header-line { margin: 1px 0; font-size: 12px; text-wrap: balance; }
 .dc-header-line:first-child { font-size: 14px; }
@@ -426,43 +430,13 @@
 @media print {
   @page { size: A4; margin: 8mm; }
 
-  /* Keep recent readability increase, but tighten print density to avoid
-     overflow on longer certificates and small printer margin drift. */
-  .dc-header-line {
-    font-size: 12.2px;
-    line-height: 1.2;
-  }
+  /* Certificate typography is NOT overridden for print: pages are paginated
+     from the on-screen measurement, so print must use identical sizes. */
 
-  .dc-row-box {
-    font-size: 12.4px;
-    padding: 2px 6px;
-  }
-
-  .dc-table th,
-  .dc-table td {
-    font-size: 11.2px;
-    line-height: 1.2;
-    padding: 2px 3px;
-  }
-
-  .dc-table th {
-    font-size: 11.9px;
-  }
-
-  .dc-table-info th {
-    font-size: 8.8px;
-    line-height: 1.14;
-  }
-
-  .dc-cert-text {
-    font-size: 10.2px;
-    line-height: 1.34;
-  }
-  
   /* Mobile print adjustments */
   @media (max-width: 600px) {
     @page { margin: 4mm; }
-    .print-page { font-size: 8px !important; }
+    .print-page:not(.digital-cert) { font-size: 8px !important; }
     .print-table { font-size: 7px !important; }
     .print-table th, .print-table td { padding: 2px !important; }
   }

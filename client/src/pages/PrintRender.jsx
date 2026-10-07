@@ -24,6 +24,16 @@ async function waitForFonts() {
   }
 }
 
+// The certificate paginates itself after fonts/images load; capture only then.
+async function waitForPagination({ timeoutMs = 20000, intervalMs = 100 } = {}) {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (document.querySelector('[data-dc-ready="true"]')) return true
+    await new Promise((r) => setTimeout(r, intervalMs))
+  }
+  return false
+}
+
 async function waitForPageRule({ timeoutMs = 8000, intervalMs = 100 } = {}) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -91,6 +101,8 @@ export default function PrintRender() {
       await waitForStableRender(root)
       await waitForPageRule()
       await waitForFonts()
+      await waitForPagination()
+      await waitForStableRender(root)
       // one extra frame so late layout/paint work is flushed before capture
       await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)))
       if (!cancelled) markReady()
