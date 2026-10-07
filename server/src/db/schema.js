@@ -76,6 +76,8 @@ export const valuations = sqliteTable('valuations', {
   certificateRules: text('certificate_rules'),
   status: text('status').notNull().default('DRAFT'), // DRAFT | PRINTED | LOCKED
   printedAt: text('printed_at'),
+  // Set once the appraiser confirms the bank-signed copy pages; they are immutable afterwards.
+  signedPagesLockedAt: text('signed_pages_locked_at'),
   createdAt: text('created_at').notNull(),
   userId: integer('user_id').notNull().default(1),
   updatedAt: text('updated_at').notNull(),

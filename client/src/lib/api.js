@@ -122,6 +122,12 @@ export const api = {
     markRenewed: (id)     => request(`/valuations/${id}/mark-renewed`, { method: 'POST' }),
     duplicate:   (id, d)  => request(`/valuations/${id}/duplicate`, { method: 'POST', body: d || {} }),
     remove:      (id)     => request(`/valuations/${id}`, { method: 'DELETE' }),
+    signedPages: {
+      list:   (id)            => request(`/valuations/${id}/signed-pages`),
+      add:    (id, image)     => request(`/valuations/${id}/signed-pages`, { method: 'POST', body: { image } }),
+      remove: (id, pageId)    => request(`/valuations/${id}/signed-pages/${pageId}`, { method: 'DELETE' }),
+      lock:   (id)            => request(`/valuations/${id}/signed-pages/lock`, { method: 'POST' }),
+    },
   },
 
   payments: {

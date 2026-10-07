@@ -279,6 +279,7 @@ for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN renewal_number INTEGER NOT NULL DEFAULT 0',
   'ALTER TABLE valuations ADD COLUMN tenure_months INTEGER',
   'ALTER TABLE valuations ADD COLUMN bank_preset_id INTEGER',
+  'ALTER TABLE valuations ADD COLUMN signed_pages_locked_at TEXT',
   'ALTER TABLE bank_presets ADD COLUMN bank_logo TEXT',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {
@@ -433,6 +434,19 @@ try {
     }
   }
 } catch (e) { /* ignore */ }
+
+// Photos of the bank-signed report, appended after the KYC sheet in preview/print.
+sqlite.exec(`
+  CREATE TABLE IF NOT EXISTS valuation_signed_pages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    valuation_id INTEGER NOT NULL REFERENCES valuations(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL,
+    page_no INTEGER NOT NULL,
+    image TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_signed_pages_valuation ON valuation_signed_pages(valuation_id, page_no);
+`)
 
 // Renewal indexes are created after the legacy table rebuild/cleanup above,
 // which would otherwise drop them on every start.

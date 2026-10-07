@@ -42,7 +42,23 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
     if (valuation.status === 'DRAFT') onLocked?.(await api.valuations.markPrinted(valuation.id))
   }
 
+  // Print only once the certificate is paginated and every image (incl. signed pages) has loaded.
+  const waitForPrintReady = async (timeoutMs = 20000) => {
+    const deadline = Date.now() + timeoutMs
+    while (Date.now() < deadline) {
+      const portal = document.getElementById('print-portal')
+      const ready = portal?.querySelector('[data-dc-ready="true"]')
+      if (ready && Array.from(portal.querySelectorAll('img')).every((img) => img.complete)) return true
+      await new Promise((r) => setTimeout(r, 150))
+    }
+    return false
+  }
+
   const handlePrint = async () => {
+    if (!(await waitForPrintReady())) {
+      toast.error('The document is still loading. Please try again in a moment.')
+      return
+    }
     window.print()
     await lockAfterPrint()
     toast.success('Document sent to print / saved as PDF.')

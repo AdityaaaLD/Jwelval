@@ -8,6 +8,7 @@ import { compressDataUrl } from '../../lib/imageCompress'
 import { useValuationStore, REMARK_OPTIONS } from '../../store/valuationStore'
 import PrintModal from '../../components/print/PrintModal'
 import ImageCropModal from '../../components/ImageCropModal'
+import SignedPagesPanel from '../../components/SignedPagesPanel'
 
 const lockedStatus = (status) => status === 'PRINTED' || status === 'LOCKED'
 
@@ -406,6 +407,14 @@ export default function ValuationForm() {
         <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
           Locked: Printed on {valuation.printedAt || 'record'}. This document cannot be edited.
         </div>
+      )}
+
+      {disabled && valuation?.id && (
+        <SignedPagesPanel
+          valuation={valuation}
+          onCountChange={(count) => setValuation((current) => (current ? { ...current, signedPageCount: count } : current))}
+          onLocked={(updated) => setValuation(updated)}
+        />
       )}
 
       {!isEdit && series.length === 0 && (

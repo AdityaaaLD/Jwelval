@@ -279,6 +279,11 @@
 .dc-doc-stack-item { border: 1px solid #111827; padding: 4px; }
 .dc-doc-sub-label { margin: 0 0 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
 
+/* Bank-signed copy pages — one full A4 sheet per photo, whole image always visible. */
+.print-page.dc-signed-page { page-break-before: always; height: 296.9mm; min-height: 0; padding: 6mm; overflow: hidden; }
+.dc-signed-img-wrap { flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.dc-signed-img-wrap img { display: block; max-width: 100%; max-height: 100%; object-fit: contain; }
+
 /* ─── Sell Bill Invoice ─── */
 .sb-page { display: flex; flex-direction: column; width: 210mm; min-height: 297mm; background: #fff; color: #1e293b; padding: 10mm; font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 11px; line-height: 1.45; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 .sb-header { text-align: center; padding-bottom: 6px; border-bottom: 3px solid #1e3a5f; }

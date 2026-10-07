@@ -140,8 +140,45 @@ async function hydrate(valuationRow) {
   const [series] = await db.select().from(valuationSeries).where(eq(valuationSeries.id, valuationRow.seriesId))
   let ornamentPhotos = []
   try { ornamentPhotos = JSON.parse(valuationRow.ornamentPhotos || '[]') } catch {}
-  return { ...valuationRow, ornamentPhotos, items, payments: pays, customer, series }
+  // Only the count here; the (large) signed-page images are served by /:id/signed-pages.
+  const signedPageCount = sqlite
+    .prepare('SELECT COUNT(*) AS n FROM valuation_signed_pages WHERE valuation_id = ?')
+    .get(valuationRow.id).n
+  return { ...valuationRow, ornamentPhotos, items, payments: pays, customer, series, signedPageCount }
 }
+
+const SIGNED_PAGE_MAX_COUNT = 30
+const SIGNED_PAGE_MAX_CHARS = 12 * 1024 * 1024
+const SIGNED_PAGE_DATA_URL = /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/
+
+const httpError = (status, code, message) => Object.assign(new Error(message), { status, code })
+
+function ownedValuationRow(id, userId) {
+  const row = sqlite.prepare('SELECT id, status, signed_pages_locked_at FROM valuations WHERE id = ? AND user_id = ?').get(id, userId)
+  if (!row) throw httpError(404, 'NOT_FOUND', 'Valuation not found.')
+  return row
+}
+
+function assertSignedPagesEditable(row) {
+  if (!isLocked(row.status)) {
+    throw httpError(409, 'REPORT_NOT_FINALIZED', 'Print or share the report first. Signed pages can be added only to a finalized report.')
+  }
+  if (row.signed_pages_locked_at) {
+    throw httpError(409, 'SIGNED_PAGES_LOCKED', 'Signed pages are already confirmed and locked.')
+  }
+}
+
+function listSignedPages(valuationId, { withImages = true } = {}) {
+  return sqlite.prepare(`
+    SELECT id, page_no AS pageNo, created_at AS createdAt${withImages ? ', image' : ''}
+    FROM valuation_signed_pages WHERE valuation_id = ? ORDER BY page_no
+  `).all(valuationId)
+}
+
+const sendError = (res, error, fallbackCode) => res.status(error.status || 500).json({
+  error: error.code || fallbackCode,
+  message: error.status ? error.message : 'Something went wrong. Please try again.',
+})
 
 router.get('/', async (req, res) => {
   const userId = req.user.id
@@ -169,6 +206,7 @@ router.get('/', async (req, res) => {
       renewalRootId: valuations.renewalRootId,
       renewalNumber: valuations.renewalNumber,
       status: valuations.status,
+      signedPagesLockedAt: valuations.signedPagesLockedAt,
       customerSnapshot: valuations.customerSnapshot,
     })
     .from(valuations)
@@ -639,6 +677,78 @@ router.post('/:id/mark-printed', async (req, res) => {
   console.log(`[lock] valuation ${id} printed by ${req.ip} at ${now}`)
   const [v] = await db.select().from(valuations).where(eq(valuations.id, id))
   res.json(await hydrate(v))
+})
+
+/* ---- Bank-signed copy pages ----
+   Added after the report is finalized; editable (add/remove) until the
+   appraiser confirms them, then permanently locked. Shown in preview/print
+   only — never in the shared PDF. */
+router.get('/:id/signed-pages', (req, res) => {
+  try {
+    const row = ownedValuationRow(parseInt(req.params.id, 10), req.user.id)
+    res.json({ lockedAt: row.signed_pages_locked_at || null, pages: listSignedPages(row.id) })
+  } catch (error) {
+    sendError(res, error, 'SIGNED_PAGES_FAILED')
+  }
+})
+
+router.post('/:id/signed-pages', (req, res) => {
+  const image = String(req.body?.image || '')
+  if (!SIGNED_PAGE_DATA_URL.test(image) || image.length > SIGNED_PAGE_MAX_CHARS) {
+    return res.status(400).json({ error: 'INVALID_IMAGE', message: 'Please upload a valid photo (JPEG/PNG) under 9 MB.' })
+  }
+  try {
+    const add = sqlite.transaction(() => {
+      const row = ownedValuationRow(parseInt(req.params.id, 10), req.user.id)
+      assertSignedPagesEditable(row)
+      const { n, maxPage } = sqlite.prepare('SELECT COUNT(*) AS n, COALESCE(MAX(page_no), 0) AS maxPage FROM valuation_signed_pages WHERE valuation_id = ?').get(row.id)
+      if (n >= SIGNED_PAGE_MAX_COUNT) throw httpError(409, 'TOO_MANY_PAGES', `A maximum of ${SIGNED_PAGE_MAX_COUNT} signed pages can be added.`)
+      const info = sqlite.prepare('INSERT INTO valuation_signed_pages (valuation_id, user_id, page_no, image, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(row.id, req.user.id, maxPage + 1, image, new Date().toISOString())
+      return { id: Number(info.lastInsertRowid), pageNo: maxPage + 1 }
+    })
+    const page = add.immediate()
+    res.status(201).json(page)
+  } catch (error) {
+    sendError(res, error, 'SIGNED_PAGE_ADD_FAILED')
+  }
+})
+
+router.delete('/:id/signed-pages/:pageId', (req, res) => {
+  try {
+    const remove = sqlite.transaction(() => {
+      const row = ownedValuationRow(parseInt(req.params.id, 10), req.user.id)
+      assertSignedPagesEditable(row)
+      const info = sqlite.prepare('DELETE FROM valuation_signed_pages WHERE id = ? AND valuation_id = ?').run(parseInt(req.params.pageId, 10), row.id)
+      if (!info.changes) throw httpError(404, 'NOT_FOUND', 'Signed page not found.')
+      // Keep page numbers contiguous (1..N) in upload order.
+      const renumber = sqlite.prepare('UPDATE valuation_signed_pages SET page_no = ? WHERE id = ?')
+      listSignedPages(row.id, { withImages: false }).forEach((page, index) => renumber.run(index + 1, page.id))
+      return listSignedPages(row.id, { withImages: false })
+    })
+    res.json({ pages: remove.immediate() })
+  } catch (error) {
+    sendError(res, error, 'SIGNED_PAGE_DELETE_FAILED')
+  }
+})
+
+router.post('/:id/signed-pages/lock', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10)
+    const lock = sqlite.transaction(() => {
+      const row = ownedValuationRow(id, req.user.id)
+      if (row.signed_pages_locked_at) return
+      assertSignedPagesEditable(row)
+      const { n } = sqlite.prepare('SELECT COUNT(*) AS n FROM valuation_signed_pages WHERE valuation_id = ?').get(row.id)
+      if (!n) throw httpError(400, 'NO_SIGNED_PAGES', 'Add at least one signed page before confirming.')
+      sqlite.prepare('UPDATE valuations SET signed_pages_locked_at = ? WHERE id = ? AND user_id = ?').run(new Date().toISOString(), row.id, req.user.id)
+    })
+    lock.immediate()
+    const [v] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, req.user.id)))
+    res.json(await hydrate(v))
+  } catch (error) {
+    sendError(res, error, 'SIGNED_PAGES_LOCK_FAILED')
+  }
 })
 
 router.delete('/:id', async (req, res) => {

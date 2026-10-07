@@ -90,6 +90,7 @@ export default function ValuationList() {
                 <span className="flex items-center gap-1.5">
                   {Number(valuation.renewalNumber) > 0 && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-800">Renewal #{valuation.renewalNumber}</span>}
                   {!Number(valuation.renewalNumber) && Number(valuation.renewalCount) > 0 && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700">{valuation.renewalCount} renewed</span>}
+                  {valuation.signedPagesLockedAt && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">Signed</span>}
                   <StatusBadge status={valuation.status} />
                 </span>
               </div>
@@ -138,7 +139,12 @@ export default function ValuationList() {
                   <td className="px-5 py-3">{valuation.branch || '-'}</td>
                   <td className="px-5 py-3 text-right">{inr(valuation.marketValue)}</td>
                   <td className="px-5 py-3 text-right">{inr(valuation.valuationFee)}</td>
-                  <td className="px-5 py-3"><StatusBadge status={valuation.status} /></td>
+                  <td className="px-5 py-3">
+                    <span className="flex items-center gap-1.5">
+                      <StatusBadge status={valuation.status} />
+                      {valuation.signedPagesLockedAt && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-800">Signed</span>}
+                    </span>
+                  </td>
                   <td className="px-5 py-3">
                     {Number(valuation.renewalNumber) > 0
                       ? <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">Renewal #{valuation.renewalNumber}</span>

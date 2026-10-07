@@ -16,8 +16,12 @@ export default function ImageCropModal({
   src,
   onCancel,
   onApply,
-  preserveFullImage = false,
+  preserveFullImage: preserveFullImageProp = false,
+  // Whole photo, rotation only: no frame, zoom or crop (used for signed report pages).
+  rotateOnly = false,
+  rotateOnlyMaxSide = 2000,
 }) {
+  const preserveFullImage = preserveFullImageProp || rotateOnly
   const imageRef = useRef(null)
   const frameRef = useRef(null)
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 })
@@ -37,6 +41,11 @@ export default function ImageCropModal({
     setOffset({ x: 0, y: 0 })
   }, [open, src])
 
+  const quarterSwap = (((rotation % 360) + 360) % 360) / 90 % 2 === 1
+  const frameAspect = rotateOnly && naturalSize.width && naturalSize.height
+    ? (quarterSwap ? naturalSize.height / naturalSize.width : naturalSize.width / naturalSize.height)
+    : aspect
+
   useEffect(() => {
     if (!open || !frameRef.current) return undefined
 
@@ -54,7 +63,7 @@ export default function ImageCropModal({
       ro.disconnect()
       window.removeEventListener('resize', update)
     }
-  }, [open, aspect])
+  }, [open, frameAspect])
 
   const baseScale = useMemo(() => {
     if (!naturalSize.width || !naturalSize.height || !frameSize.width || !frameSize.height) return 1
@@ -128,6 +137,32 @@ export default function ImageCropModal({
     }
   }
 
+  // Rotation-only export at the photo's own resolution (capped), so nothing is cropped or padded.
+  const applyRotated = async () => {
+    const img = imageRef.current
+    if (!img || !naturalSize.width || !naturalSize.height) return
+    try {
+      setApplying(true)
+      const scale = Math.min(1, rotateOnlyMaxSide / Math.max(naturalSize.width, naturalSize.height))
+      const w = Math.round(naturalSize.width * scale)
+      const h = Math.round(naturalSize.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = quarterSwap ? h : w
+      canvas.height = quarterSwap ? w : h
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.imageSmoothingQuality = 'high'
+      ctx.translate(canvas.width / 2, canvas.height / 2)
+      ctx.rotate((rotation * Math.PI) / 180)
+      ctx.drawImage(img, -w / 2, -h / 2, w, h)
+      await onApply(canvas.toDataURL('image/jpeg', 0.85))
+    } finally {
+      setApplying(false)
+    }
+  }
+
   const applyOriginal = async () => {
     try {
       setApplying(true)
@@ -165,9 +200,11 @@ export default function ImageCropModal({
             <div
               ref={frameRef}
               className="relative mx-auto w-full max-w-[420px] overflow-hidden rounded-md bg-slate-200"
-              style={{ aspectRatio: String(aspect) }}
+              style={rotateOnly
+                ? { aspectRatio: String(frameAspect), width: `min(100%, calc(58dvh * ${frameAspect}))` }
+                : { aspectRatio: String(aspect) }}
               onPointerDown={(e) => {
-                if (applying) return
+                if (applying || rotateOnly) return
                 e.currentTarget.setPointerCapture(e.pointerId)
                 setDragging(true)
               }}
@@ -199,7 +236,11 @@ export default function ImageCropModal({
             </div>
           </div>
           {preserveFullImage && (
-            <p className="mt-2 text-center text-xs font-medium text-slate-600">The complete jewellery photo will be preserved. Empty frame space will remain white.</p>
+            <p className="mt-2 text-center text-xs font-medium text-slate-600">
+              {rotateOnly
+                ? 'The complete page photo is kept exactly as taken. Rotate it if it is sideways or upside down.'
+                : 'The complete jewellery photo will be preserved. Empty frame space will remain white.'}
+            </p>
           )}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -214,14 +255,14 @@ export default function ImageCropModal({
                 </button>
               </div>
             </div>
-            <div>
+            {!rotateOnly && <div>
               <label className="label">Frame</label>
               <select className="input" value={String(aspect)} onChange={(e) => setAspect(Number(e.target.value))} disabled={applying}>
                 {ASPECT_OPTIONS.map((opt) => (
                   <option key={opt.label} value={String(opt.value)}>{opt.label}</option>
                 ))}
               </select>
-            </div>
+            </div>}
             {!preserveFullImage && (
               <>
                 <div>
@@ -270,9 +311,9 @@ export default function ImageCropModal({
 
           <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-200 bg-white px-3 py-3 sm:flex-row sm:justify-end sm:px-5">
             <button type="button" className="btn-secondary" onClick={onCancel} disabled={applying}>Cancel</button>
-            <button type="button" className="btn-secondary" onClick={applyOriginal} disabled={applying}>Use Original</button>
-            <button type="button" className="btn-primary" onClick={applyCrop} disabled={applying}>
-              <Check size={16} /> {applying ? 'Applying...' : preserveFullImage ? 'Use Full Photo' : 'Apply Crop'}
+            {!rotateOnly && <button type="button" className="btn-secondary" onClick={applyOriginal} disabled={applying}>Use Original</button>}
+            <button type="button" className="btn-primary" onClick={rotateOnly ? applyRotated : applyCrop} disabled={applying || (rotateOnly && !naturalSize.width)}>
+              <Check size={16} /> {applying ? 'Applying...' : rotateOnly ? 'Use This Page' : preserveFullImage ? 'Use Full Photo' : 'Apply Crop'}
             </button>
           </div>
         </div>

@@ -192,6 +192,21 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
   const [pages, setPages] = useState(null)
   const [fontsReady, setFontsReady] = useState(false)
   const pagesRef = useRef(null)
+  // Bank-signed copy pages: own records only (preview/print), like the KYC sheet.
+  const signedCount = includeKyc ? Number(valuation.signedPageCount) || 0 : 0
+  const [signedPages, setSignedPages] = useState(() => (signedCount ? null : []))
+  useEffect(() => {
+    if (!signedCount) {
+      setSignedPages([])
+      return undefined
+    }
+    let alive = true
+    setSignedPages(null)
+    api.valuations.signedPages.list(valuation.id)
+      .then((data) => { if (alive) setSignedPages(data.pages || []) })
+      .catch(() => { if (alive) setSignedPages([]) })
+    return () => { alive = false }
+  }, [valuation.id, signedCount])
   useEffect(() => {
     let alive = true
     loadCertFonts().then(() => { if (alive) setFontsReady(true) })
@@ -514,7 +529,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
   }, [measuring, pages])
 
   return (
-    <div ref={pagesRef} data-dc-ready={measuring ? 'false' : 'true'}>
+    <div ref={pagesRef} data-dc-ready={measuring || signedPages === null ? 'false' : 'true'}>
       {/* Certificate pages are sized by us, so the sheet itself carries no
           margin — `.print-page.digital-cert` supplies the printed border. */}
       <style data-dc-page-rule="true">{'@page { size: A4; margin: 0; }'}</style>
@@ -590,6 +605,18 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
           </div>
         </article>
       )}
+
+      {/* Bank-signed copy — appended after the KYC sheet, own records only. */}
+      {(signedPages || []).map((page, index, all) => (
+        <article key={`signed-${page.id}`} className="print-page dc-signed-page">
+          <p className="dc-kyc-notice no-print">
+            Signed copy — page {index + 1} of {all.length}. Kept for your records — not included in the shared PDF.
+          </p>
+          <div className="dc-signed-img-wrap">
+            <img src={page.image} alt={`Signed report page ${index + 1}`} />
+          </div>
+        </article>
+      ))}
     </div>
   )
 }
