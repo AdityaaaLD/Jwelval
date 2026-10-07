@@ -21,6 +21,9 @@ const mmToPx = (mm) => (mm * 96) / 25.4
    pixels of slack rather than risk overflowing a sheet. */
 const SAFETY_PX = 6
 const USABLE_PX = mmToPx(PAGE_HEIGHT_MM - PAGE_PAD_Y_MM) - SAFETY_PX
+// Keep in sync with `.dc-running-foot` padding-top in print.css.
+const MIN_SIGN_GAP_MM = 6
+const MIN_SIGN_GAP_PX = mmToPx(MIN_SIGN_GAP_MM)
 
 /* Measurement runs in two stages: first with the table in automatic layout to
    learn the natural column widths, then with those widths locked in so the row
@@ -335,8 +338,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
 
   const runningFoot = (
     <div className="dc-running-foot">
-      <div className="dc-footer-cluster">
-        {certFooter}
+      <div className="dc-sign-cluster">
         <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
       </div>
     </div>
@@ -432,21 +434,22 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     }
 
     const head = root.querySelector('.dc-running-head')
-    /* Measure the footer cluster's intrinsic height, not `.dc-running-foot`:
+    /* Measure the signature cluster's intrinsic height, not `.dc-running-foot`:
        the wrapper has flex:1 and grows to fill the sheet during the off-screen
        measure pass, which would massively over-reserve footer space. */
-    const footerCluster = root.querySelector('.dc-footer-cluster')
+    const rulesBox = root.querySelector('.dc-cert-footer-box')
+    const signCluster = root.querySelector('.dc-sign-cluster')
     const thead = root.querySelector('thead')
     const rows = Array.from(root.querySelectorAll('tbody > tr'))
     const totalRowNode = root.querySelector('tr.dc-total-row')
-    if (!head || !footerCluster || !thead || !totalRowNode) return undefined
+    if (!head || !rulesBox || !signCluster || !thead || !totalRowNode) return undefined
 
     const rowHeights = rows
       .filter((row) => !row.classList.contains('dc-total-row'))
       .map((row) => row.offsetHeight)
     setPages(paginateRows(rowHeights, {
       headerHeight: head.offsetHeight,
-      footerHeight: footerCluster.offsetHeight,
+      footerHeight: rulesBox.offsetHeight + signCluster.offsetHeight + MIN_SIGN_GAP_PX,
       theadHeight: thead.offsetHeight,
       reservedHeight: totalRowNode.offsetHeight,
     }))
@@ -476,6 +479,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
                 {tableHead}
                 <tbody>{bodyRows}{totalRow}</tbody>
               </table>
+              {certFooter}
             </div>
             {runningFoot}
           </article>
@@ -491,6 +495,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
               {tableHead}
               <tbody>{rowIndexes.map((index) => bodyRows[index])}{pageIndex === pages.length - 1 && totalRow}</tbody>
             </table>
+            {pageIndex === pages.length - 1 && certFooter}
           </div>
           {pageIndex === pages.length - 1 && runningFoot}
         </article>
