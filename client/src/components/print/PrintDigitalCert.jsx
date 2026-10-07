@@ -12,18 +12,15 @@ const COLS = 8
    can never spill into a blank one. Mirrors `.print-page.digital-cert` in
    print.css — both must stay in sync. */
 const PAGE_HEIGHT_MM = 296.9
-/* 6mm top + 14mm bottom — the extra bottom padding keeps the signature row
-   clear of the printer's non-printable bottom edge. Must stay in sync with the
+/* 6mm top + 7mm bottom — enough to keep the signature row clear of the
+   printer's non-printable bottom edge. Must stay in sync with the
    `.print-page.digital-cert` padding in print.css. */
-const PAGE_PAD_Y_MM = 20
+const PAGE_PAD_Y_MM = 13
 const mmToPx = (mm) => (mm * 96) / 25.4
 /* Heights are read with offsetHeight, which is integer-rounded, so leave a few
    pixels of slack rather than risk overflowing a sheet. */
 const SAFETY_PX = 6
 const USABLE_PX = mmToPx(PAGE_HEIGHT_MM - PAGE_PAD_Y_MM) - SAFETY_PX
-// Keep in sync with `.dc-running-foot` padding-top in print.css.
-const MIN_SIGN_GAP_MM = 6
-const MIN_SIGN_GAP_PX = mmToPx(MIN_SIGN_GAP_MM)
 
 /* Measurement runs in two stages: first with the table in automatic layout to
    learn the natural column widths, then with those widths locked in so the row
@@ -63,13 +60,12 @@ function onImagesSettled(root, callback) {
  * header gets clamped into the page content box, so it overlaps the flowing
  * rows instead of sitting in the reserved margin. Measuring and paginating
  * here means every page gets the full header and column headers, while the
- * signatures sit at the bottom of every page and the rules/logo block follows
- * the table on the final page only.
+ * rules/logo block and signatures sit together at the bottom of every page.
  */
-function paginateRows(rowHeights, { headerHeight, signHeight, footerHeight, theadHeight, reservedHeight = 0 }) {
-  // Every page carries the signatures; only the final page adds totals + rules/logo.
-  const pageCapacity = USABLE_PX - headerHeight - theadHeight - signHeight
-  const finalExtra = footerHeight + reservedHeight
+function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight, reservedHeight = 0 }) {
+  // Every page carries the rules/logo + signatures footer; only the final page adds the totals row.
+  const pageCapacity = USABLE_PX - headerHeight - theadHeight - footerHeight
+  const finalExtra = reservedHeight
   if (!Number.isFinite(pageCapacity) || pageCapacity <= 0) return [rowHeights.map((_, i) => i)]
   if (!rowHeights.length) return [[]]
 
@@ -336,6 +332,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
   const runningFoot = (
     <div className="dc-running-foot">
       <div className="dc-sign-cluster">
+        {certFooter}
         <SignatureGrid labels={['Branch Manager', 'Joint Custodian', `Customer: ${customer.name || ''}`, 'Appraiser With Name']} />
       </div>
     </div>
@@ -434,20 +431,18 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     /* Measure the signature cluster's intrinsic height, not `.dc-running-foot`:
        the wrapper has flex:1 and grows to fill the sheet during the off-screen
        measure pass, which would massively over-reserve footer space. */
-    const rulesBox = root.querySelector('.dc-cert-footer-box')
     const signCluster = root.querySelector('.dc-sign-cluster')
     const thead = root.querySelector('thead')
     const rows = Array.from(root.querySelectorAll('tbody > tr'))
     const totalRowNode = root.querySelector('tr.dc-total-row')
-    if (!head || !rulesBox || !signCluster || !thead || !totalRowNode) return undefined
+    if (!head || !signCluster || !thead || !totalRowNode) return undefined
 
     const rowHeights = rows
       .filter((row) => !row.classList.contains('dc-total-row'))
       .map((row) => row.offsetHeight)
     setPages(paginateRows(rowHeights, {
       headerHeight: head.offsetHeight,
-      signHeight: signCluster.offsetHeight + MIN_SIGN_GAP_PX,
-      footerHeight: rulesBox.offsetHeight,
+      footerHeight: signCluster.offsetHeight,
       theadHeight: thead.offsetHeight,
       reservedHeight: totalRowNode.offsetHeight,
     }))
@@ -477,7 +472,6 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
                 {tableHead}
                 <tbody>{bodyRows}{totalRow}</tbody>
               </table>
-              {certFooter}
             </div>
             {runningFoot}
           </article>
@@ -493,7 +487,6 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
               {tableHead}
               <tbody>{rowIndexes.map((index) => bodyRows[index])}{pageIndex === pages.length - 1 && totalRow}</tbody>
             </table>
-            {pageIndex === pages.length - 1 && certFooter}
           </div>
           {runningFoot}
         </article>
