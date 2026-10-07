@@ -63,35 +63,21 @@ function onImagesSettled(root, callback) {
  * header gets clamped into the page content box, so it overlaps the flowing
  * rows instead of sitting in the reserved margin. Measuring and paginating
  * here means every page gets the full header and column headers, while the
- * rules/logo/signature footer is reserved only on the final page.
+ * signatures sit at the bottom of every page and the rules/logo block follows
+ * the table on the final page only.
  */
-function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight, reservedHeight = 0 }) {
-  const pageCapacity = USABLE_PX - headerHeight - theadHeight
-  const finalPageCapacity = pageCapacity - footerHeight - reservedHeight
+function paginateRows(rowHeights, { headerHeight, signHeight, footerHeight, theadHeight, reservedHeight = 0 }) {
+  // Every page carries the signatures; only the final page adds totals + rules/logo.
+  const pageCapacity = USABLE_PX - headerHeight - theadHeight - signHeight
+  const finalExtra = footerHeight + reservedHeight
   if (!Number.isFinite(pageCapacity) || pageCapacity <= 0) return [rowHeights.map((_, i) => i)]
   if (!rowHeights.length) return [[]]
 
-  // Fill the final page from the end first because only that page carries the
-  // totals, certificate rules/logo and signatures. Earlier pages can use their
-  // full body height for ornament rows.
-  const finalPage = []
-  let finalUsed = 0
-  let splitAt = rowHeights.length
-  while (splitAt > 0) {
-    const index = splitAt - 1
-    const height = rowHeights[index]
-    if (finalPage.length && finalUsed + height > finalPageCapacity) break
-    finalPage.unshift(index)
-    finalUsed += height
-    splitAt = index
-    if (finalUsed >= finalPageCapacity) break
-  }
-
+  // Fill pages forward so each page is used completely before moving on.
   const pages = []
   let current = []
   let used = 0
-  for (let index = 0; index < splitAt; index += 1) {
-    const height = rowHeights[index]
+  rowHeights.forEach((height, index) => {
     if (current.length && used + height > pageCapacity) {
       pages.push(current)
       current = []
@@ -99,9 +85,20 @@ function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight, res
     }
     current.push(index)
     used += height
+  })
+
+  // If the totals + rules/logo don't fit after the last rows, carry only the
+  // minimum number of trailing rows onto a new final page.
+  const moved = []
+  while (current.length && used + finalExtra > pageCapacity) {
+    const index = current.pop()
+    used -= rowHeights[index]
+    moved.unshift(index)
+    const movedUsed = moved.reduce((sum, i) => sum + rowHeights[i], 0)
+    if (movedUsed + finalExtra <= pageCapacity) break
   }
   if (current.length) pages.push(current)
-  pages.push(finalPage)
+  if (moved.length) pages.push(moved)
   return pages
 }
 
@@ -449,7 +446,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
       .map((row) => row.offsetHeight)
     setPages(paginateRows(rowHeights, {
       headerHeight: head.offsetHeight,
-      footerHeight: rulesBox.offsetHeight + signCluster.offsetHeight + MIN_SIGN_GAP_PX,
+      signHeight: signCluster.offsetHeight + MIN_SIGN_GAP_PX,
+      footerHeight: rulesBox.offsetHeight,
       theadHeight: thead.offsetHeight,
       reservedHeight: totalRowNode.offsetHeight,
     }))
@@ -497,7 +495,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
             </table>
             {pageIndex === pages.length - 1 && certFooter}
           </div>
-          {pageIndex === pages.length - 1 && runningFoot}
+          {runningFoot}
         </article>
       ))}
 
