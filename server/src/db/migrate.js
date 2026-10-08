@@ -255,6 +255,10 @@ for (const stmt of [
   'ALTER TABLE appraiser_profile ADD COLUMN user_id INTEGER',
   "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",
   'ALTER TABLE sell_bills ADD COLUMN payment_mode TEXT',
+  // "Gold Reappraisal Bill" block — separate from items/GST; NULL prints a blank line.
+  'ALTER TABLE sell_bills ADD COLUMN total_packets TEXT',
+  'ALTER TABLE sell_bills ADD COLUMN convenience_fee REAL',
+  'ALTER TABLE sell_bills ADD COLUMN reappraisal_total REAL',
   'ALTER TABLE payments ADD COLUMN user_id INTEGER NOT NULL DEFAULT 1',
   'ALTER TABLE appraiser_profile ADD COLUMN proprietor_name TEXT',
   'ALTER TABLE appraiser_profile ADD COLUMN qualification TEXT',

@@ -113,7 +113,9 @@ router.get('/:id/pdf', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const userId = req.user.id
-  const { billSeriesId, valuationId, customerId, billDate, orderNo, chequeNo, chequeDate, bank, bankBranch, items, gstPercent = 3, advance = 0, paymentMode } = req.body
+  const { billSeriesId, valuationId, customerId, billDate, orderNo, chequeNo, chequeDate, bank, bankBranch, items, gstPercent = 3, advance = 0, paymentMode, totalPackets, convenienceFee, reappraisalTotal } = req.body
+  // Optional typed values; empty stays NULL so the printed row shows a blank line.
+  const optionalAmount = (value) => (value === '' || value == null || !Number.isFinite(Number(value)) ? null : Number(value))
   if (!customerId) return res.status(400).json({ error: 'Customer required' })
   if (!billSeriesId) return res.status(400).json({ error: 'Bill series required' })
 
@@ -152,6 +154,9 @@ router.post('/', async (req, res) => {
     advance: Number(advance) || 0,
     balance,
     paymentMode: paymentMode || '',
+    totalPackets: String(totalPackets ?? '').trim() || null,
+    convenienceFee: optionalAmount(convenienceFee),
+    reappraisalTotal: optionalAmount(reappraisalTotal),
     userId,
     createdAt: now,
     updatedAt: now,

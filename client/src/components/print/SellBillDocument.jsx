@@ -52,7 +52,7 @@ export default function SellBillDocument({ bill }) {
 
       {/* ── Title Bar ── */}
       <div className="sb-title-bar">
-        <span>TAX INVOICE</span>
+        <span>{Number(bill.gstPercent) > 0 ? 'TAX INVOICE' : 'INVOICE'}</span>
       </div>
 
       {/* ── Bill & Customer Info ── */}
@@ -145,6 +145,29 @@ export default function SellBillDocument({ bill }) {
           </tbody>
         </table>
       </div>
+
+      {/* ── Gold Reappraisal Bill (separate from items/GST; empty values leave a line to write on) ── */}
+      <table className="sb-table sb-reappraisal">
+        <thead>
+          <tr>
+            <th className="sb-th-desc" colSpan="2">Gold Reappraisal Bill</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Total Packets</td>
+            <td className="sb-td-amt">{bill.totalPackets || <span className="sb-blank" />}</td>
+          </tr>
+          <tr>
+            <td>Convenience Fees</td>
+            <td className="sb-td-amt">{bill.convenienceFee != null ? inr(bill.convenienceFee) : <span className="sb-blank" />}</td>
+          </tr>
+          <tr className="sb-reappraisal-total">
+            <td>Total Amount</td>
+            <td className="sb-td-amt">{bill.reappraisalTotal != null ? inr(bill.reappraisalTotal) : <span className="sb-blank" />}</td>
+          </tr>
+        </tbody>
+      </table>
 
       {/* ── Terms ── */}
       <div className="sb-terms">
