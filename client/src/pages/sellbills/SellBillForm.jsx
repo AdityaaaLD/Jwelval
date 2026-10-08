@@ -30,7 +30,6 @@ export default function SellBillForm() {
     items: [blankItem()],
     totalPackets: '',
     convenienceFee: '',
-    reappraisalTotal: '',
   })
 
   useEffect(() => {
@@ -77,7 +76,6 @@ export default function SellBillForm() {
         })) : [blankItem()],
         totalPackets: b.totalPackets || '',
         convenienceFee: b.convenienceFee ?? '',
-        reappraisalTotal: b.reappraisalTotal ?? '',
       })
     })
   }, [id, isView])
@@ -90,7 +88,8 @@ export default function SellBillForm() {
   const addItem = () => setForm((f) => ({ ...f, items: [...f.items, blankItem()] }))
   const removeItem = (index) => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== index) }))
 
-  const subtotal = form.items.reduce((s, it) => s + (Number(it.amount) || 0), 0)
+  // Convenience fees are added to the items and included in the GST base (same as the server).
+  const subtotal = +(form.items.reduce((s, it) => s + (Number(it.amount) || 0), 0) + (Number(form.convenienceFee) || 0)).toFixed(2)
   const gstPercent = form.withGst ? (Number(form.gstRate) || 0) : 0
   const gstAmount = +(subtotal * gstPercent / 100).toFixed(2)
   const total = +(subtotal + gstAmount).toFixed(2)
@@ -113,7 +112,6 @@ export default function SellBillForm() {
         paymentMode: form.paymentMode,
         totalPackets: String(form.totalPackets).trim(),
         convenienceFee: form.convenienceFee === '' ? null : Number(form.convenienceFee),
-        reappraisalTotal: form.reappraisalTotal === '' ? null : Number(form.reappraisalTotal),
       }
       const saved = await api.sellBills.create(payload)
       toast.success('Sell bill created.')
@@ -161,7 +159,10 @@ export default function SellBillForm() {
 
       <section className="card overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-          <h2 className="font-semibold text-slate-950">Items</h2>
+          <div>
+            <h2 className="font-semibold text-slate-950">Gold Reappraisal Bill</h2>
+            <p className="text-xs text-slate-500">Leave Total Packets / Convenience Fees empty to print a blank line.</p>
+          </div>
           {!isView && <button type="button" className="btn-secondary" onClick={addItem}><Plus size={16} /> Add Row</button>}
         </div>
         <div className="overflow-x-auto">
@@ -175,9 +176,15 @@ export default function SellBillForm() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
+              <tr className="bg-slate-50/60">
+                <td className="px-3 py-2">1</td>
+                <td className="px-3 py-2 font-medium text-slate-700">Total Packets <span className="text-xs font-normal text-slate-400">(count, not added to total)</span></td>
+                <td className="px-3 py-2"><input type="number" min="0" inputMode="numeric" className="input text-right" placeholder="e.g. 3" value={form.totalPackets} onChange={(e) => setField('totalPackets', e.target.value)} disabled={isView} /></td>
+                <td />
+              </tr>
               {form.items.map((item, i) => (
                 <tr key={i}>
-                  <td className="px-3 py-2">{i + 1}</td>
+                  <td className="px-3 py-2">{i + 2}</td>
                   <td className="px-3 py-2"><input className="input" placeholder="Item description" value={item.particular} onChange={(e) => setItem(i, 'particular', e.target.value)} disabled={isView} /></td>
                   <td className="px-3 py-2"><input type="number" className="input text-right" value={item.amount} onChange={(e) => setItem(i, 'amount', e.target.value)} disabled={isView} /></td>
                   <td className="px-3 py-2">
@@ -185,6 +192,12 @@ export default function SellBillForm() {
                   </td>
                 </tr>
               ))}
+              <tr className="bg-slate-50/60">
+                <td className="px-3 py-2">{form.items.length + 2}</td>
+                <td className="px-3 py-2 font-medium text-slate-700">Convenience Fees</td>
+                <td className="px-3 py-2"><input type="number" min="0" step="0.01" inputMode="decimal" className="input text-right" value={form.convenienceFee} onChange={(e) => setField('convenienceFee', e.target.value)} disabled={isView} /></td>
+                <td />
+              </tr>
             </tbody>
           </table>
         </div>
@@ -221,7 +234,7 @@ export default function SellBillForm() {
             {form.withGst && <p className="mt-1 text-xs text-slate-500">GST: {inr(gstAmount)}</p>}
           </div>
           <div>
-            <p className="label">Total</p>
+            <p className="label">Total Amount</p>
             <p className="text-xl font-bold text-slate-950">{inr(total)}</p>
           </div>
           <div>
@@ -239,25 +252,6 @@ export default function SellBillForm() {
               <option value="Cheque">Cheque</option>
               <option value="Other">Other</option>
             </select>
-          </div>
-        </div>
-      </section>
-
-      <section className="card p-5">
-        <h2 className="font-semibold text-slate-950">Gold Reappraisal Bill</h2>
-        <p className="mb-3 text-xs text-slate-500">Printed as a separate table. Leave a field empty to print a blank line for writing by hand.</p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="label">Total Packets</label>
-            <input type="number" min="0" inputMode="numeric" className="input" placeholder="e.g. 3" value={form.totalPackets} onChange={(e) => setField('totalPackets', e.target.value)} disabled={isView} />
-          </div>
-          <div>
-            <label className="label">Convenience Fees (₹)</label>
-            <input type="number" min="0" step="0.01" inputMode="decimal" className="input" value={form.convenienceFee} onChange={(e) => setField('convenienceFee', e.target.value)} disabled={isView} />
-          </div>
-          <div>
-            <label className="label">Total Amount (₹)</label>
-            <input type="number" min="0" step="0.01" inputMode="decimal" className="input" value={form.reappraisalTotal} onChange={(e) => setField('reappraisalTotal', e.target.value)} disabled={isView} />
           </div>
         </div>
       </section>

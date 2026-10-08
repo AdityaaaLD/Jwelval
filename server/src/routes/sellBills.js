@@ -113,9 +113,10 @@ router.get('/:id/pdf', async (req, res) => {
 
 router.post('/', async (req, res) => {
   const userId = req.user.id
-  const { billSeriesId, valuationId, customerId, billDate, orderNo, chequeNo, chequeDate, bank, bankBranch, items, gstPercent = 3, advance = 0, paymentMode, totalPackets, convenienceFee, reappraisalTotal } = req.body
+  const { billSeriesId, valuationId, customerId, billDate, orderNo, chequeNo, chequeDate, bank, bankBranch, items, gstPercent = 3, advance = 0, paymentMode, totalPackets, convenienceFee } = req.body
   // Optional typed values; empty stays NULL so the printed row shows a blank line.
   const optionalAmount = (value) => (value === '' || value == null || !Number.isFinite(Number(value)) ? null : Number(value))
+  const convenience = optionalAmount(convenienceFee)
   if (!customerId) return res.status(400).json({ error: 'Customer required' })
   if (!billSeriesId) return res.status(400).json({ error: 'Bill series required' })
 
@@ -130,7 +131,8 @@ router.post('/', async (req, res) => {
     return { ...it, netWeight, rate, making, amount }
   })
 
-  const subtotal = derivedItems.reduce((sum, it) => sum + it.amount, 0)
+  // Convenience fees are charged on top of the items and are part of the GST base.
+  const subtotal = +(derivedItems.reduce((sum, it) => sum + it.amount, 0) + (convenience || 0)).toFixed(2)
   const gstAmt = +(subtotal * (Number(gstPercent) / 100)).toFixed(2)
   const total = +(subtotal + gstAmt).toFixed(2)
   const balance = +(total - (Number(advance) || 0)).toFixed(2)
@@ -155,8 +157,7 @@ router.post('/', async (req, res) => {
     balance,
     paymentMode: paymentMode || '',
     totalPackets: String(totalPackets ?? '').trim() || null,
-    convenienceFee: optionalAmount(convenienceFee),
-    reappraisalTotal: optionalAmount(reappraisalTotal),
+    convenienceFee: convenience,
     userId,
     createdAt: now,
     updatedAt: now,

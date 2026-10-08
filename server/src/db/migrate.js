@@ -255,7 +255,8 @@ for (const stmt of [
   'ALTER TABLE appraiser_profile ADD COLUMN user_id INTEGER',
   "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'",
   'ALTER TABLE sell_bills ADD COLUMN payment_mode TEXT',
-  // "Gold Reappraisal Bill" block — separate from items/GST; NULL prints a blank line.
+  // Gold Reappraisal Bill rows: packets (count) + convenience fee (in GST base); NULL prints a blank line.
+  // reappraisal_total is unused (kept so existing databases stay compatible).
   'ALTER TABLE sell_bills ADD COLUMN total_packets TEXT',
   'ALTER TABLE sell_bills ADD COLUMN convenience_fee REAL',
   'ALTER TABLE sell_bills ADD COLUMN reappraisal_total REAL',

@@ -18,7 +18,11 @@ export default function SellBillDocument({ bill }) {
 
   const customer = bill.customer || {}
   const items = bill.items || []
-  const subtotal = items.reduce((s, it) => s + (Number(it.amount) || 0), 0)
+  const convenienceFee = bill.convenienceFee != null ? Number(bill.convenienceFee) : null
+  const subtotal = items.reduce((s, it) => s + (Number(it.amount) || 0), 0) + (convenienceFee || 0)
+  const blank = <span className="sb-blank" />
+  // Fixed rows: Total Packets first, then the items (e.g. Valuation Fee), then Convenience Fees.
+  const rowCount = items.length + 2
   const businessName = profile?.business_name || 'Jewellery Shop'
 
   return (
@@ -82,20 +86,30 @@ export default function SellBillDocument({ bill }) {
         <thead>
           <tr>
             <th className="sb-th-sr">#</th>
-            <th className="sb-th-desc">Particulars</th>
+            <th className="sb-th-desc">Gold Reappraisal Bill</th>
             <th className="sb-th-amt">Amount (₹)</th>
           </tr>
         </thead>
         <tbody>
+          <tr>
+            <td className="sb-td-sr">1</td>
+            <td>Total Packets</td>
+            <td className="sb-td-amt">{bill.totalPackets || blank}</td>
+          </tr>
           {items.map((it, i) => (
             <tr key={i}>
-              <td className="sb-td-sr">{it.srNo || i + 1}</td>
+              <td className="sb-td-sr">{i + 2}</td>
               <td>{it.particular}</td>
               <td className="sb-td-amt">{inr(it.amount)}</td>
             </tr>
           ))}
+          <tr>
+            <td className="sb-td-sr">{items.length + 2}</td>
+            <td>Convenience Fees</td>
+            <td className="sb-td-amt">{convenienceFee != null ? inr(convenienceFee) : blank}</td>
+          </tr>
           {/* Pad empty rows for visual balance when few items */}
-          {items.length < 4 && Array.from({ length: 4 - items.length }).map((_, i) => (
+          {rowCount < 4 && Array.from({ length: 4 - rowCount }).map((_, i) => (
             <tr key={`pad-${i}`} className="sb-pad-row">
               <td className="sb-td-sr">&nbsp;</td>
               <td>&nbsp;</td>
@@ -127,7 +141,7 @@ export default function SellBillDocument({ bill }) {
               </tr>
             )}
             <tr className="sb-grand-total">
-              <td>Grand Total</td>
+              <td>Total Amount</td>
               <td className="sb-td-amt">{inr(bill.total)}</td>
             </tr>
             {bill.advance > 0 && (
@@ -145,29 +159,6 @@ export default function SellBillDocument({ bill }) {
           </tbody>
         </table>
       </div>
-
-      {/* ── Gold Reappraisal Bill (separate from items/GST; empty values leave a line to write on) ── */}
-      <table className="sb-table sb-reappraisal">
-        <thead>
-          <tr>
-            <th className="sb-th-desc" colSpan="2">Gold Reappraisal Bill</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Total Packets</td>
-            <td className="sb-td-amt">{bill.totalPackets || <span className="sb-blank" />}</td>
-          </tr>
-          <tr>
-            <td>Convenience Fees</td>
-            <td className="sb-td-amt">{bill.convenienceFee != null ? inr(bill.convenienceFee) : <span className="sb-blank" />}</td>
-          </tr>
-          <tr className="sb-reappraisal-total">
-            <td>Total Amount</td>
-            <td className="sb-td-amt">{bill.reappraisalTotal != null ? inr(bill.reappraisalTotal) : <span className="sb-blank" />}</td>
-          </tr>
-        </tbody>
-      </table>
 
       {/* ── Terms ── */}
       <div className="sb-terms">
