@@ -7,6 +7,8 @@ import { inr } from '../../lib/format'
 import SellBillPrint from '../../components/print/SellBillPrint'
 
 const blankItem = () => ({ particular: '', amount: '' })
+// A new bill starts with the standard "Valuation Fee" line; extra rows added later start empty.
+const defaultItem = () => ({ particular: 'Valuation Fee', amount: '' })
 
 export default function SellBillForm() {
   const { id } = useParams()
@@ -27,7 +29,7 @@ export default function SellBillForm() {
     gstRate: 3,
     advance: 0,
     paymentMode: 'Cash',
-    items: [blankItem()],
+    items: [defaultItem()],
     totalPackets: '',
     convenienceFee: '',
   })
@@ -49,7 +51,7 @@ export default function SellBillForm() {
             const fee = Number(val.valuationFee) || 0
             const items = fee > 0
               ? [{ particular: 'Valuation Fee', amount: fee }]
-              : [blankItem()]
+              : [defaultItem()]
             setForm((f) => ({ ...f, items }))
           }
         }).catch(() => {})
