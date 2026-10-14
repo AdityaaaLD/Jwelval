@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { formatDateDMY, inr, num } from '../../lib/format'
+import { formatDateDMY, formatDateIST, formatTimeIST, inr, num } from '../../lib/format'
 import { api } from '../../lib/api'
 import { CertificateRules, SignatureGrid, resolveReportDateTime } from './PrintHelpers'
 import QrImage from '../QrImage'
@@ -129,7 +129,7 @@ function paginateRows(rowHeights, { headerHeight, footerHeight, theadHeight, res
  * on-screen preview and in Print / Save PDF so the appraiser keeps it for their
  * own records, but it is never rendered into the PDF that gets shared.
  */
-export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseUrl = '' }) {
+export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseUrl = '', reportAt = '' }) {
   const customer = valuation.customer || {}
   const items = valuation.items || []
   const aadharFrontDoc = valuation.aadharPhotoDoc || customer.aadharPhoto || ''
@@ -220,7 +220,7 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
     value: acc.value + (Number(item.approxValueInr) || 0),
   }), { units: 0, gross: 0, net: 0, value: 0 })
 
-  const reportDateTime = resolveReportDateTime(valuation)
+  const reportDateTime = resolveReportDateTime(valuation, reportAt)
   const qrVerifyLink = verificationUrl(valuation.valuationNumber, { baseUrl: resolvedQrBaseUrl || qrBaseUrl })
   const empanelmentId = bankPreset?.empanelmentId || valuation?.empanelmentId || ''
   const bankName = bankPreset?.bankName || customer.bankName || 'Bank of Maharashtra'
@@ -230,13 +230,8 @@ export default function PrintDigitalCert({ valuation, includeKyc = true, qrBaseU
   const borrowerAadhar = customer.aadharNumber || '-'
   const renewalDateStr = formatDateDMY(valuation.renewalDate)
   const totalMarketValue = Number(valuation.marketValue) > 0 ? Number(valuation.marketValue) : totals.value
-  const dateStr = formatDateDMY(reportDateTime)
-  const timeStr = reportDateTime.toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  })
+  const dateStr = formatDateIST(reportDateTime)
+  const timeStr = formatTimeIST(reportDateTime)
 
   /* Fixed 3×4 paper-style grid. Empty values keep their position and render a
      writable line so the appraiser can complete them by hand after printing. */

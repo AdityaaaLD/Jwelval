@@ -91,6 +91,17 @@ const validate = (req, res, next) => {
 
 const isLocked = (status) => status === 'PRINTED' || status === 'LOCKED'
 
+// Accept a client-supplied report time only if it is a real, recent timestamp
+// (opened the print dialog up to 24h ago, small allowance for clock drift).
+function normalizeReportTime(raw) {
+  if (!raw) return null
+  const ms = new Date(String(raw)).getTime()
+  if (!Number.isFinite(ms)) return null
+  const now = Date.now()
+  if (ms < now - 24 * 60 * 60 * 1000 || ms > now + 5 * 60 * 1000) return null
+  return new Date(ms).toISOString()
+}
+
 function buildCustomerSnapshot(customerRow = {}) {
   return {
     id: customerRow.id,
@@ -262,6 +273,9 @@ router.get('/:id/pdf', async (req, res) => {
   printUrl.searchParams.set('kyc', includeKyc ? '1' : '0')
   const qrBase = verificationBaseUrl(req)
   if (qrBase) printUrl.searchParams.set('qrBase', qrBase)
+  // A draft has no printedAt yet: print the time the client will save as printedAt.
+  const reportAt = v.printedAt ? null : normalizeReportTime(req.query.reportAt)
+  if (reportAt) printUrl.searchParams.set('reportAt', reportAt)
   const url = printUrl.toString()
   const startedAt = Date.now()
 
@@ -669,10 +683,14 @@ router.post('/:id/mark-printed', async (req, res) => {
   const userId = req.user.id
   const [existing] = await db.select().from(valuations).where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   if (!existing) return res.status(404).json({ error: 'Not found' })
+  // Once printed, the time on the QR page must never change.
+  if (isLocked(existing.status) && existing.printedAt) return res.json(await hydrate(existing))
   const now = new Date().toISOString()
+  // Use the time already printed on the shared/printed report (fixed when the print dialog opened).
+  const printedAt = normalizeReportTime(req.body?.printedAt) || now
   await db
     .update(valuations)
-    .set({ status: 'LOCKED', printedAt: now, updatedAt: now })
+    .set({ status: 'LOCKED', printedAt, updatedAt: now })
     .where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   console.log(`[lock] valuation ${id} printed by ${req.ip} at ${now}`)
   const [v] = await db.select().from(valuations).where(eq(valuations.id, id))

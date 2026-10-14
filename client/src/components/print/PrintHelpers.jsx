@@ -1,4 +1,4 @@
-import { inr, num } from '../../lib/format'
+import { formatDateIST, formatTimeIST, inr, num } from '../../lib/format'
 import QrImage from '../QrImage'
 import { verificationUrl } from '../../lib/qr'
 
@@ -11,9 +11,13 @@ function parseDateLike(value) {
   return Number.isNaN(out.getTime()) ? null : out
 }
 
-export function resolveReportDateTime(valuation) {
+/* `printedAt` is the time shown on the QR verification page. A draft has none
+   yet, so the print dialog passes `reportAt` — the exact time it will save as
+   `printedAt` when the report is shared/printed — keeping both identical. */
+export function resolveReportDateTime(valuation, reportAt) {
   return (
     parseDateLike(valuation?.printedAt)
+    || parseDateLike(reportAt)
     || parseDateLike(valuation?.updatedAt)
     || parseDateLike(valuation?.createdAt)
     || parseDateLike(valuation?.valuationDate)
@@ -86,8 +90,8 @@ export function SignatureGrid({ labels }) {
 export function VerificationBlock({ valuation, profile }) {
   if (!valuation?.valuationNumber) return null
   const reportDateTime = resolveReportDateTime(valuation)
-  const dateStr = reportDateTime.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  const timeStr = reportDateTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+  const dateStr = formatDateIST(reportDateTime)
+  const timeStr = formatTimeIST(reportDateTime)
   const valuerName = profile?.appraiser_name || profile?.appraiserName || ''
   return (
     <div className="verification-block print-avoid-break">

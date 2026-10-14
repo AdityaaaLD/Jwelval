@@ -6,11 +6,15 @@ import { api } from '../../lib/api'
 import { fetchValuationPdf, sharePdf } from '../../lib/share'
 import PrintDigitalCert from './PrintDigitalCert'
 
-function Template({ valuation }) {
-  return <PrintDigitalCert valuation={valuation} />
+function Template({ valuation, reportAt }) {
+  return <PrintDigitalCert valuation={valuation} reportAt={reportAt} />
 }
 
 export default function PrintModal({ valuation, onClose, onLocked }) {
+  // A draft gets its report time fixed once, when this dialog opens. The same
+  // value is printed on the report/PDF and saved as printedAt (shown on the QR
+  // verification page), so both always show the identical date and time.
+  const [reportAt] = useState(() => (valuation?.status === 'DRAFT' ? new Date().toISOString() : ''))
   const [pdf, setPdf] = useState(null)
   const [preparing, setPreparing] = useState(false)
   const [sharing, setSharing] = useState(false)
@@ -27,7 +31,7 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
     let cancelled = false
 
     setPreparing(true)
-    fetchValuationPdf({ valuationId: valuation.id, fileBaseName, signal: controller.signal })
+    fetchValuationPdf({ valuationId: valuation.id, fileBaseName, reportAt, signal: controller.signal })
       .then((result) => { if (!cancelled) setPdf(result) })
       .catch(() => { if (!cancelled) setPdf(null) })
       .finally(() => { if (!cancelled) setPreparing(false) })
@@ -36,10 +40,10 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
       cancelled = true
       controller.abort()
     }
-  }, [valuation?.id, fileBaseName])
+  }, [valuation?.id, fileBaseName, reportAt])
 
   const lockAfterPrint = async () => {
-    if (valuation.status === 'DRAFT') onLocked?.(await api.valuations.markPrinted(valuation.id))
+    if (valuation.status === 'DRAFT') onLocked?.(await api.valuations.markPrinted(valuation.id, reportAt))
   }
 
   // Print only once the certificate is paginated and every image (incl. signed pages) has loaded.
@@ -72,7 +76,7 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
       let ready = pdf
       if (!ready) {
         toast.loading('Preparing PDF...', { id: toastId })
-        ready = await fetchValuationPdf({ valuationId: valuation.id, fileBaseName })
+        ready = await fetchValuationPdf({ valuationId: valuation.id, fileBaseName, reportAt })
         setPdf(ready)
       }
       const { method } = await sharePdf({
@@ -113,7 +117,7 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
       </div>
       <div className="print-preview-scroll">
         <div className="print-preview-center">
-          <Template valuation={valuation} />
+          <Template valuation={valuation} reportAt={reportAt} />
         </div>
       </div>
     </div>,

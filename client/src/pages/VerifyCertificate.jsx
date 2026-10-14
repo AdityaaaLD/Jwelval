@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, XCircle } from 'lucide-react'
 import { api } from '../lib/api'
+import { INDIA_TZ, formatTimeIST } from '../lib/format'
 
 function formatPrintedAt(isoStr) {
   if (!isoStr) return '-'
   const d = new Date(isoStr)
   if (isNaN(d.getTime())) return isoStr
-  const date = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-  const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+  const date = d.toLocaleDateString('en-IN', { timeZone: INDIA_TZ, day: '2-digit', month: 'short', year: 'numeric' })
+  const time = formatTimeIST(d)
   return `${date} at ${time}`
 }
 

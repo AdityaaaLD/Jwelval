@@ -19,11 +19,12 @@ function isIos() {
  * the same on every device. It deliberately omits the borrower's KYC sheet,
  * which "Print / Save PDF" still includes for the appraiser's own records.
  */
-export async function fetchValuationPdf({ valuationId, fileBaseName, signal }) {
+export async function fetchValuationPdf({ valuationId, fileBaseName, reportAt, signal }) {
   if (!valuationId) throw new Error('Valuation must be saved before it can be shared.')
 
   const token = localStorage.getItem(TOKEN_KEY)
-  const res = await fetch(`/api/valuations/${valuationId}/pdf`, {
+  const query = reportAt ? `?reportAt=${encodeURIComponent(reportAt)}` : ''
+  const res = await fetch(`/api/valuations/${valuationId}/pdf${query}`, {
     method: 'GET',
     headers: {
       Accept: PDF_MIME,
