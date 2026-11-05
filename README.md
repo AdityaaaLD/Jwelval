@@ -101,7 +101,7 @@ AWS_SECRET_ACCESS_KEY=your_aws_secret
 # Production security (recommended)
 CORS_ORIGINS=https://jwelval.com
 AUTH_RATE_LIMIT_WINDOW_MS=900000
-AUTH_RATE_LIMIT_MAX_REQS=45
+AUTH_RATE_LIMIT_MAX_REQS=90
 API_RATE_LIMIT_WINDOW_MS=60000
 API_RATE_LIMIT_MAX_REQS=120
 # Keep false in production unless you intentionally want stub mailer
