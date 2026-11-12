@@ -91,6 +91,12 @@ export const api = {
     series: () => request('/sell-bills/series'),
     createSeries: (data) => request('/sell-bills/series', { method: 'POST', body: data }),
   },
+  printFormats: {
+    catalog: () => request('/print-formats'),
+    summary: () => request('/print-formats/summary'),
+    forUser: (userId) => request(`/print-formats/users/${userId}`),
+    saveForUser: (userId, assignments) => request(`/print-formats/users/${userId}`, { method: 'PUT', body: { assignments } }),
+  },
   verifyBaseUrl: () => request('/verify/base-url'),
   verify: (number) => request(`/verify/${encodeURIComponent(number)}`),
 

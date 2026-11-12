@@ -1,0 +1,115 @@
+/* Bank-form print templates (SBI Annexure-8, Bank of Baroda Annexure-4 …).
+   Everything is prefixed `bf-` so the Standard certificate (dc-*) and sell
+   bill (sb-*) styles are never affected. Sheet geometry must match
+   PAGE_HEIGHT_MM / PAGE_PAD_Y_MM in PagedForm.jsx (screen and print). */
+
+.print-page.digital-cert.bf-page {
+  display: flex;
+  flex-direction: column;
+  width: 210mm;
+  height: 296.9mm;
+  min-height: 0;
+  padding: 8mm 10mm 7mm 10mm;
+  overflow: hidden;
+  color: #000;
+  font-size: 12.3px;
+  line-height: 1.38;
+  font-weight: 400;
+}
+.print-page.digital-cert.bf-page.bf-measure-page { height: auto; min-height: 0; overflow: visible; }
+
+.bf-head { display: flow-root; flex: 0 0 auto; padding-bottom: 2.5mm; }
+.bf-head p { margin: 0; }
+.bf-footer { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; padding-top: 2.5mm; }
+.bf-footer p { margin: 0; }
+.bf-page-no { flex: 0 0 auto; margin: auto 0 0 !important; padding-top: 1.5mm; font-size: 9px; line-height: 1.2; color: #555; text-align: right; }
+
+/* Blank lines + filled values on form lines */
+.bf-blank { display: inline-block; height: 0.95em; border-bottom: 1px dotted #000; vertical-align: -2px; }
+.bf-fill { border-bottom: 1px dotted #000; padding: 0 2px; font-weight: 600; }
+
+/* Top bar (bank logo left, annexure label right) */
+.bf-topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; min-height: 5mm; }
+.bf-annexure { margin-left: auto; font-weight: 700; font-size: 12.5px; white-space: nowrap; }
+.bf-bank-logo { display: block; height: 13mm; max-width: 60mm; object-fit: contain; }
+
+/* Valuer letterhead (same identity as the Standard header, compact) */
+.bf-letterhead { display: grid; grid-template-columns: 20mm minmax(0, 1fr) 20mm; align-items: center; gap: 3mm; margin: 1mm 0 2mm; padding-bottom: 1.5mm; border-bottom: 2px solid #b91c1c; text-align: center; }
+.bf-lh-logo { display: grid; place-items: center; }
+.bf-lh-logo img { width: 19mm; height: 19mm; object-fit: contain; display: block; }
+.bf-lh-text p { margin: 0; font-size: 10.8px; line-height: 1.3; color: #b91c1c; font-weight: 500; text-wrap: balance; }
+.bf-lh-text .bf-lh-name { font-size: 17px; line-height: 1.2; letter-spacing: .8px; color: #b8860b; font-weight: 700; }
+.bf-lh-contacts { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 6px; }
+.bf-lh-contacts > span + span::before { content: '|'; margin-right: 6px; }
+.bf-lh-whatsapp { display: inline-flex; align-items: center; gap: 3px; }
+.bf-lh-whatsapp-icon { width: 11px; height: 11px; flex: 0 0 auto; color: #16a34a; }
+
+.bf-title { margin: 1.5mm 0 1.5mm !important; text-align: center; font-size: 14.5px; font-weight: 700; letter-spacing: .4px; }
+.bf-title span { border-bottom: 1.5px solid #000; padding-bottom: 1px; }
+.bf-center p { text-align: center; }
+.bf-center .bf-bank-name { font-size: 14px; font-weight: 700; letter-spacing: .3px; }
+.bf-subheading { font-size: 11.5px; font-weight: 600; }
+
+/* Reference / borrower lines */
+.bf-ref { display: flex; flex-wrap: wrap; gap: 0 10px; margin: 1mm 0 0 !important; font-size: 11px; line-height: 1.45; }
+.bf-ref b { font-weight: 600; }
+.bf-borrower-details { margin-top: 1.5mm !important; }
+
+/* Addressee / fields block with photos + QR on the right */
+.bf-party { display: flex; align-items: stretch; justify-content: space-between; gap: 4mm; margin-top: 2mm; }
+.bf-party-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 1.5mm; }
+.bf-party-main p { margin: 0; font-size: 12.8px; line-height: 1.45; }
+.bf-party-side { flex: 0 0 auto; display: flex; align-items: flex-start; gap: 2mm; }
+.bf-acno { align-self: flex-end; font-size: 12.8px; }
+
+.bf-photo { border: 1px solid #000; padding: 1px; text-align: center; background: #fff; }
+.bf-photo img { display: block; height: 27mm; background: #fff; }
+.bf-photo-person img { width: 23mm; object-fit: cover; }
+.bf-photo-jewel img { width: 36mm; object-fit: contain; }
+.bf-photo p { margin: 1px 0 0; font-size: 8px; font-weight: 600; line-height: 1.15; }
+
+.bf-qr { width: 25mm; border: 1px solid #000; padding: 1px; text-align: center; }
+.bf-qr-img { display: block; width: 23mm; height: 23mm; margin: 0 auto; }
+.bf-qr p { margin: 0; font-size: 8px; font-weight: 700; line-height: 1.2; }
+.bf-qr .bf-qr-no { font-weight: 500; font-size: 7.5px; overflow-wrap: anywhere; }
+
+.bf-letter { margin-top: 2mm !important; font-size: 12.8px; line-height: 1.7; text-align: left; }
+.bf-salutation { margin-top: 2mm !important; font-size: 12.8px; }
+
+/* Bank of Baroda field rows */
+.bf-fields p { display: flex; align-items: baseline; gap: 2mm; }
+.bf-fields .bf-field-label { flex: 0 0 31mm; font-weight: 600; white-space: nowrap; }
+.bf-fields .bf-field-value { flex: 1 1 auto; min-width: 0; }
+.bf-fields .bf-field-inline { margin-left: auto; white-space: nowrap; }
+
+/* Ornament table */
+.bf-table { width: 100%; border-collapse: collapse; table-layout: fixed; margin: 0; flex: 0 0 auto; }
+.bf-table th, .bf-table td { border: 1px solid #000; padding: 3px 4px; font-size: 11.3px; line-height: 1.28; vertical-align: middle; text-align: center; overflow-wrap: anywhere; }
+.bf-table th { font-weight: 600; font-size: 10.6px; line-height: 1.22; background: #fff; }
+.bf-table th.bf-th-note { font-weight: 400; font-size: 8.6px; line-height: 1.15; }
+.bf-th-small { display: block; font-weight: 400; font-size: 8.4px; line-height: 1.15; }
+.bf-table td.bf-left, .bf-table th.bf-left { text-align: left; }
+.bf-table td.bf-right { text-align: right; }
+.bf-table tr.bf-row td, .bf-table tr.bf-blank-row td { height: 7mm; }
+.bf-table tr.bf-total-row td { font-weight: 700; height: 7mm; }
+.bf-remark { display: block; font-size: 9.5px; color: #333; }
+
+/* Loan summary (same 12 values as the Standard certificate) */
+.bf-loan { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px 10px; border: 1px solid #000; padding: 1.5mm 2mm; font-size: 10.8px; line-height: 1.35; }
+.bf-loan-cell { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 3px; min-width: 0; overflow-wrap: anywhere; }
+.bf-loan-cell b { font-weight: 600; white-space: nowrap; }
+.bf-loan-blank { flex: 1 1 30px; min-width: 30px; height: .9em; border-bottom: 1px solid #000; }
+
+/* Declarations + signatures */
+.bf-para { margin-top: 2.5mm !important; font-size: 12.5px; line-height: 1.55; text-align: justify; white-space: pre-line; }
+.bf-place-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 6mm; margin-top: 5mm; font-size: 12.5px; line-height: 1.6; }
+.bf-signs { margin-top: auto; padding-top: 6mm; display: flex; justify-content: space-between; align-items: flex-end; gap: 8mm; }
+.bf-sign { min-width: 62mm; text-align: center; font-size: 12px; }
+.bf-sign-name { min-height: 1.3em; font-size: 11px; font-weight: 600; }
+.bf-sign-line { border-top: 1px solid #000; padding-top: 1mm; font-weight: 600; }
+.bf-sign-center { margin: 0 auto; }
+.bf-inline-sign { margin-top: 9mm; width: 70mm; }
+
+/* Continuation pages */
+.bf-cont { display: flex; justify-content: space-between; align-items: baseline; gap: 4mm; border-bottom: 1px solid #000; padding-bottom: 1.5mm; font-size: 11.5px; }
+.bf-cont b { font-size: 12.5px; }

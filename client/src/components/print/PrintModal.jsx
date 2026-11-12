@@ -4,10 +4,12 @@ import toast from 'react-hot-toast'
 import { Printer, Share2, X } from 'lucide-react'
 import { api } from '../../lib/api'
 import { fetchValuationPdf, sharePdf } from '../../lib/share'
-import PrintDigitalCert from './PrintDigitalCert'
+import { valuationFormat } from './formats'
 
+// Layout chosen by the admin for this user/bank (Standard unless assigned).
 function Template({ valuation, reportAt }) {
-  return <PrintDigitalCert valuation={valuation} reportAt={reportAt} />
+  const { Component } = valuationFormat(valuation?.printFormat)
+  return <Component valuation={valuation} reportAt={reportAt} options={valuation?.printFormatOptions} />
 }
 
 export default function PrintModal({ valuation, onClose, onLocked }) {
@@ -48,10 +50,11 @@ export default function PrintModal({ valuation, onClose, onLocked }) {
 
   // Print only once the certificate is paginated and every image (incl. signed pages) has loaded.
   const waitForPrintReady = async (timeoutMs = 20000) => {
+    const { readySelector } = valuationFormat(valuation?.printFormat)
     const deadline = Date.now() + timeoutMs
     while (Date.now() < deadline) {
       const portal = document.getElementById('print-portal')
-      const ready = portal?.querySelector('[data-dc-ready="true"]')
+      const ready = portal?.querySelector(readySelector)
       if (ready && Array.from(portal.querySelectorAll('img')).every((img) => img.complete)) return true
       await new Promise((r) => setTimeout(r, 150))
     }

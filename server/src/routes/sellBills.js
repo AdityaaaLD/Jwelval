@@ -5,6 +5,7 @@ import { sellBills, sellBillItems, customers, billSeries } from '../db/schema.js
 import { ensureDefaultBillSeriesForUser } from '../lib/defaultBillSeries.js'
 import { renderUrlToPdf } from '../lib/pdfRenderer.js'
 import { logEvent, logErrorEvent } from '../lib/logger.js'
+import { bankPresetIdForValuation, frozenFormat, resolveAssignment } from '../lib/printFormats.js'
 
 const router = Router()
 
@@ -31,7 +32,24 @@ function reserveNextBillNumber(seriesId) {
 async function hydrateBill(bill) {
   const items = await db.select().from(sellBillItems).where(eq(sellBillItems.billId, bill.id))
   const [customer] = await db.select().from(customers).where(eq(customers.id, bill.customerId))
-  return { ...bill, items, customer }
+  // Bills are issued once, so their layout is the one frozen at creation (NULL = Standard).
+  const format = frozenFormat('SELL_BILL', bill.printFormat, bill.printFormatOptions)
+  return { ...bill, items, customer, printFormat: format.formatId, printFormatOptions: format.options }
+}
+
+// Admin-assigned sell bill format; a bill made from a valuation follows that valuation's bank.
+function sellBillFormatFor(userId, valuationId) {
+  let presetId = 0
+  const vid = Number(valuationId)
+  if (vid > 0) {
+    const row = sqlite.prepare('SELECT bank_preset_id AS bankPresetId, branch, customer_snapshot AS customerSnapshot FROM valuations WHERE id = ? AND user_id = ?').get(vid, userId)
+    if (row) {
+      let customer = null
+      try { customer = row.customerSnapshot ? JSON.parse(row.customerSnapshot) : null } catch { customer = null }
+      presetId = bankPresetIdForValuation({ userId, bankPresetId: row.bankPresetId, branch: row.branch, customer })
+    }
+  }
+  return resolveAssignment(userId, 'SELL_BILL', presetId)
 }
 
 router.get('/', async (req, res) => {
@@ -137,6 +155,7 @@ router.post('/', async (req, res) => {
   const total = +(subtotal + gstAmt).toFixed(2)
   const balance = +(total - (Number(advance) || 0)).toFixed(2)
   const now = new Date().toISOString()
+  const format = sellBillFormatFor(userId, valuationId)
 
   const [created] = await db.insert(sellBills).values({
     billNumber: reserved.number,
@@ -158,6 +177,8 @@ router.post('/', async (req, res) => {
     paymentMode: paymentMode || '',
     totalPackets: String(totalPackets ?? '').trim() || null,
     convenienceFee: convenience,
+    printFormat: format.formatId,
+    printFormatOptions: JSON.stringify(format.options || {}),
     userId,
     createdAt: now,
     updatedAt: now,

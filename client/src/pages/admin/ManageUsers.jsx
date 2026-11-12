@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
-import { CheckCircle2, MailCheck, ShieldCheck, Trash2, UserPlus, XCircle } from 'lucide-react'
+import { CheckCircle2, LayoutTemplate, MailCheck, ShieldCheck, Trash2, UserPlus, XCircle } from 'lucide-react'
 import { api } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import PrintFormatsDialog, { shortFormatLabel } from './PrintFormatsDialog'
 
 export default function ManageUsers() {
   const { user: currentUser } = useAuth()
@@ -11,6 +12,9 @@ export default function ManageUsers() {
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const [creating, setCreating] = useState(false)
+  const [formatUser, setFormatUser] = useState(null)
+  const [formatSummary, setFormatSummary] = useState({})
+  const [formatCatalog, setFormatCatalog] = useState(null)
 
   const loadUsers = () => {
     api.auth.listUsers()
@@ -21,7 +25,23 @@ export default function ManageUsers() {
 
   const pendingUsers = users.filter((u) => u.status === 'PENDING')
 
+  const loadFormatSummary = () => {
+    api.printFormats.summary().then(setFormatSummary).catch(() => setFormatSummary({}))
+  }
+
   useEffect(() => { loadUsers() }, [])
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') return
+    loadFormatSummary()
+    api.printFormats.catalog().then(setFormatCatalog).catch(() => setFormatCatalog(null))
+  }, [currentUser?.role])
+
+  const formatLine = (userId) => {
+    const entry = formatSummary[userId] || {}
+    const label = (docType) => shortFormatLabel(formatCatalog?.formats?.[docType]?.find((f) => f.id === (entry[docType] || 'STANDARD')))
+    const overrides = entry.bankOverrides ? ` · ${entry.bankOverrides} bank override${entry.bankOverrides > 1 ? 's' : ''}` : ''
+    return `Report: ${label('VALUATION')} · Bill: ${label('SELL_BILL')}${overrides}`
+  }
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -178,6 +198,19 @@ export default function ManageUsers() {
                   <td className="px-4 py-3 font-medium text-slate-900">
                     {u.name}
                     {u.id === currentUser.id && <span className="ml-2 text-xs text-gold-600">(you)</span>}
+                    {u.status === 'ACTIVE' && (
+                      <button
+                        type="button"
+                        onClick={() => setFormatUser(u)}
+                        className="mt-1 block max-w-[16rem] text-left text-xs font-normal"
+                        title="Choose this user's print formats"
+                      >
+                        <span className="inline-flex items-center gap-1 font-medium text-gold-700 hover:text-gold-800">
+                          <LayoutTemplate size={13} className="shrink-0" /> Print formats
+                        </span>
+                        <span className="block text-[11px] leading-snug text-slate-500">{formatLine(u.id)}</span>
+                      </button>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-slate-600">{u.email}</td>
                   <td className="px-4 py-3">
@@ -240,6 +273,14 @@ export default function ManageUsers() {
             <p className="text-center py-8 text-slate-400">No users found.</p>
           )}
         </div>
+      )}
+
+      {formatUser && (
+        <PrintFormatsDialog
+          user={formatUser}
+          onClose={() => setFormatUser(null)}
+          onSaved={loadFormatSummary}
+        />
       )}
     </div>
   )

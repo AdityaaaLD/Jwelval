@@ -8,6 +8,7 @@ import { deriveItem, totalsFromItems, bankRecommendedFromRate, LOAN_LTV } from '
 import { ensureDefaultValuationSeriesForUser } from '../lib/defaultValuationSeries.js'
 import { renderUrlToPdf } from '../lib/pdfRenderer.js'
 import { logEvent, logErrorEvent } from '../lib/logger.js'
+import { frozenFormat, valuationPrintFormat } from '../lib/printFormats.js'
 
 const router = Router()
 
@@ -155,7 +156,19 @@ async function hydrate(valuationRow) {
   const signedPageCount = sqlite
     .prepare('SELECT COUNT(*) AS n FROM valuation_signed_pages WHERE valuation_id = ?')
     .get(valuationRow.id).n
-  return { ...valuationRow, ornamentPhotos, items, payments: pays, customer, series, signedPageCount }
+  // Layout to print with: frozen once locked, otherwise the admin-assigned one.
+  const format = valuationPrintFormat(valuationRow, customer)
+  return {
+    ...valuationRow,
+    ornamentPhotos,
+    items,
+    payments: pays,
+    customer,
+    series,
+    signedPageCount,
+    printFormat: format.formatId,
+    printFormatOptions: format.options,
+  }
 }
 
 const SIGNED_PAGE_MAX_COUNT = 30
@@ -688,9 +701,26 @@ router.post('/:id/mark-printed', async (req, res) => {
   const now = new Date().toISOString()
   // Use the time already printed on the shared/printed report (fixed when the print dialog opened).
   const printedAt = normalizeReportTime(req.body?.printedAt) || now
+  // Freeze the layout the report was issued in so reprints never change, even
+  // if the admin assigns this user another format later. A report that was
+  // already locked keeps what it had (NULL = Standard).
+  let format
+  if (isLocked(existing.status)) {
+    format = frozenFormat('VALUATION', existing.printFormat, existing.printFormatOptions)
+  } else {
+    const snapshot = parseCustomerSnapshot(existing.customerSnapshot)
+    const [liveCustomer] = snapshot ? [null] : await db.select().from(customers).where(eq(customers.id, existing.customerId))
+    format = valuationPrintFormat(existing, snapshot || liveCustomer || null)
+  }
   await db
     .update(valuations)
-    .set({ status: 'LOCKED', printedAt, updatedAt: now })
+    .set({
+      status: 'LOCKED',
+      printedAt,
+      updatedAt: now,
+      printFormat: format.formatId,
+      printFormatOptions: JSON.stringify(format.options || {}),
+    })
     .where(and(eq(valuations.id, id), eq(valuations.userId, userId)))
   console.log(`[lock] valuation ${id} printed by ${req.ip} at ${now}`)
   const [v] = await db.select().from(valuations).where(eq(valuations.id, id))

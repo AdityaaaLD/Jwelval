@@ -1,7 +1,7 @@
 # JewelVal — Complete Project Handoff
 
 Use this file as the full context for any new AI/developer session (e.g. Claude Desktop).
-Last updated: 2026-11-05. Latest commit at time of writing: `4946c1a` on `main`.
+Last updated: 2026-11-05 (per-user print formats added). Latest commit before this change: `c3845d4` on `main`.
 
 ---
 
@@ -67,6 +67,15 @@ Users are multi-tenant: every row is scoped by `user_id`. The **first user to si
 - **Never reintroduce full `puppeteer`** (it downloads Chrome during install and made builds flaky). Root lockfile must not contain `puppeteer` (only `puppeteer-core`).
 - In production the Express server **also serves the built client** (`client/dist`) with SPA fallback; `index.html` is `no-store`, assets `max-age=0, must-revalidate`.
 - The Railway server clock is **UTC** — any time shown on documents must be formatted with `Asia/Kolkata` (already done, see §9.6).
+
+### Railway operations (checked in the dashboard 2026-11-12)
+- Project `cheerful-sparkle`, environment `production`, service `jewelval` (region Southeast Asia / Singapore). Source repo **AdityaaaLD/Jwelval → main**, auto-deploys on every push (`origin`/Aditya123learner is not connected to Railway).
+- Domains: `www.jwelval.com` (target port 10000) and `jewelval-production-be6d.up.railway.app`. `/api/health` is public.
+- Volume `jewelval-jewelval-data`, mount `/data`, size 5 GB, ~1.17 GB used (2026-11-12). Usage alerts at 80 / 95 / 100 % are enabled. Variable `DB_PATH=/data/jewelval.db` (same as the start command), so the data path does not depend on railway.json.
+- **Backups:** there were none until 2026-11-12. Now: manual backup 2026-11-12 11:30 (1.17 GB) + automatic Daily (kept 6 days), Weekly (27 days), Monthly (89 days). Manual backups are limited to 50 % of the volume size — resize the volume (or move images out of SQLite) before data passes ~2.5 GB. Restoring a backup deletes newer backups; always take a manual backup before a restore or a risky deploy.
+- **Cron schedule removed 2026-11-12** (it was `0 0 * * *` on the web service, which disabled the restart policy: "Services with a cron schedule do not have a restart policy"). Restart policy On Failure is active again.
+- **To do before 2026-12-01:** Railway shows "Config as Code is deprecated… Existing config files keep working until 2026-12-01". Move the railway.json settings (build command, start command, healthcheck `/api/health` + timeout, restart policy) into the service settings in the dashboard (or Railway's Infrastructure-as-Code), then verify a deploy. The Nixpacks builder is also marked deprecated — plan a test of the Railpack builder (keep puppeteer-core + Nix/system Chromium working).
+- Replicas are not possible while a volume is attached; volume services have a short downtime on every deploy.
 
 ### Alternative: Render (`render.yaml`)
 Web service, Node 20, `PUPPETEER_SKIP_DOWNLOAD=true npm install && npm run build`, start `npm run start`, PORT 10000, disk mounted at `/opt/render/project/src/server/data`, `DB_PATH=/opt/render/project/src/server/data/jewel_val.db`. Not the primary host.
@@ -149,9 +158,12 @@ client/src/
     Layout.jsx, ProtectedRoute.jsx, QrImage.jsx, StatusBadge.jsx, WhatsAppMark.jsx, SplashScreen.jsx
     print/
       PrintModal.jsx         valuation print/share dialog
-      PrintDigitalCert.jsx   THE valuation certificate (only layout in use)
+      PrintDigitalCert.jsx   Standard valuation certificate (default layout — never change)
       PrintHelpers.jsx       resolveReportDateTime, CertificateRules, SignatureGrid, VerificationBlock …
-      SellBillDocument.jsx   THE sell bill layout (shared by modal + PDF render page)
+      SellBillDocument.jsx   Standard sell bill layout (shared by modal + PDF render page)
+      formats/index.js       print-format registry: format id → component (see §13)
+      formats/SbiAnnexure8.jsx, formats/BobAnnexure4.jsx   bank-form valuation layouts
+      formats/bankForm/      shared parts for bank forms (PagedForm pagination, letterhead/QR/photos/KYC parts, bankForms.css)
       SellBillPrint.jsx      sell bill print/share dialog
       FeeReceipt.jsx, PrintRushikesh.jsx, PrintDnyaneshwari.jsx, PrintBankOfMaha.jsx  ← legacy, UNUSED
   pages/
@@ -164,7 +176,7 @@ client/src/
     payments/PaymentList, PaymentSection
     reports/ItemWiseReport, CustomerWiseReport
     settings/AppraiserProfile, BankPresets, DailyRates, NumberSeries, OrnamentMaster, DemoData
-    admin/ManageUsers.jsx
+    admin/ManageUsers.jsx, admin/PrintFormatsDialog.jsx (admin assigns print formats)
   styles/print.css           all certificate / sell bill print CSS
 
 server/src/
@@ -180,9 +192,10 @@ server/src/
   lib/numbering.js           reserveNextValuationNumber
   lib/defaultValuationSeries.js, defaultBillSeries.js, defaultOrnaments.js
   lib/pdfRenderer.js         puppeteer-core pool → renderUrlToPdf()
+  lib/printFormats.js        print-format catalog (ids, labels, admin options), resolve/freeze helpers
   lib/googleVision.js, logger.js
   routes/ auth, customers, series, valuations, payments, reports, dashboard, demo, rates,
-          profile, presets, verify, subscriptions, ornaments, sellBills, ocr
+          profile, presets, verify, subscriptions, ornaments, sellBills, ocr, printFormats
 server/scripts/ backup.js, load-otp.js, smoke-otp.js, test-*.js (contention, mailer, memory, restart)
 ```
 
@@ -195,17 +208,20 @@ Authenticated (AppShell): `/dashboard`, `/customers[/new|/:id|/:id/edit]`, `/val
 - Auth: `POST /auth/signup` (first user → admin ACTIVE; others PENDING), `GET /auth/signup-status`, `POST /auth/login` (password → then **email OTP** required), `POST /auth/request-otp` (VERIFY_EMAIL / RESET_PASSWORD), `POST /auth/verify-otp`, `POST /auth/reset-password`, `GET /auth/me`, `POST /auth/logout`; admin: `POST /auth/create-user`, `GET /auth/users`, `POST /auth/users/:id/approve|reject|send-verification-otp`, `DELETE /auth/users/:id`.
 - Valuations: `GET /valuations`, `POST /valuations`, `GET/PUT/DELETE /valuations/:id` (PUT/DELETE blocked when locked; DELETE only drafts), `GET /valuations/:id/pdf` (`?reportAt=`, `?includeKyc=1`), `POST /:id/duplicate`, `POST /:id/mark-renewed`, `POST /:id/mark-printed` (body `{printedAt}`), signed pages: `GET/POST /:id/signed-pages`, `DELETE /:id/signed-pages/:pageId`, `POST /:id/signed-pages/lock`.
 - Sell bills: `GET /sell-bills`, `POST /sell-bills`, `GET /sell-bills/:id`, `GET /sell-bills/:id/pdf`, `DELETE /sell-bills/:id`, `GET/POST /sell-bills/series` (GET auto-creates current-year default series).
+- Print formats: `GET /print-formats` (catalog, any user), admin only: `GET /print-formats/summary`, `GET/PUT /print-formats/users/:userId`.
 - Others: customers CRUD, `series` (list/create/rename/next), `presets/banks` CRUD + `next-app-id` / `preview-app-id`, `profile` GET/PUT, `rates` GET/POST, `ornaments` CRUD, `payments`, `reports/item-wise|customer-wise`, `dashboard`, `demo/load|reset`, `ocr`.
 
 ---
 
 ## 7. Database (SQLite)
 
-Tables (schema.js + migrate.js): `users`, `sessions`, `otp_tokens`, `customers`, `valuation_series`, `valuations`, `valuation_items`, `valuation_signed_pages`, `payments`, `daily_rates`, `appraiser_profile`, `bank_presets`, `ornament_master`, `bill_series`, `sell_bills`, `sell_bill_items` (+ subscription request storage).
+Tables (schema.js + migrate.js): `users`, `sessions`, `otp_tokens`, `customers`, `valuation_series`, `valuations`, `valuation_items`, `valuation_signed_pages`, `payments`, `daily_rates`, `appraiser_profile`, `bank_presets`, `ornament_master`, `bill_series`, `sell_bills`, `sell_bill_items`, `print_format_assignments` (+ subscription request storage).
 
-Key `valuations` columns: valuation_number, series_id, customer_id, format_type, valuation_date, ac_no, branch, branch_code, application_id, bank_preset_id, gold_rate_22k/24k, market_value, loan_amount (= "Sanction Loan Amount"), bank_gold_rate_per_gram, loan_ltv, bank_recommended_value, valuation_fee, rate_of_interest, loan_type, tenure_months, certificate_rules, person_photo, jewellery_photo, ornament_photos (JSON), aadhar_photo_doc, pan_photo, customer_snapshot (JSON, immutable copy of customer at creation), gold_loan_register_no, gold_packets_no, renewal_date, duplicate_of_id, renewal_root_id, renewal_number, status (`DRAFT`/`PRINTED`/`LOCKED`), printed_at, signed_pages_locked_at, user_id, created_at, updated_at.
+Key `valuations` columns: valuation_number, series_id, customer_id, format_type, valuation_date, ac_no, branch, branch_code, application_id, bank_preset_id, gold_rate_22k/24k, market_value, loan_amount (= "Sanction Loan Amount"), bank_gold_rate_per_gram, loan_ltv, bank_recommended_value, valuation_fee, rate_of_interest, loan_type, tenure_months, certificate_rules, person_photo, jewellery_photo, ornament_photos (JSON), aadhar_photo_doc, pan_photo, customer_snapshot (JSON, immutable copy of customer at creation), gold_loan_register_no, gold_packets_no, renewal_date, duplicate_of_id, renewal_root_id, renewal_number, status (`DRAFT`/`PRINTED`/`LOCKED`), printed_at, signed_pages_locked_at, print_format, print_format_options (JSON; frozen at lock, NULL = Standard), user_id, created_at, updated_at.
 
-Key `sell_bills` columns: bill_number, bill_series_id, valuation_id, customer_id, bill_date, subtotal, gst_percent, gst_amount, total, advance, balance, payment_mode, total_packets (TEXT), convenience_fee (REAL, NULL = blank line), reappraisal_total (unused, kept for compatibility), user_id.
+Key `sell_bills` columns: bill_number, bill_series_id, valuation_id, customer_id, bill_date, subtotal, gst_percent, gst_amount, total, advance, balance, payment_mode, total_packets (TEXT), convenience_fee (REAL, NULL = blank line), reappraisal_total (unused, kept for compatibility), print_format, print_format_options (frozen at creation, NULL = Standard), user_id.
+
+`print_format_assignments`: id, user_id, doc_type (`VALUATION`/`SELL_BILL`), bank_preset_id (0 = user default, else override for that bank preset), format_id, options_json, updated_by, created_at, updated_at. UNIQUE(user_id, doc_type, bank_preset_id). No row = Standard.
 
 Images (photos, logos, signed pages) are stored as **base64 data URLs in TEXT columns**. `express.json` limit is 50 MB.
 
@@ -303,18 +319,46 @@ QR encodes `<QR base>/verify/<valuationNumber>`. Public page `VerifyCertificate.
 - Sessions: random token in `sessions` table, 30-day expiry, `Authorization: Bearer`.
 - Login = password, then email OTP (purpose LOGIN). Email must be verified (VERIFY_EMAIL OTP). Password reset via RESET_PASSWORD OTP. Legacy SHA-256 hashes auto-upgrade to bcrypt.
 - OTP limits (current): 15 sends/user/hour, 15 per email per 10 min, 40 per email per day, 30 per IP per hour, 60s resend cooldown, 10 wrong attempts per OTP, 5-minute validity. Env vars override these defaults.
-- Admin (`/admin/users`): create users, approve/reject pending, resend verification OTP, delete. No per-user print-format assignment exists (see §13).
+- Admin (`/admin/users`): create users, approve/reject pending, resend verification OTP, delete, and assign print formats per user / per bank (see §13).
 
 ---
 
-## 13. Print formats per user — current state (investigated 2026-11-05)
-- **Not implemented.** Every user gets the same certificate layout (`PrintDigitalCert`) and the same sell bill layout (`SellBillDocument`). Per-user variation comes only from data: appraiser profile (header), bank presets (bank logo/rules/manager/branch), number series prefixes.
-- `valuation_series.format_type` (RUSHIKESH / DNYANESHWARI / BANK_OF_MAHA / DIGITAL_CERT) is selectable in Settings → Number Series and seeded by `defaultValuationSeries.js`, but **PrintModal always renders PrintDigitalCert**; `PrintRushikesh.jsx`, `PrintDnyaneshwari.jsx`, `PrintBankOfMaha.jsx` are unused legacy layouts (missing all recent features).
-- Proposed design if requested: a format registry (code components keyed by id) for valuation and sell bill; admin assigns `valuation_format` / `sell_bill_format` per user (default = current layouts); PrintModal, PrintRender, SellBillPrint, SellBillRender pick the assigned component; optionally allow several formats per user. Open questions for the client: how different are the formats (settings vs entirely different designs) and sample layouts.
+## 13. Per-user print formats (built 2026-11-05)
 
----
+Client decision: the current layouts are the **Standard** ones and are never changed. A client can get an entirely different layout (style, structure, everything) built from their sample. **Only the admin** assigns layouts — per user, and optionally per bank preset of that user. Layouts adapt to JewelVal's data; the application/data model is not changed to fit a paper form (fields JewelVal doesn't store print as writable blank lines).
+
+### How it works
+- **Catalog (source of truth):** `server/src/lib/printFormats.js` → `PRINT_FORMATS` (id, label, description, admin-editable `options` schema: boolean / text / textarea / number with defaults, max length, min/max). Server validates/sanitizes all options.
+- **Registry (components):** `client/src/components/print/formats/index.js` maps id → component + `readySelector` / `pageRuleSelector` / `allowNoImages`. Unknown id → Standard. Keep both lists in sync.
+- **Assignment:** Manage Users → "Print formats" under a user's name → dialog (mobile full-screen): Valuation report: *Default for this user* + *Per bank* (each bank preset: "Same as user default" or a format) with **Customize this format** (options per assignment, "Reset to defaults"). Sell bill: same (only Standard exists today). Saved via `PUT /api/print-formats/users/:userId` (admin only; replaces that user's assignments in one transaction; bank preset must belong to that user).
+- **Resolution:** valuation → bank override (valuation.bank_preset_id, or the same bank/branch fallback the certificate uses) → user default → Standard. Sell bill → bank of its linked valuation → user default → Standard.
+- **Freezing (data safety):** a valuation stores `print_format` + full merged `print_format_options` when it is **locked** (`mark-printed`); a sell bill stores them when it is **created**. Reprints / QR / bank copies never change if the admin re-assigns later. Documents locked before this feature (NULL) always show **Standard** (what they were issued in). Drafts follow the live assignment. Duplicates start as drafts (live assignment).
+- API responses (`hydrate` in valuations.js, `hydrateBill` in sellBills.js) include `printFormat` + `printFormatOptions`; PrintModal, PrintRender (`/print/valuation/:id`), SellBillPrint and SellBillRender (`/print/sell-bill/:id`) render the component from the registry and wait for its ready selector — so preview, Print and the shared PDF always use the same layout.
+- Known tiny race: if the admin changes a user's format in the seconds between a draft's PDF being generated and it being locked, the lock freezes the new assignment.
+
+### Formats available
+| Doc | Id | Label |
+|---|---|---|
+| Valuation | `STANDARD` | Standard — Digital Valuation Certificate (`PrintDigitalCert`, untouched) |
+| Valuation | `SBI_ANNEX8` | SBI — Appraiser Certificate (Annexure-8) |
+| Valuation | `BOB_ANNEX4` | Bank of Baroda — Jewel Assaying Certificate (Annexure-4) |
+| Sell bill | `STANDARD` | Standard — Invoice / Tax Invoice (`SellBillDocument`, untouched) |
+
+Bank forms (samples from the client, 2026-11-05: SBI Annexure-8 letter; BoB Annexure-4 page 1 — page 2 not built yet):
+- Fill from app data only. SBI: "S/o ____" and "in the presence of ____ (Cash in charge)" are always blank lines (client chose not to add fields). "No. of article" = units; precious-stones weight column left blank to write. BoB: every ornament is its own row (no fixed Bangles/Kada/… category rows — client decision), Deductions = gross − net, Rate per gram = market 22K rate, Jewel Type option (default Gold), blank rows padded up to `minRows` only while they fit on the last page.
+- Extras on by default (admin can switch each off per assignment): valuer letterhead, QR Scan & Verify (+ cert no.), jewellery photo (never cropped, `object-fit: contain`), borrower photo, bank logo from Bank Preset, reference line (certificate no., application ID, GL register no., packets no., IST date/time), borrower mobile/alternate/Aadhaar, loan summary (same 12 values as Standard), item remarks. Editable texts: annexure label, title, relation label, testing method, declarations (support `{bank}`/`{branch}`), place (empty = branch name), minimum rows.
+- Same rules as Standard: Arimo font, measured pagination (`formats/bankForm/PagedForm.jsx`, A4 296.9mm, padding 8/10/7/10mm, page 1 full head, continuation pages compact head + repeated table head, total row + declarations/signatures on the last page, "Certificate No. … Page x of y"), overflow self-check, `data-format-ready="true"` when done, KYC sheet + bank-signed pages after the form in preview/print only (never in shared PDF), times in IST, renewal tracking never printed.
+
+### Adding a new client format (checklist)
+1. Get the client's sample (photo/PDF). Map every printed field to existing JewelVal data; anything not stored → blank line (ask the client before adding new fields).
+2. Add an entry to `PRINT_FORMATS` in `server/src/lib/printFormats.js` (new unique id, label, description, options with defaults).
+3. Create the component in `client/src/components/print/formats/` (reuse `bankForm/PagedForm`, `useCertContext`, `certData`, `parts`), register it in `formats/index.js` with its ready selector.
+4. Never change the printed output of an id already in use (locked documents reference it) — create a new id (e.g. `SBI_ANNEX8_V2`) instead; never remove an id.
+5. Verify: build, `node --check`, preview pages == shared PDF pages at 390px and desktop, Standard output still pixel-identical, then assign it to the user in Manage Users.
 
 ## 14. Change history (most recent first, all on `main`, pushed to both remotes)
+- *(this change)* Per-user print formats: admin assigns valuation / sell bill layouts per user and per bank preset with editable options; layout frozen on lock (valuation) / creation (sell bill); new SBI Annexure-8 and Bank of Baroda Annexure-4 valuation layouts; Standard layouts untouched (pixel-identical PDFs verified).
+- `c3845d4` Complete project handoff document
 - `4946c1a` OTP send limit 15/hour (+10-min 15, day 40, IP 30)
 - `7fcd4d8` Doubled OTP and auth rate limits
 - `0c534ec` Report time == QR time, always IST
@@ -341,20 +385,40 @@ QR encodes `<QR base>/verify/<valuationNumber>`. Public page `VerifyCertificate.
 ---
 
 ## 15. Known gaps / follow-ups
-- Per-user print formats (§13) — not built.
+- Bank of Baroda Annexure-4 page 2 (client to send sample); more client formats as samples arrive (§13 checklist).
+- Admin cannot preview a format with sample data before assigning (assign to own account to check).
+- Manage Users table is clipped on phones (pre-existing; Status/Actions columns not reachable at 390px).
 - Sell bill: rows with amount but no description are dropped silently on save (suggested: block save with an error).
 - Sell bills can't be edited after creation.
-- Legacy print components (`PrintRushikesh/Dnyaneshwari/BankOfMaha`, `FeeReceipt`) are dead code.
+- Legacy print components (`PrintRushikesh/Dnyaneshwari/BankOfMaha`, `FeeReceipt`) are dead code; `valuation_series.format_type` is still not used for printing (formats come from admin assignments, §13).
 - `sell_bills.reappraisal_total` column unused.
 - Check Railway variables for OTP/rate-limit overrides (env beats code defaults).
 - One unreproduced instance of a first PDF request failing right after a cold server start (9/9 retries succeeded).
 
 ---
 
+## 17. Roadmap & decisions (agreed with the client 2026-11-12)
+
+Principle: **one core app for everyone; every user's profile can differ** (print layouts, settings, plan). Existing users and their documents must never change unless the admin changes them; data must never be lost.
+
+### Status of the print-formats change (not yet pushed on 2026-11-12)
+- Tested locally on a copy of the local DB (`server/data/local-test.db`, gitignored) in Chrome: assignments, SBI/BoB/Standard previews, 22-item pagination, lock-freeze, sell bill, shared PDFs (page counts match preview without KYC).
+- Effect on existing users after deploy: none visible. Everyone stays on Standard (no assignments exist), Standard components untouched (PDFs pixel-identical in tests), migration only adds 4 empty columns + 1 empty table, old locked reports always render Standard. Only the admin sees the new "Print formats" link. The deploy itself restarts the service (~1–3 min downtime) → deploy at a quiet time, take a manual Railway backup first.
+- Local run note: Vite on the Windows laptop answers only on `localhost` (IPv6), so start local runs with `PDF_BASE_URL=http://localhost:5173` (plus `EMAIL_FROM=test@example.com MAIL_PROVIDER=stub DB_PATH=<copy>`), otherwise local PDF sharing hangs. Production is not affected.
+
+### Decided direction
+1. **Real database:** move from SQLite-on-volume to managed **PostgreSQL** without impacting production users: build on a branch, migrate with identical IDs/numbers/timestamps, verify row counts + per-row checksums + pixel-identical PDFs of locked reports, rehearse on a copy of production data, cut over in a short night maintenance window, keep the old volume untouched (read-only) ≥30 days for rollback.
+2. **Full admin panel** (designed first in Claude's design tool, matching the current look, mobile-first): overview, users, access requests stored in DB, subscriptions (plans ₹10,000/user/year → ₹299/user/month, start/end, status, grace), payments (manual first), print formats, audit log, system (backups). Existing users start as Active/grandfathered with no end date; expiry never deletes or hides reports (suggested: read-only).
+3. **Print formats without coding for every client:** a template system stored in the database — a block-based, versioned print-template builder in the admin panel (letterhead, text with field placeholders, field grids, ornament table with configurable columns, photos, QR, declarations, signatures, page setup), rendered by one shared measured-pagination engine, with live preview on real reports and a test PDF before publishing. Published versions are immutable; documents freeze the template version at lock. Code-based templates (Standard, SBI, BoB) remain available. Build this on top of Postgres.
+4. Photos/signed pages: later move from base64-in-DB to private object storage (Railway bucket) to keep the DB small.
+
+### Order
+Push print formats (after testing) → Postgres migration (foundation) → admin panel + subscriptions → template builder → images to bucket. Before 2026-12-01: move railway.json settings into the Railway dashboard.
+
 ## 16. Working rules for whoever continues
 1. Keep `main` production-safe; build (`npm --prefix client run build`) and `node --check` server files before committing; test risky changes end-to-end on a DB copy.
 2. Commit with clear messages and push to **both** remotes; verify with `git ls-remote`.
-3. Never change the certificate/sell bill print output beyond what's asked. Keep empty fields as writable lines.
+3. Never change the certificate/sell bill print output beyond what's asked (Standard layouts are fixed; client-specific layouts are separate format ids, §13). Keep empty fields as writable lines.
 4. Never print renewal metadata; never put KYC or signed pages in the shared PDF.
 5. Migrations: additive + idempotent only; never rewrite or delete existing records.
 6. Don't reintroduce full `puppeteer`; keep `aptPkgs = []`.

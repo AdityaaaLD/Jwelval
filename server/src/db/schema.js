@@ -78,6 +78,9 @@ export const valuations = sqliteTable('valuations', {
   printedAt: text('printed_at'),
   // Set once the appraiser confirms the bank-signed copy pages; they are immutable afterwards.
   signedPagesLockedAt: text('signed_pages_locked_at'),
+  // Print format frozen when the report is locked (NULL = Standard / not yet locked).
+  printFormat: text('print_format'),
+  printFormatOptions: text('print_format_options'),
   createdAt: text('created_at').notNull(),
   userId: integer('user_id').notNull().default(1),
   updatedAt: text('updated_at').notNull(),
@@ -205,6 +208,9 @@ export const sellBills = sqliteTable('sell_bills', {
   totalPackets: text('total_packets'),
   convenienceFee: real('convenience_fee'),
   reappraisalTotal: real('reappraisal_total'),
+  // Print format frozen when the bill is created (NULL = Standard).
+  printFormat: text('print_format'),
+  printFormatOptions: text('print_format_options'),
   userId: integer('user_id').notNull().default(1),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),

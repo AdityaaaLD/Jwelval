@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import SellBillDocument from '../components/print/SellBillDocument'
+import { sellBillFormat } from '../components/print/formats'
 
 const READY_ATTR = 'data-print-ready'
 const ERROR_ATTR = 'data-print-error'
@@ -28,6 +28,16 @@ function imagesSettled(root) {
   const images = Array.from(root.querySelectorAll('img'))
   if (!images.length) return true
   return images.every((img) => img.complete && (img.naturalWidth > 0 || img.getAttribute('src') === ''))
+}
+
+async function waitForSelector(selector, { timeoutMs = 20000, intervalMs = 100 } = {}) {
+  if (!selector) return true
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    if (document.querySelector(selector)) return true
+    await new Promise((r) => setTimeout(r, intervalMs))
+  }
+  return false
 }
 
 async function waitForStableRender(root, { timeoutMs = 20000, stableChecks = 3, intervalMs = 120 } = {}) {
@@ -73,10 +83,12 @@ export default function SellBillRender() {
   useEffect(() => {
     if (!bill) return undefined
     let cancelled = false
+    const format = sellBillFormat(bill.printFormat)
     const run = async () => {
       const root = document.getElementById('print-portal') || document.body
       await waitForStableRender(root)
       await waitForFonts()
+      await waitForSelector(format.readySelector)
       // one extra frame so late layout/paint work is flushed before capture
       await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 120)))
       if (!cancelled) markReady()
@@ -89,12 +101,13 @@ export default function SellBillRender() {
     return <div style={{ padding: 24, fontFamily: 'Arial, sans-serif' }}>Unable to load sell bill: {failed}</div>
   }
   if (!bill) return null
+  const { Component } = sellBillFormat(bill.printFormat)
 
   return createPortal(
     <div id="print-portal" className="print-overlay">
       <div className="print-preview-scroll">
         <div className="print-preview-center">
-          <SellBillDocument bill={bill} />
+          <Component bill={bill} options={bill.printFormatOptions} />
         </div>
       </div>
     </div>,

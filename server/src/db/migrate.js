@@ -286,6 +286,12 @@ for (const stmt of [
   'ALTER TABLE valuations ADD COLUMN bank_preset_id INTEGER',
   'ALTER TABLE valuations ADD COLUMN signed_pages_locked_at TEXT',
   'ALTER TABLE bank_presets ADD COLUMN bank_logo TEXT',
+  // Per-user print formats: the format (+ its options) a document was issued in.
+  // Frozen when a valuation is locked / a sell bill is created; NULL = Standard.
+  'ALTER TABLE valuations ADD COLUMN print_format TEXT',
+  'ALTER TABLE valuations ADD COLUMN print_format_options TEXT',
+  'ALTER TABLE sell_bills ADD COLUMN print_format TEXT',
+  'ALTER TABLE sell_bills ADD COLUMN print_format_options TEXT',
 ]) {
   try { sqlite.exec(stmt) } catch (error) {
     if (!String(error.message).includes('duplicate column name')) throw error
@@ -574,6 +580,28 @@ try {
     console.log(`[migrate] ensured default ornaments for ${activeUsers.length} active user(s)`)
   }
 } catch (e) { console.log('[migrate] ornament_master backfill skipped:', e.message) }
+
+// Admin-assigned print formats. bank_preset_id = 0 is the user's default;
+// a bank preset id overrides it for valuations of that bank. No row = Standard.
+// Created after the legacy UNIQUE-index cleanup above (it only touches
+// customers/valuations/sell_bills, but keep new indexes after it anyway).
+try {
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS print_format_assignments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      doc_type TEXT NOT NULL,
+      bank_preset_id INTEGER NOT NULL DEFAULT 0,
+      format_id TEXT NOT NULL,
+      options_json TEXT,
+      updated_by INTEGER,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_print_format_assignment_scope
+      ON print_format_assignments(user_id, doc_type, bank_preset_id);
+  `)
+} catch (e) { console.log('[migrate] print_format_assignments skipped:', e.message) }
 
 // No demo user seeded — users must sign up.
 // Default data (ornaments, series, profile, presets) is seeded per-user on signup via seedDefaultsForUser in auth.js.

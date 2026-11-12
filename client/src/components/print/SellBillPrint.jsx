@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import toast from 'react-hot-toast'
 import { Printer, Share2, X } from 'lucide-react'
 import { fetchSellBillPdf, sharePdf } from '../../lib/share'
-import SellBillDocument from './SellBillDocument'
+import { sellBillFormat } from './formats'
 
 export default function SellBillPrint({ bill, onClose }) {
   const [pdf, setPdf] = useState(null)
@@ -68,6 +68,7 @@ export default function SellBillPrint({ bill, onClose }) {
   }
 
   const shareLabel = sharing ? 'Sharing...' : preparing ? 'Preparing PDF...' : 'Share as PDF'
+  const { Component } = sellBillFormat(bill?.printFormat)
 
   return createPortal(
     <div id="print-portal" className="print-overlay">
@@ -80,7 +81,7 @@ export default function SellBillPrint({ bill, onClose }) {
       </div>
       <div className="print-preview-scroll">
         <div className="print-preview-center">
-          <SellBillDocument bill={bill} />
+          <Component bill={bill} options={bill?.printFormatOptions} />
         </div>
       </div>
     </div>,
